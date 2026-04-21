@@ -4,6 +4,10 @@
 Build a web-based dictionary application called **Owl** that supports MDX/MDD dictionary files.
 The app allows users to look up words and manage their own personal dictionaries.
 Core dictionary engine: Go library `github.com/lib-x/mdx` (MDX/MDD parser with `io/fs.FS` support).
+- MDX files: text dictionary entries (definitions, HTML content)
+- MDD files: associated resources (images, audio, CSS, fonts) paired with MDX
+- When a user uploads an MDX, they should also be able to upload the paired MDD file(s)
+- Backend must serve MDD resources so frontend can render embedded images/audio in definitions
 
 ## Architecture
 - **Backend**: Go (REST API)
@@ -75,7 +79,7 @@ owl/
 POST   /api/auth/register         # Register
 POST   /api/auth/login            # Login, returns JWT
 GET    /api/dictionaries          # List user's dictionaries
-POST   /api/dictionaries/upload   # Upload MDX file
+POST   /api/dictionaries/upload   # Upload MDX (+ optional MDD) file(s)
 DELETE /api/dictionaries/:id      # Delete a dictionary
 PATCH  /api/dictionaries/:id      # Toggle enable/disable
 GET    /api/search?q=word         # Search across enabled dictionaries
@@ -86,20 +90,32 @@ GET    /api/search?q=word&dict=id # Search in specific dictionary
 ```go
 import "github.com/lib-x/mdx"
 
-// Load dictionary
-mdict, err := mdx.New("path/to/file.mdx")
+// Load MDX dictionary
+mdict, err := mdx.New("path/to/dict.mdx")
 err = mdict.BuildIndex()
 
-// Query
+// Load paired MDD resource file (same name, .mdd extension)
+// MDD files share the same base name as MDX, e.g. oald.mdx + oald.mdd
+
+// Query word definition (returns HTML string)
 definition, err := mdict.Lookup("hello")
 
-// Metadata
+// Dictionary metadata
 title := mdict.Title()
 desc := mdict.Description()
 
-// FS interface (for serving MDD resources)
+// FS interface — serve MDD resources (images, audio, CSS) via HTTP
+// This is key: mdict.FS() returns an io/fs.FS for the MDD content
+// Mount it at /api/dictionaries/:id/resource/ to serve embedded assets
 fs := mdict.FS()
+data, err := fs.Open("img/hello.png")
 ```
+
+## MDD Resource Serving
+- Each dictionary's MDD resources should be accessible via HTTP
+- Route: `GET /api/dictionaries/:id/resource/*filepath`
+- The backend uses `mdict.FS()` to serve files from the MDD archive
+- Frontend dictionary HTML may reference images like `<img src="img/word.png">` — rewrite these to point to the resource endpoint
 
 ## Frontend Requirements
 - Clean, modern design (use Tailwind CSS or similar)
