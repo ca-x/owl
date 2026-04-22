@@ -18,6 +18,18 @@ const (
 	FieldPasswordHash = "password_hash"
 	// FieldIsAdmin holds the string denoting the is_admin field in the database.
 	FieldIsAdmin = "is_admin"
+	// FieldLanguage holds the string denoting the language field in the database.
+	FieldLanguage = "language"
+	// FieldTheme holds the string denoting the theme field in the database.
+	FieldTheme = "theme"
+	// FieldFontMode holds the string denoting the font_mode field in the database.
+	FieldFontMode = "font_mode"
+	// FieldCustomFontName holds the string denoting the custom_font_name field in the database.
+	FieldCustomFontName = "custom_font_name"
+	// FieldCustomFontPath holds the string denoting the custom_font_path field in the database.
+	FieldCustomFontPath = "custom_font_path"
+	// FieldCustomFontFamily holds the string denoting the custom_font_family field in the database.
+	FieldCustomFontFamily = "custom_font_family"
 	// EdgeDictionaries holds the string denoting the dictionaries edge name in mutations.
 	EdgeDictionaries = "dictionaries"
 	// Table holds the table name of the user in the database.
@@ -37,6 +49,12 @@ var Columns = []string{
 	FieldUsername,
 	FieldPasswordHash,
 	FieldIsAdmin,
+	FieldLanguage,
+	FieldTheme,
+	FieldFontMode,
+	FieldCustomFontName,
+	FieldCustomFontPath,
+	FieldCustomFontFamily,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -56,6 +74,18 @@ var (
 	PasswordHashValidator func(string) error
 	// DefaultIsAdmin holds the default value on creation for the "is_admin" field.
 	DefaultIsAdmin bool
+	// DefaultLanguage holds the default value on creation for the "language" field.
+	DefaultLanguage string
+	// DefaultTheme holds the default value on creation for the "theme" field.
+	DefaultTheme string
+	// DefaultFontMode holds the default value on creation for the "font_mode" field.
+	DefaultFontMode string
+	// DefaultCustomFontName holds the default value on creation for the "custom_font_name" field.
+	DefaultCustomFontName string
+	// DefaultCustomFontPath holds the default value on creation for the "custom_font_path" field.
+	DefaultCustomFontPath string
+	// DefaultCustomFontFamily holds the default value on creation for the "custom_font_family" field.
+	DefaultCustomFontFamily string
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -79,6 +109,36 @@ func ByPasswordHash(opts ...sql.OrderTermOption) OrderOption {
 // ByIsAdmin orders the results by the is_admin field.
 func ByIsAdmin(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsAdmin, opts...).ToFunc()
+}
+
+// ByLanguage orders the results by the language field.
+func ByLanguage(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLanguage, opts...).ToFunc()
+}
+
+// ByTheme orders the results by the theme field.
+func ByTheme(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTheme, opts...).ToFunc()
+}
+
+// ByFontMode orders the results by the font_mode field.
+func ByFontMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFontMode, opts...).ToFunc()
+}
+
+// ByCustomFontName orders the results by the custom_font_name field.
+func ByCustomFontName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCustomFontName, opts...).ToFunc()
+}
+
+// ByCustomFontPath orders the results by the custom_font_path field.
+func ByCustomFontPath(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCustomFontPath, opts...).ToFunc()
+}
+
+// ByCustomFontFamily orders the results by the custom_font_family field.
+func ByCustomFontFamily(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCustomFontFamily, opts...).ToFunc()
 }
 
 // ByDictionariesCount orders the results by dictionaries count.

@@ -25,12 +25,15 @@ func TestHealthEndpoint(t *testing.T) {
 	if res.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.Code)
 	}
-	var body map[string]string
+	var body map[string]any
 	if err := json.NewDecoder(strings.NewReader(res.Body.String())).Decode(&body); err != nil {
 		t.Fatal(err)
 	}
 	if body["status"] != "ok" {
 		t.Fatalf("unexpected body: %#v", body)
+	}
+	if _, ok := body["version"]; !ok {
+		t.Fatalf("expected version field in response: %#v", body)
 	}
 	_ = server.Shutdown(context.Background())
 }

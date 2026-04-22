@@ -19,6 +19,7 @@ var (
 		{Name: "mdd_paths_json", Type: field.TypeString, Default: "[]"},
 		{Name: "entry_count", Type: field.TypeInt, Default: 0},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "public", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_dictionaries", Type: field.TypeInt},
@@ -31,7 +32,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "dictionaries_users_dictionaries",
-				Columns:    []*schema.Column{DictionariesColumns[11]},
+				Columns:    []*schema.Column{DictionariesColumns[12]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -43,6 +44,12 @@ var (
 		{Name: "username", Type: field.TypeString, Unique: true},
 		{Name: "password_hash", Type: field.TypeString},
 		{Name: "is_admin", Type: field.TypeBool, Default: false},
+		{Name: "language", Type: field.TypeString, Default: "zh-CN"},
+		{Name: "theme", Type: field.TypeString, Default: "system"},
+		{Name: "font_mode", Type: field.TypeString, Default: "sans"},
+		{Name: "custom_font_name", Type: field.TypeString, Default: ""},
+		{Name: "custom_font_path", Type: field.TypeString, Default: ""},
+		{Name: "custom_font_family", Type: field.TypeString, Default: ""},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{

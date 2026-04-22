@@ -70,6 +70,90 @@ func (_u *UserUpdate) SetNillableIsAdmin(v *bool) *UserUpdate {
 	return _u
 }
 
+// SetLanguage sets the "language" field.
+func (_u *UserUpdate) SetLanguage(v string) *UserUpdate {
+	_u.mutation.SetLanguage(v)
+	return _u
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLanguage(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetLanguage(*v)
+	}
+	return _u
+}
+
+// SetTheme sets the "theme" field.
+func (_u *UserUpdate) SetTheme(v string) *UserUpdate {
+	_u.mutation.SetTheme(v)
+	return _u
+}
+
+// SetNillableTheme sets the "theme" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableTheme(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetTheme(*v)
+	}
+	return _u
+}
+
+// SetFontMode sets the "font_mode" field.
+func (_u *UserUpdate) SetFontMode(v string) *UserUpdate {
+	_u.mutation.SetFontMode(v)
+	return _u
+}
+
+// SetNillableFontMode sets the "font_mode" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableFontMode(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetFontMode(*v)
+	}
+	return _u
+}
+
+// SetCustomFontName sets the "custom_font_name" field.
+func (_u *UserUpdate) SetCustomFontName(v string) *UserUpdate {
+	_u.mutation.SetCustomFontName(v)
+	return _u
+}
+
+// SetNillableCustomFontName sets the "custom_font_name" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableCustomFontName(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetCustomFontName(*v)
+	}
+	return _u
+}
+
+// SetCustomFontPath sets the "custom_font_path" field.
+func (_u *UserUpdate) SetCustomFontPath(v string) *UserUpdate {
+	_u.mutation.SetCustomFontPath(v)
+	return _u
+}
+
+// SetNillableCustomFontPath sets the "custom_font_path" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableCustomFontPath(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetCustomFontPath(*v)
+	}
+	return _u
+}
+
+// SetCustomFontFamily sets the "custom_font_family" field.
+func (_u *UserUpdate) SetCustomFontFamily(v string) *UserUpdate {
+	_u.mutation.SetCustomFontFamily(v)
+	return _u
+}
+
+// SetNillableCustomFontFamily sets the "custom_font_family" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableCustomFontFamily(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetCustomFontFamily(*v)
+	}
+	return _u
+}
+
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_u *UserUpdate) AddDictionaryIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddDictionaryIDs(ids...)
@@ -174,6 +258,24 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.IsAdmin(); ok {
 		_spec.SetField(user.FieldIsAdmin, field.TypeBool, value)
 	}
+	if value, ok := _u.mutation.Language(); ok {
+		_spec.SetField(user.FieldLanguage, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Theme(); ok {
+		_spec.SetField(user.FieldTheme, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.FontMode(); ok {
+		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CustomFontName(); ok {
+		_spec.SetField(user.FieldCustomFontName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CustomFontPath(); ok {
+		_spec.SetField(user.FieldCustomFontPath, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CustomFontFamily(); ok {
+		_spec.SetField(user.FieldCustomFontFamily, field.TypeString, value)
+	}
 	if _u.mutation.DictionariesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -277,6 +379,90 @@ func (_u *UserUpdateOne) SetIsAdmin(v bool) *UserUpdateOne {
 func (_u *UserUpdateOne) SetNillableIsAdmin(v *bool) *UserUpdateOne {
 	if v != nil {
 		_u.SetIsAdmin(*v)
+	}
+	return _u
+}
+
+// SetLanguage sets the "language" field.
+func (_u *UserUpdateOne) SetLanguage(v string) *UserUpdateOne {
+	_u.mutation.SetLanguage(v)
+	return _u
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLanguage(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetLanguage(*v)
+	}
+	return _u
+}
+
+// SetTheme sets the "theme" field.
+func (_u *UserUpdateOne) SetTheme(v string) *UserUpdateOne {
+	_u.mutation.SetTheme(v)
+	return _u
+}
+
+// SetNillableTheme sets the "theme" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableTheme(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetTheme(*v)
+	}
+	return _u
+}
+
+// SetFontMode sets the "font_mode" field.
+func (_u *UserUpdateOne) SetFontMode(v string) *UserUpdateOne {
+	_u.mutation.SetFontMode(v)
+	return _u
+}
+
+// SetNillableFontMode sets the "font_mode" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableFontMode(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetFontMode(*v)
+	}
+	return _u
+}
+
+// SetCustomFontName sets the "custom_font_name" field.
+func (_u *UserUpdateOne) SetCustomFontName(v string) *UserUpdateOne {
+	_u.mutation.SetCustomFontName(v)
+	return _u
+}
+
+// SetNillableCustomFontName sets the "custom_font_name" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableCustomFontName(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetCustomFontName(*v)
+	}
+	return _u
+}
+
+// SetCustomFontPath sets the "custom_font_path" field.
+func (_u *UserUpdateOne) SetCustomFontPath(v string) *UserUpdateOne {
+	_u.mutation.SetCustomFontPath(v)
+	return _u
+}
+
+// SetNillableCustomFontPath sets the "custom_font_path" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableCustomFontPath(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetCustomFontPath(*v)
+	}
+	return _u
+}
+
+// SetCustomFontFamily sets the "custom_font_family" field.
+func (_u *UserUpdateOne) SetCustomFontFamily(v string) *UserUpdateOne {
+	_u.mutation.SetCustomFontFamily(v)
+	return _u
+}
+
+// SetNillableCustomFontFamily sets the "custom_font_family" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableCustomFontFamily(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetCustomFontFamily(*v)
 	}
 	return _u
 }
@@ -414,6 +600,24 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.IsAdmin(); ok {
 		_spec.SetField(user.FieldIsAdmin, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Language(); ok {
+		_spec.SetField(user.FieldLanguage, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Theme(); ok {
+		_spec.SetField(user.FieldTheme, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.FontMode(); ok {
+		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CustomFontName(); ok {
+		_spec.SetField(user.FieldCustomFontName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CustomFontPath(); ok {
+		_spec.SetField(user.FieldCustomFontPath, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CustomFontFamily(); ok {
+		_spec.SetField(user.FieldCustomFontFamily, field.TypeString, value)
 	}
 	if _u.mutation.DictionariesCleared() {
 		edge := &sqlgraph.EdgeSpec{

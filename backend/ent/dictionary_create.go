@@ -109,6 +109,20 @@ func (_c *DictionaryCreate) SetNillableEnabled(v *bool) *DictionaryCreate {
 	return _c
 }
 
+// SetPublic sets the "public" field.
+func (_c *DictionaryCreate) SetPublic(v bool) *DictionaryCreate {
+	_c.mutation.SetPublic(v)
+	return _c
+}
+
+// SetNillablePublic sets the "public" field if the given value is not nil.
+func (_c *DictionaryCreate) SetNillablePublic(v *bool) *DictionaryCreate {
+	if v != nil {
+		_c.SetPublic(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *DictionaryCreate) SetCreatedAt(v time.Time) *DictionaryCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -203,6 +217,10 @@ func (_c *DictionaryCreate) defaults() {
 		v := dictionary.DefaultEnabled
 		_c.mutation.SetEnabled(v)
 	}
+	if _, ok := _c.mutation.Public(); !ok {
+		v := dictionary.DefaultPublic
+		_c.mutation.SetPublic(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := dictionary.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -253,6 +271,9 @@ func (_c *DictionaryCreate) check() error {
 	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		return &ValidationError{Name: "enabled", err: errors.New(`ent: missing required field "Dictionary.enabled"`)}
+	}
+	if _, ok := _c.mutation.Public(); !ok {
+		return &ValidationError{Name: "public", err: errors.New(`ent: missing required field "Dictionary.public"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Dictionary.created_at"`)}
@@ -320,6 +341,10 @@ func (_c *DictionaryCreate) createSpec() (*Dictionary, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Enabled(); ok {
 		_spec.SetField(dictionary.FieldEnabled, field.TypeBool, value)
 		_node.Enabled = value
+	}
+	if value, ok := _c.mutation.Public(); ok {
+		_spec.SetField(dictionary.FieldPublic, field.TypeBool, value)
+		_node.Public = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(dictionary.FieldCreatedAt, field.TypeTime, value)

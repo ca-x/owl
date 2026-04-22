@@ -46,6 +46,90 @@ func (_c *UserCreate) SetNillableIsAdmin(v *bool) *UserCreate {
 	return _c
 }
 
+// SetLanguage sets the "language" field.
+func (_c *UserCreate) SetLanguage(v string) *UserCreate {
+	_c.mutation.SetLanguage(v)
+	return _c
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_c *UserCreate) SetNillableLanguage(v *string) *UserCreate {
+	if v != nil {
+		_c.SetLanguage(*v)
+	}
+	return _c
+}
+
+// SetTheme sets the "theme" field.
+func (_c *UserCreate) SetTheme(v string) *UserCreate {
+	_c.mutation.SetTheme(v)
+	return _c
+}
+
+// SetNillableTheme sets the "theme" field if the given value is not nil.
+func (_c *UserCreate) SetNillableTheme(v *string) *UserCreate {
+	if v != nil {
+		_c.SetTheme(*v)
+	}
+	return _c
+}
+
+// SetFontMode sets the "font_mode" field.
+func (_c *UserCreate) SetFontMode(v string) *UserCreate {
+	_c.mutation.SetFontMode(v)
+	return _c
+}
+
+// SetNillableFontMode sets the "font_mode" field if the given value is not nil.
+func (_c *UserCreate) SetNillableFontMode(v *string) *UserCreate {
+	if v != nil {
+		_c.SetFontMode(*v)
+	}
+	return _c
+}
+
+// SetCustomFontName sets the "custom_font_name" field.
+func (_c *UserCreate) SetCustomFontName(v string) *UserCreate {
+	_c.mutation.SetCustomFontName(v)
+	return _c
+}
+
+// SetNillableCustomFontName sets the "custom_font_name" field if the given value is not nil.
+func (_c *UserCreate) SetNillableCustomFontName(v *string) *UserCreate {
+	if v != nil {
+		_c.SetCustomFontName(*v)
+	}
+	return _c
+}
+
+// SetCustomFontPath sets the "custom_font_path" field.
+func (_c *UserCreate) SetCustomFontPath(v string) *UserCreate {
+	_c.mutation.SetCustomFontPath(v)
+	return _c
+}
+
+// SetNillableCustomFontPath sets the "custom_font_path" field if the given value is not nil.
+func (_c *UserCreate) SetNillableCustomFontPath(v *string) *UserCreate {
+	if v != nil {
+		_c.SetCustomFontPath(*v)
+	}
+	return _c
+}
+
+// SetCustomFontFamily sets the "custom_font_family" field.
+func (_c *UserCreate) SetCustomFontFamily(v string) *UserCreate {
+	_c.mutation.SetCustomFontFamily(v)
+	return _c
+}
+
+// SetNillableCustomFontFamily sets the "custom_font_family" field if the given value is not nil.
+func (_c *UserCreate) SetNillableCustomFontFamily(v *string) *UserCreate {
+	if v != nil {
+		_c.SetCustomFontFamily(*v)
+	}
+	return _c
+}
+
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_c *UserCreate) AddDictionaryIDs(ids ...int) *UserCreate {
 	_c.mutation.AddDictionaryIDs(ids...)
@@ -100,6 +184,30 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultIsAdmin
 		_c.mutation.SetIsAdmin(v)
 	}
+	if _, ok := _c.mutation.Language(); !ok {
+		v := user.DefaultLanguage
+		_c.mutation.SetLanguage(v)
+	}
+	if _, ok := _c.mutation.Theme(); !ok {
+		v := user.DefaultTheme
+		_c.mutation.SetTheme(v)
+	}
+	if _, ok := _c.mutation.FontMode(); !ok {
+		v := user.DefaultFontMode
+		_c.mutation.SetFontMode(v)
+	}
+	if _, ok := _c.mutation.CustomFontName(); !ok {
+		v := user.DefaultCustomFontName
+		_c.mutation.SetCustomFontName(v)
+	}
+	if _, ok := _c.mutation.CustomFontPath(); !ok {
+		v := user.DefaultCustomFontPath
+		_c.mutation.SetCustomFontPath(v)
+	}
+	if _, ok := _c.mutation.CustomFontFamily(); !ok {
+		v := user.DefaultCustomFontFamily
+		_c.mutation.SetCustomFontFamily(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -122,6 +230,24 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsAdmin(); !ok {
 		return &ValidationError{Name: "is_admin", err: errors.New(`ent: missing required field "User.is_admin"`)}
+	}
+	if _, ok := _c.mutation.Language(); !ok {
+		return &ValidationError{Name: "language", err: errors.New(`ent: missing required field "User.language"`)}
+	}
+	if _, ok := _c.mutation.Theme(); !ok {
+		return &ValidationError{Name: "theme", err: errors.New(`ent: missing required field "User.theme"`)}
+	}
+	if _, ok := _c.mutation.FontMode(); !ok {
+		return &ValidationError{Name: "font_mode", err: errors.New(`ent: missing required field "User.font_mode"`)}
+	}
+	if _, ok := _c.mutation.CustomFontName(); !ok {
+		return &ValidationError{Name: "custom_font_name", err: errors.New(`ent: missing required field "User.custom_font_name"`)}
+	}
+	if _, ok := _c.mutation.CustomFontPath(); !ok {
+		return &ValidationError{Name: "custom_font_path", err: errors.New(`ent: missing required field "User.custom_font_path"`)}
+	}
+	if _, ok := _c.mutation.CustomFontFamily(); !ok {
+		return &ValidationError{Name: "custom_font_family", err: errors.New(`ent: missing required field "User.custom_font_family"`)}
 	}
 	return nil
 }
@@ -160,6 +286,30 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.IsAdmin(); ok {
 		_spec.SetField(user.FieldIsAdmin, field.TypeBool, value)
 		_node.IsAdmin = value
+	}
+	if value, ok := _c.mutation.Language(); ok {
+		_spec.SetField(user.FieldLanguage, field.TypeString, value)
+		_node.Language = value
+	}
+	if value, ok := _c.mutation.Theme(); ok {
+		_spec.SetField(user.FieldTheme, field.TypeString, value)
+		_node.Theme = value
+	}
+	if value, ok := _c.mutation.FontMode(); ok {
+		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+		_node.FontMode = value
+	}
+	if value, ok := _c.mutation.CustomFontName(); ok {
+		_spec.SetField(user.FieldCustomFontName, field.TypeString, value)
+		_node.CustomFontName = value
+	}
+	if value, ok := _c.mutation.CustomFontPath(); ok {
+		_spec.SetField(user.FieldCustomFontPath, field.TypeString, value)
+		_node.CustomFontPath = value
+	}
+	if value, ok := _c.mutation.CustomFontFamily(); ok {
+		_spec.SetField(user.FieldCustomFontFamily, field.TypeString, value)
+		_node.CustomFontFamily = value
 	}
 	if nodes := _c.mutation.DictionariesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

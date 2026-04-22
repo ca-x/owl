@@ -69,6 +69,36 @@ func IsAdmin(v bool) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldIsAdmin, v))
 }
 
+// Language applies equality check predicate on the "language" field. It's identical to LanguageEQ.
+func Language(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldLanguage, v))
+}
+
+// Theme applies equality check predicate on the "theme" field. It's identical to ThemeEQ.
+func Theme(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTheme, v))
+}
+
+// FontMode applies equality check predicate on the "font_mode" field. It's identical to FontModeEQ.
+func FontMode(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldFontMode, v))
+}
+
+// CustomFontName applies equality check predicate on the "custom_font_name" field. It's identical to CustomFontNameEQ.
+func CustomFontName(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomFontName, v))
+}
+
+// CustomFontPath applies equality check predicate on the "custom_font_path" field. It's identical to CustomFontPathEQ.
+func CustomFontPath(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomFontPath, v))
+}
+
+// CustomFontFamily applies equality check predicate on the "custom_font_family" field. It's identical to CustomFontFamilyEQ.
+func CustomFontFamily(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomFontFamily, v))
+}
+
 // UsernameEQ applies the EQ predicate on the "username" field.
 func UsernameEQ(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldUsername, v))
@@ -207,6 +237,396 @@ func IsAdminEQ(v bool) predicate.User {
 // IsAdminNEQ applies the NEQ predicate on the "is_admin" field.
 func IsAdminNEQ(v bool) predicate.User {
 	return predicate.User(sql.FieldNEQ(FieldIsAdmin, v))
+}
+
+// LanguageEQ applies the EQ predicate on the "language" field.
+func LanguageEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldLanguage, v))
+}
+
+// LanguageNEQ applies the NEQ predicate on the "language" field.
+func LanguageNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldLanguage, v))
+}
+
+// LanguageIn applies the In predicate on the "language" field.
+func LanguageIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldLanguage, vs...))
+}
+
+// LanguageNotIn applies the NotIn predicate on the "language" field.
+func LanguageNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldLanguage, vs...))
+}
+
+// LanguageGT applies the GT predicate on the "language" field.
+func LanguageGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldLanguage, v))
+}
+
+// LanguageGTE applies the GTE predicate on the "language" field.
+func LanguageGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldLanguage, v))
+}
+
+// LanguageLT applies the LT predicate on the "language" field.
+func LanguageLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldLanguage, v))
+}
+
+// LanguageLTE applies the LTE predicate on the "language" field.
+func LanguageLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldLanguage, v))
+}
+
+// LanguageContains applies the Contains predicate on the "language" field.
+func LanguageContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldLanguage, v))
+}
+
+// LanguageHasPrefix applies the HasPrefix predicate on the "language" field.
+func LanguageHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldLanguage, v))
+}
+
+// LanguageHasSuffix applies the HasSuffix predicate on the "language" field.
+func LanguageHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldLanguage, v))
+}
+
+// LanguageEqualFold applies the EqualFold predicate on the "language" field.
+func LanguageEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldLanguage, v))
+}
+
+// LanguageContainsFold applies the ContainsFold predicate on the "language" field.
+func LanguageContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldLanguage, v))
+}
+
+// ThemeEQ applies the EQ predicate on the "theme" field.
+func ThemeEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTheme, v))
+}
+
+// ThemeNEQ applies the NEQ predicate on the "theme" field.
+func ThemeNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldTheme, v))
+}
+
+// ThemeIn applies the In predicate on the "theme" field.
+func ThemeIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldTheme, vs...))
+}
+
+// ThemeNotIn applies the NotIn predicate on the "theme" field.
+func ThemeNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldTheme, vs...))
+}
+
+// ThemeGT applies the GT predicate on the "theme" field.
+func ThemeGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldTheme, v))
+}
+
+// ThemeGTE applies the GTE predicate on the "theme" field.
+func ThemeGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldTheme, v))
+}
+
+// ThemeLT applies the LT predicate on the "theme" field.
+func ThemeLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldTheme, v))
+}
+
+// ThemeLTE applies the LTE predicate on the "theme" field.
+func ThemeLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldTheme, v))
+}
+
+// ThemeContains applies the Contains predicate on the "theme" field.
+func ThemeContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldTheme, v))
+}
+
+// ThemeHasPrefix applies the HasPrefix predicate on the "theme" field.
+func ThemeHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldTheme, v))
+}
+
+// ThemeHasSuffix applies the HasSuffix predicate on the "theme" field.
+func ThemeHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldTheme, v))
+}
+
+// ThemeEqualFold applies the EqualFold predicate on the "theme" field.
+func ThemeEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldTheme, v))
+}
+
+// ThemeContainsFold applies the ContainsFold predicate on the "theme" field.
+func ThemeContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldTheme, v))
+}
+
+// FontModeEQ applies the EQ predicate on the "font_mode" field.
+func FontModeEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldFontMode, v))
+}
+
+// FontModeNEQ applies the NEQ predicate on the "font_mode" field.
+func FontModeNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldFontMode, v))
+}
+
+// FontModeIn applies the In predicate on the "font_mode" field.
+func FontModeIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldFontMode, vs...))
+}
+
+// FontModeNotIn applies the NotIn predicate on the "font_mode" field.
+func FontModeNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldFontMode, vs...))
+}
+
+// FontModeGT applies the GT predicate on the "font_mode" field.
+func FontModeGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldFontMode, v))
+}
+
+// FontModeGTE applies the GTE predicate on the "font_mode" field.
+func FontModeGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldFontMode, v))
+}
+
+// FontModeLT applies the LT predicate on the "font_mode" field.
+func FontModeLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldFontMode, v))
+}
+
+// FontModeLTE applies the LTE predicate on the "font_mode" field.
+func FontModeLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldFontMode, v))
+}
+
+// FontModeContains applies the Contains predicate on the "font_mode" field.
+func FontModeContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldFontMode, v))
+}
+
+// FontModeHasPrefix applies the HasPrefix predicate on the "font_mode" field.
+func FontModeHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldFontMode, v))
+}
+
+// FontModeHasSuffix applies the HasSuffix predicate on the "font_mode" field.
+func FontModeHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldFontMode, v))
+}
+
+// FontModeEqualFold applies the EqualFold predicate on the "font_mode" field.
+func FontModeEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldFontMode, v))
+}
+
+// FontModeContainsFold applies the ContainsFold predicate on the "font_mode" field.
+func FontModeContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldFontMode, v))
+}
+
+// CustomFontNameEQ applies the EQ predicate on the "custom_font_name" field.
+func CustomFontNameEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomFontName, v))
+}
+
+// CustomFontNameNEQ applies the NEQ predicate on the "custom_font_name" field.
+func CustomFontNameNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldCustomFontName, v))
+}
+
+// CustomFontNameIn applies the In predicate on the "custom_font_name" field.
+func CustomFontNameIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldCustomFontName, vs...))
+}
+
+// CustomFontNameNotIn applies the NotIn predicate on the "custom_font_name" field.
+func CustomFontNameNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldCustomFontName, vs...))
+}
+
+// CustomFontNameGT applies the GT predicate on the "custom_font_name" field.
+func CustomFontNameGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldCustomFontName, v))
+}
+
+// CustomFontNameGTE applies the GTE predicate on the "custom_font_name" field.
+func CustomFontNameGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldCustomFontName, v))
+}
+
+// CustomFontNameLT applies the LT predicate on the "custom_font_name" field.
+func CustomFontNameLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldCustomFontName, v))
+}
+
+// CustomFontNameLTE applies the LTE predicate on the "custom_font_name" field.
+func CustomFontNameLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldCustomFontName, v))
+}
+
+// CustomFontNameContains applies the Contains predicate on the "custom_font_name" field.
+func CustomFontNameContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldCustomFontName, v))
+}
+
+// CustomFontNameHasPrefix applies the HasPrefix predicate on the "custom_font_name" field.
+func CustomFontNameHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldCustomFontName, v))
+}
+
+// CustomFontNameHasSuffix applies the HasSuffix predicate on the "custom_font_name" field.
+func CustomFontNameHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldCustomFontName, v))
+}
+
+// CustomFontNameEqualFold applies the EqualFold predicate on the "custom_font_name" field.
+func CustomFontNameEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldCustomFontName, v))
+}
+
+// CustomFontNameContainsFold applies the ContainsFold predicate on the "custom_font_name" field.
+func CustomFontNameContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldCustomFontName, v))
+}
+
+// CustomFontPathEQ applies the EQ predicate on the "custom_font_path" field.
+func CustomFontPathEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomFontPath, v))
+}
+
+// CustomFontPathNEQ applies the NEQ predicate on the "custom_font_path" field.
+func CustomFontPathNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldCustomFontPath, v))
+}
+
+// CustomFontPathIn applies the In predicate on the "custom_font_path" field.
+func CustomFontPathIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldCustomFontPath, vs...))
+}
+
+// CustomFontPathNotIn applies the NotIn predicate on the "custom_font_path" field.
+func CustomFontPathNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldCustomFontPath, vs...))
+}
+
+// CustomFontPathGT applies the GT predicate on the "custom_font_path" field.
+func CustomFontPathGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldCustomFontPath, v))
+}
+
+// CustomFontPathGTE applies the GTE predicate on the "custom_font_path" field.
+func CustomFontPathGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldCustomFontPath, v))
+}
+
+// CustomFontPathLT applies the LT predicate on the "custom_font_path" field.
+func CustomFontPathLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldCustomFontPath, v))
+}
+
+// CustomFontPathLTE applies the LTE predicate on the "custom_font_path" field.
+func CustomFontPathLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldCustomFontPath, v))
+}
+
+// CustomFontPathContains applies the Contains predicate on the "custom_font_path" field.
+func CustomFontPathContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldCustomFontPath, v))
+}
+
+// CustomFontPathHasPrefix applies the HasPrefix predicate on the "custom_font_path" field.
+func CustomFontPathHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldCustomFontPath, v))
+}
+
+// CustomFontPathHasSuffix applies the HasSuffix predicate on the "custom_font_path" field.
+func CustomFontPathHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldCustomFontPath, v))
+}
+
+// CustomFontPathEqualFold applies the EqualFold predicate on the "custom_font_path" field.
+func CustomFontPathEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldCustomFontPath, v))
+}
+
+// CustomFontPathContainsFold applies the ContainsFold predicate on the "custom_font_path" field.
+func CustomFontPathContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldCustomFontPath, v))
+}
+
+// CustomFontFamilyEQ applies the EQ predicate on the "custom_font_family" field.
+func CustomFontFamilyEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyNEQ applies the NEQ predicate on the "custom_font_family" field.
+func CustomFontFamilyNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyIn applies the In predicate on the "custom_font_family" field.
+func CustomFontFamilyIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldCustomFontFamily, vs...))
+}
+
+// CustomFontFamilyNotIn applies the NotIn predicate on the "custom_font_family" field.
+func CustomFontFamilyNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldCustomFontFamily, vs...))
+}
+
+// CustomFontFamilyGT applies the GT predicate on the "custom_font_family" field.
+func CustomFontFamilyGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyGTE applies the GTE predicate on the "custom_font_family" field.
+func CustomFontFamilyGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyLT applies the LT predicate on the "custom_font_family" field.
+func CustomFontFamilyLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyLTE applies the LTE predicate on the "custom_font_family" field.
+func CustomFontFamilyLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyContains applies the Contains predicate on the "custom_font_family" field.
+func CustomFontFamilyContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyHasPrefix applies the HasPrefix predicate on the "custom_font_family" field.
+func CustomFontFamilyHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyHasSuffix applies the HasSuffix predicate on the "custom_font_family" field.
+func CustomFontFamilyHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyEqualFold applies the EqualFold predicate on the "custom_font_family" field.
+func CustomFontFamilyEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldCustomFontFamily, v))
+}
+
+// CustomFontFamilyContainsFold applies the ContainsFold predicate on the "custom_font_family" field.
+func CustomFontFamilyContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldCustomFontFamily, v))
 }
 
 // HasDictionaries applies the HasEdge predicate on the "dictionaries" edge.

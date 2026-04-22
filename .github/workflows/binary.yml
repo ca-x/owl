@@ -1,0 +1,142 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create release draft
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+
+  build-backend:
+    name: Build ${{ matrix.platform }}
+    needs: create-release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-amd64
+            goos: linux
+            goarch: amd64
+            archive: tar.gz
+            binary: owl-server
+          - os: ubuntu-latest
+            platform: linux-arm64
+            goos: linux
+            goarch: arm64
+            archive: tar.gz
+            binary: owl-server
+          - os: ubuntu-latest
+            platform: windows-amd64
+            goos: windows
+            goarch: amd64
+            archive: zip
+            binary: owl-server.exe
+          - os: macos-latest
+            platform: darwin-amd64
+            goos: darwin
+            goarch: amd64
+            archive: tar.gz
+            binary: owl-server
+          - os: macos-latest
+            platform: darwin-arm64
+            goos: darwin
+            goarch: arm64
+            archive: tar.gz
+            binary: owl-server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Build embedded frontend assets
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          check-latest: true
+
+      - name: Test backend
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        working-directory: backend
+        env:
+          GOPROXY: https://goproxy.cn,direct
+          GOSUMDB: off
+        run: go test ./...
+
+      - name: Build embedded backend binary
+        shell: bash
+        working-directory: backend
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+          GOPROXY: https://goproxy.cn,direct
+          GOSUMDB: off
+        run: |
+          mkdir -p ../dist
+          go build -trimpath \
+            -ldflags="-s -w -X 'owl/backend/pkg/version.Version=${{ github.ref_name }}' -X 'owl/backend/pkg/version.BuildTime=$(date -u '+%Y-%m-%dT%H:%M:%SZ')' -X 'owl/backend/pkg/version.GitCommit=${{ github.sha }}'" \
+            -o "../dist/${{ matrix.binary }}" ./cmd/server
+
+      - name: Package artifact
+        shell: bash
+        run: |
+          cd dist
+          if [ '${{ matrix.archive }}' = 'zip' ]; then
+            zip "owl-${{ matrix.platform }}.zip" "${{ matrix.binary }}"
+          else
+            tar czf "owl-${{ matrix.platform }}.tar.gz" "${{ matrix.binary }}"
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: owl-${{ matrix.platform }}
+          path: |
+            dist/owl-${{ matrix.platform }}.*
+          retention-days: 7
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/owl-${{ matrix.platform }}.*

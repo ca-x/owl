@@ -37,13 +37,13 @@ func main() {
 	if err := client.Schema.Create(context.Background(), migrate.WithForeignKeys(true)); err != nil {
 		log.Fatal(err)
 	}
-	userSvc := user.NewService(client, cfg.JWTSecret)
+	userSvc := user.NewService(client, cfg.JWTSecret, cfg.DataDir)
 	if cfg.BootstrapAdmin {
 		if err := userSvc.EnsureAdmin(context.Background(), cfg.AdminUsername, cfg.AdminPassword); err != nil {
 			log.Fatal(err)
 		}
 	}
-	dictSvc := dictionary.NewService(client, cfg.UploadsDir)
+	dictSvc := dictionary.NewService(client, cfg.UploadsDir, cfg.LibraryDir)
 	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin)
 
 	go func() {

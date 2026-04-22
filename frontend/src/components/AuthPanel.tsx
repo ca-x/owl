@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 
+import { useI18n } from '../i18n'
+
 interface AuthPanelProps {
   loading: boolean
   error: string
@@ -8,11 +10,12 @@ interface AuthPanelProps {
 }
 
 export function AuthPanel({ loading, error, onLogin, onRegister }: AuthPanelProps) {
+  const { t } = useI18n()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  const title = useMemo(() => (mode === 'login' ? 'Welcome back' : 'Create your Owl account'), [mode])
+  const title = useMemo(() => (mode === 'login' ? t.welcomeBack : t.createAccountTitle), [mode, t])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -27,45 +30,42 @@ export function AuthPanel({ loading, error, onLogin, onRegister }: AuthPanelProp
     <div className="auth-shell">
       <div className="auth-copy card">
         <div className="eyebrow">Owl Dictionary</div>
-        <h1>Personal MDX / MDD dictionary search, in the browser.</h1>
-        <p>
-          Upload your own dictionaries, keep them isolated per account, and search HTML entries with images,
-          audio, and other bundled resources.
-        </p>
+        <h1>{t.authHeroTitle}</h1>
+        <p>{t.authHeroDescription}</p>
         <ul className="feature-list">
-          <li>Fast fuzzy search across enabled dictionaries</li>
-          <li>Private dictionary library per user</li>
-          <li>Modern responsive UI with dark mode</li>
+          <li>{t.authFeatureSearch}</li>
+          <li>{t.authFeatureLibrary}</li>
+          <li>{t.authFeatureTheme}</li>
         </ul>
       </div>
 
       <form className="auth-card card" onSubmit={handleSubmit}>
         <div className="auth-tabs">
           <button className={mode === 'login' ? 'active' : ''} type="button" onClick={() => setMode('login')}>
-            Login
+            {t.login}
           </button>
           <button className={mode === 'register' ? 'active' : ''} type="button" onClick={() => setMode('register')}>
-            Register
+            {t.register}
           </button>
         </div>
 
         <div>
           <h2>{title}</h2>
-          <p className="muted">Use a username and password. JWT auth is handled by the backend.</p>
+          <p className="muted">{t.authDescription}</p>
         </div>
 
         <label className="field">
-          <span>Username</span>
-          <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="owl-user" required />
+          <span>{t.username}</span>
+          <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t.usernamePlaceholder} required />
         </label>
 
         <label className="field">
-          <span>Password</span>
+          <span>{t.password}</span>
           <input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="••••••••"
+            placeholder={t.passwordPlaceholder}
             minLength={6}
             required
           />
@@ -74,7 +74,7 @@ export function AuthPanel({ loading, error, onLogin, onRegister }: AuthPanelProp
         {error ? <div className="error-banner">{error}</div> : null}
 
         <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+          {loading ? t.pleaseWait : mode === 'login' ? t.signIn : t.createAccount}
         </button>
       </form>
     </div>

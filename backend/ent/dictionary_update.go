@@ -148,6 +148,20 @@ func (_u *DictionaryUpdate) SetNillableEnabled(v *bool) *DictionaryUpdate {
 	return _u
 }
 
+// SetPublic sets the "public" field.
+func (_u *DictionaryUpdate) SetPublic(v bool) *DictionaryUpdate {
+	_u.mutation.SetPublic(v)
+	return _u
+}
+
+// SetNillablePublic sets the "public" field if the given value is not nil.
+func (_u *DictionaryUpdate) SetNillablePublic(v *bool) *DictionaryUpdate {
+	if v != nil {
+		_u.SetPublic(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *DictionaryUpdate) SetCreatedAt(v time.Time) *DictionaryUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -287,6 +301,9 @@ func (_u *DictionaryUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(dictionary.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Public(); ok {
+		_spec.SetField(dictionary.FieldPublic, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(dictionary.FieldCreatedAt, field.TypeTime, value)
@@ -462,6 +479,20 @@ func (_u *DictionaryUpdateOne) SetNillableEnabled(v *bool) *DictionaryUpdateOne 
 	return _u
 }
 
+// SetPublic sets the "public" field.
+func (_u *DictionaryUpdateOne) SetPublic(v bool) *DictionaryUpdateOne {
+	_u.mutation.SetPublic(v)
+	return _u
+}
+
+// SetNillablePublic sets the "public" field if the given value is not nil.
+func (_u *DictionaryUpdateOne) SetNillablePublic(v *bool) *DictionaryUpdateOne {
+	if v != nil {
+		_u.SetPublic(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *DictionaryUpdateOne) SetCreatedAt(v time.Time) *DictionaryUpdateOne {
 	_u.mutation.SetCreatedAt(v)
@@ -631,6 +662,9 @@ func (_u *DictionaryUpdateOne) sqlSave(ctx context.Context) (_node *Dictionary, 
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(dictionary.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Public(); ok {
+		_spec.SetField(dictionary.FieldPublic, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(dictionary.FieldCreatedAt, field.TypeTime, value)

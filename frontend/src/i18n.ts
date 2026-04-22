@@ -1,0 +1,351 @@
+import { createContext, useContext } from 'react'
+
+export type AppLanguage = 'zh-CN' | 'en'
+
+type MessageCatalog = {
+  appTagline: string
+  search: string
+  manage: string
+  logout: string
+  admin: string
+  settings: string
+  preferences: string
+  close: string
+  dictionaryLookup: string
+  lookupTitle: string
+  searchPlaceholder: string
+  lookupDescription: string
+  lookupAction: string
+  searching: string
+  suggestions: string
+  allDictionaries: string
+  currentScope: string
+  scopeAllPublic: string
+  scopeAllAccessible: string
+  scopeSpecificDictionary: (name: string) => string
+  recent: string
+  readyTitle: string
+  readyDescription: string
+  noResultTitle: string
+  noResultDescription: string
+  bestMatch: string
+  moreMatches: string
+  moreEntriesFromDictionary: string
+  searchOnlyThisDictionary: string
+  compareAcrossDictionaries: string
+  compareSameHeadword: string
+  pressEnterHint: string
+  resultVisibilityPublic: string
+  resultVisibilityPrivate: string
+  dictionaryManager: string
+  managerTitle: string
+  uploadedEnabled: (total: number, enabled: number) => string
+  refresh: string
+  mdxFile: string
+  mdxFileHint: string
+  chooseMdx: string
+  mddResources: string
+  mddHint: string
+  chooseMdd: string
+  uploadDictionary: string
+  uploading: string
+  refreshLibrary: string
+  refreshItem: string
+  noDictionariesYet: string
+  uploadFirstDictionary: string
+  enabled: string
+  disabled: string
+  public: string
+  private: string
+  disable: string
+  enable: string
+  delete: string
+  makePublic: string
+  makePrivate: string
+  entries: string
+  mddFiles: string
+  uploadedAt: string
+  owner: string
+  you: string
+  fileStatusOk: string
+  fileStatusMissingMdx: string
+  fileStatusMissingMdd: string
+  fileStatusMissingAll: string
+  missingFiles: string
+  maintenanceTip: string
+  maintenanceReportTitle: string
+  discoveredCount: string
+  updatedCount: string
+  skippedCount: string
+  failedCount: string
+  guestSearchHint: string
+  language: string
+  login: string
+  register: string
+  username: string
+  usernamePlaceholder: string
+  password: string
+  passwordPlaceholder: string
+  welcomeBack: string
+  createAccountTitle: string
+  authDescription: string
+  authHeroTitle: string
+  authHeroDescription: string
+  authFeatureSearch: string
+  authFeatureLibrary: string
+  authFeatureTheme: string
+  signIn: string
+  createAccount: string
+  pleaseWait: string
+  noDescription: string
+  customFontUpload: string
+  customFontPrefix: string
+  readingFont: string
+  theme: string
+  system: string
+  light: string
+  dark: string
+  sepia: string
+  sans: string
+  serif: string
+  mono: string
+  custom: string
+  deleteDictionaryConfirm: (name: string) => string
+}
+
+export const messages: Record<AppLanguage, MessageCatalog> = {
+  'zh-CN': {
+    appTagline: '词典应用，支持 MDX / MDD',
+    search: '查词',
+    manage: '管理',
+    logout: '退出登录',
+    admin: '管理员',
+    settings: '设置',
+    preferences: '偏好',
+    close: '关闭',
+    dictionaryLookup: '词典查询',
+    lookupTitle: '快速查单词、词组或字符。',
+    searchPlaceholder: '输入 hello、ability、能力 等词汇…',
+    lookupDescription: '面向日常词典使用：更快搜索、快速切换词典、更舒适的长内容阅读。',
+    lookupAction: '查询',
+    searching: '查询中…',
+    suggestions: '搜索建议',
+    allDictionaries: '全部词典',
+    currentScope: '当前范围',
+    scopeAllPublic: '全部公开词典',
+    scopeAllAccessible: '全部可访问词典',
+    scopeSpecificDictionary: (name) => `仅限词典：${name}`,
+    recent: '最近搜索',
+    readyTitle: '可以开始查词了',
+    readyDescription: '至少启用一本词典后开始搜索。建议先选常用主词典，再配合最近搜索使用。',
+    noResultTitle: '没有找到匹配结果',
+    noResultDescription: '可以尝试更短的词、不同拼写、切换到全部词典，或者刷新词典库后再试。',
+    bestMatch: '最佳匹配',
+    moreMatches: '更多匹配结果',
+    moreEntriesFromDictionary: '来自该词典的更多匹配词条',
+    searchOnlyThisDictionary: '仅在该词典中查询',
+    compareAcrossDictionaries: '跨词典对比',
+    compareSameHeadword: '同词跨词典对比',
+    pressEnterHint: '回车使用当前输入，方向键选择建议',
+    resultVisibilityPublic: '公开词典',
+    resultVisibilityPrivate: '私人词典',
+    dictionaryManager: '词典管理',
+    managerTitle: '上传并管理你的个人词典',
+    uploadedEnabled: (total, enabled) => `${total} 本已上传 · ${enabled} 本已启用`,
+    refresh: '刷新',
+    mdxFile: 'MDX 文件',
+    mdxFileHint: '必选，包含词条正文。',
+    chooseMdx: '选择 .mdx 文件',
+    mddResources: 'MDD 资源',
+    mddHint: '可选，包含图片、音频、CSS、字体等。',
+    chooseMdd: '选择 .mdd 文件',
+    uploadDictionary: '上传词典',
+    uploading: '上传中…',
+    refreshLibrary: '刷新词典库',
+    refreshItem: '刷新词典',
+    noDictionariesYet: '还没有词典',
+    uploadFirstDictionary: '上传第一本 MDX 和可选 MDD 后即可开始查词。',
+    enabled: '已启用',
+    disabled: '已停用',
+    public: '公开',
+    private: '私有',
+    disable: '停用',
+    enable: '启用',
+    delete: '删除',
+    makePublic: '设为公开',
+    makePrivate: '设为私有',
+    entries: '词条数',
+    mddFiles: 'MDD 文件',
+    uploadedAt: '上传时间',
+    owner: '所有者',
+    you: '你',
+    fileStatusOk: '文件正常',
+    fileStatusMissingMdx: '缺少 MDX 主文件',
+    fileStatusMissingMdd: '缺少 MDD 资源文件',
+    fileStatusMissingAll: '词典文件已失效',
+    missingFiles: '缺失文件',
+    maintenanceTip: '如果你先上传了 MDX、后来才补上 MDD，或者挂载目录里新增了词典文件，请使用刷新词典或刷新词典库重新发现资源。',
+    maintenanceReportTitle: '维护结果',
+    discoveredCount: '新发现',
+    updatedCount: '已更新',
+    skippedCount: '已跳过',
+    failedCount: '失败',
+    guestSearchHint: '未登录时可查询所有已启用的公开词典。',
+    language: '语言',
+    login: '登录',
+    register: '注册',
+    username: '用户名',
+    usernamePlaceholder: '输入用户名',
+    password: '密码',
+    passwordPlaceholder: '输入密码',
+    welcomeBack: '欢迎回来',
+    createAccountTitle: '创建 Owl 账户',
+    authDescription: '使用用户名和密码。JWT 鉴权由后端处理。',
+    authHeroTitle: '在浏览器里使用你的个人 MDX / MDD 词典。',
+    authHeroDescription: '上传你自己的词典，为每个账号隔离词典库，并检索包含图片、音频和其他资源的 HTML 词条。',
+    authFeatureSearch: '在已启用词典中快速模糊搜索',
+    authFeatureLibrary: '每个用户独立的私人词典库',
+    authFeatureTheme: '现代响应式界面，支持多主题',
+    signIn: '登录',
+    createAccount: '创建账户',
+    pleaseWait: '请稍候…',
+    noDescription: '暂无描述。',
+    customFontUpload: '上传自定义字体（.ttf/.otf/.woff/.woff2）',
+    customFontPrefix: '自定义字体：',
+    readingFont: '阅读字体',
+    theme: '主题',
+    system: '跟随系统',
+    light: '浅色',
+    dark: '深色',
+    sepia: '护眼棕',
+    sans: '无衬线',
+    serif: '衬线',
+    mono: '等宽',
+    custom: '自定义',
+    deleteDictionaryConfirm: (name) => `删除词典“${name}”？`,
+  },
+  en: {
+    appTagline: 'Dictionary app for MDX / MDD',
+    search: 'Search',
+    manage: 'Manage',
+    logout: 'Logout',
+    admin: 'Admin',
+    settings: 'Settings',
+    preferences: 'Preferences',
+    close: 'Close',
+    dictionaryLookup: 'Dictionary Lookup',
+    lookupTitle: 'Look up a word, phrase, or character instantly.',
+    searchPlaceholder: 'Search words like hello, ability, 能力…',
+    lookupDescription: 'Built for daily dictionary use: quick search, fast dictionary switching, and comfortable long-form entry reading.',
+    lookupAction: 'Look up',
+    searching: 'Searching…',
+    suggestions: 'Suggestions',
+    allDictionaries: 'All dictionaries',
+    currentScope: 'Current scope',
+    scopeAllPublic: 'All public dictionaries',
+    scopeAllAccessible: 'All accessible dictionaries',
+    scopeSpecificDictionary: (name) => `Only in ${name}`,
+    recent: 'Recent',
+    readyTitle: 'Ready to look up',
+    readyDescription: 'Search after enabling at least one dictionary. Start with your primary dictionary and keep recent searches close by.',
+    noResultTitle: 'No matching results found',
+    noResultDescription: 'Try a shorter word, a different spelling, switch back to all dictionaries, or refresh the library and try again.',
+    bestMatch: 'Best match',
+    moreMatches: 'More matching entries',
+    moreEntriesFromDictionary: 'More matching entries from this dictionary',
+    searchOnlyThisDictionary: 'Search only this dictionary',
+    compareAcrossDictionaries: 'Compare across dictionaries',
+    compareSameHeadword: 'Compare the same headword',
+    pressEnterHint: 'Press Enter to search, or use arrow keys to select a suggestion',
+    resultVisibilityPublic: 'Public dictionary',
+    resultVisibilityPrivate: 'Private dictionary',
+    dictionaryManager: 'Dictionary Manager',
+    managerTitle: 'Upload and control your personal dictionaries',
+    uploadedEnabled: (total, enabled) => `${total} uploaded · ${enabled} enabled`,
+    refresh: 'Refresh',
+    mdxFile: 'MDX file',
+    mdxFileHint: 'Required. This contains dictionary entries.',
+    chooseMdx: 'Choose .mdx file',
+    mddResources: 'MDD resources',
+    mddHint: 'Optional. Add images, audio, CSS, fonts.',
+    chooseMdd: 'Choose .mdd file(s)',
+    uploadDictionary: 'Upload dictionary',
+    uploading: 'Uploading…',
+    refreshLibrary: 'Refresh library',
+    refreshItem: 'Refresh dictionary',
+    noDictionariesYet: 'No dictionaries yet',
+    uploadFirstDictionary: 'Upload your first MDX and optional MDD pair to start searching.',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    public: 'Public',
+    private: 'Private',
+    disable: 'Disable',
+    enable: 'Enable',
+    delete: 'Delete',
+    makePublic: 'Make public',
+    makePrivate: 'Make private',
+    entries: 'Entries',
+    mddFiles: 'MDD files',
+    uploadedAt: 'Uploaded',
+    owner: 'Owner',
+    you: 'You',
+    fileStatusOk: 'Files OK',
+    fileStatusMissingMdx: 'Missing MDX source',
+    fileStatusMissingMdd: 'Missing MDD resources',
+    fileStatusMissingAll: 'Dictionary files missing',
+    missingFiles: 'Missing files',
+    maintenanceTip: 'If you uploaded an MDX first and added the MDD later, or mounted new files into the library directory, use refresh to rediscover resources.',
+    maintenanceReportTitle: 'Maintenance result',
+    discoveredCount: 'Discovered',
+    updatedCount: 'Updated',
+    skippedCount: 'Skipped',
+    failedCount: 'Failed',
+    guestSearchHint: 'You can search all enabled public dictionaries without signing in.',
+    language: 'Language',
+    login: 'Login',
+    register: 'Register',
+    username: 'Username',
+    usernamePlaceholder: 'owl-user',
+    password: 'Password',
+    passwordPlaceholder: '••••••••',
+    welcomeBack: 'Welcome back',
+    createAccountTitle: 'Create your Owl account',
+    authDescription: 'Use a username and password. JWT auth is handled by the backend.',
+    authHeroTitle: 'Personal MDX / MDD dictionary search, in the browser.',
+    authHeroDescription: 'Upload your own dictionaries, keep them isolated per account, and search HTML entries with images, audio, and other bundled resources.',
+    authFeatureSearch: 'Fast fuzzy search across enabled dictionaries',
+    authFeatureLibrary: 'Private dictionary library per user',
+    authFeatureTheme: 'Modern responsive UI with multiple themes',
+    signIn: 'Sign in',
+    createAccount: 'Create account',
+    pleaseWait: 'Please wait…',
+    noDescription: 'No description available.',
+    customFontUpload: 'Upload custom font (.ttf/.otf/.woff/.woff2)',
+    customFontPrefix: 'Custom: ',
+    readingFont: 'Reading font',
+    theme: 'Theme',
+    system: 'system',
+    light: 'light',
+    dark: 'dark',
+    sepia: 'sepia',
+    sans: 'sans',
+    serif: 'serif',
+    mono: 'mono',
+    custom: 'custom',
+    deleteDictionaryConfirm: (name) => `Delete dictionary “${name}”?`,
+  },
+}
+
+type I18nContextValue = {
+  language: AppLanguage
+  t: MessageCatalog
+}
+
+export const I18nContext = createContext<I18nContextValue>({
+  language: 'zh-CN',
+  t: messages['zh-CN'],
+})
+
+export function useI18n() {
+  return useContext(I18nContext)
+}

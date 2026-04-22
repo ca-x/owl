@@ -1,22 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { AuthPanel } from './components/AuthPanel'
-import { ThemeToggle } from './components/ThemeToggle'
+import { SettingsPanel } from './components/SettingsPanel'
+import { I18nContext, messages } from './i18n'
 import { DictionaryManagerPage } from './pages/DictionaryManagerPage'
 import { SearchPage } from './pages/SearchPage'
 import { api, ApiError } from './services/api'
-import type { DictionarySummary, SearchResult, UserSummary } from './types'
+import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, UserPreferences, UserSummary } from './types'
 import './App.css'
 
 type Page = 'search' | 'manage'
-type Theme = 'light' | 'dark'
 
 const TOKEN_KEY = 'owl-token'
-const THEME_KEY = 'owl-theme'
+const RECENT_SEARCHES_KEY = 'owl-recent-searches'
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(THEME_KEY) as Theme) || 'dark')
   const [user, setUser] = useState<UserSummary | null>(null)
   const [page, setPage] = useState<Page>('search')
   const [authLoading, setAuthLoading] = useState(false)
@@ -27,11 +26,78 @@ export default function App() {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [maintenanceReport, setMaintenanceReport] = useState<MaintenanceReport | null>(null)
+  const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [preferences, setPreferences] = useState<UserPreferences>({
+    language: 'zh-CN',
+    theme: 'system',
+    font_mode: 'sans',
+    custom_font_name: '',
+    custom_font_family: '',
+  })
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_SEARCHES_KEY)
+      return raw ? (JSON.parse(raw) as string[]) : []
+    } catch {
+      return []
+    }
+  })
+
+  const t = messages[preferences.language]
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem(THEME_KEY, theme)
-  }, [theme])
+    const resolvedTheme = preferences.theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : preferences.theme
+    document.documentElement.dataset.theme = resolvedTheme
+  }, [preferences.theme])
+
+  useEffect(() => {
+    const fontMode = preferences.font_mode
+    const root = document.documentElement
+    let styleElement = document.getElementById('owl-custom-font-style') as HTMLStyleElement | null
+    if (!styleElement) {
+      styleElement = document.createElement('style')
+      styleElement.id = 'owl-custom-font-style'
+      document.head.appendChild(styleElement)
+    }
+
+    if (fontMode === 'custom' && preferences.custom_font_url && preferences.custom_font_family) {
+      styleElement.textContent = `@font-face { font-family: '${preferences.custom_font_family}'; src: url('${preferences.custom_font_url}') format('woff2'); font-display: swap; }`
+    } else {
+      styleElement.textContent = ''
+    }
+
+    root.dataset.fontMode = fontMode
+    root.style.setProperty('--reader-font-family',
+      fontMode === 'serif'
+        ? "'Noto Serif', 'Source Han Serif SC', 'Songti SC', Georgia, serif"
+        : fontMode === 'mono'
+          ? "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace"
+          : fontMode === 'custom' && preferences.custom_font_family
+            ? `'${preferences.custom_font_family}', system-ui, sans-serif`
+            : "Inter, 'Noto Sans', 'Source Han Sans SC', system-ui, sans-serif")
+  }, [preferences])
+
+  useEffect(() => {
+    let active = true
+    async function loadHealth() {
+      try {
+        const info = await api.health()
+        if (!active) return
+        setHealthInfo(info)
+      } catch {
+        if (!active) return
+        setHealthInfo(null)
+      }
+    }
+    void loadHealth()
+    return () => {
+      active = false
+    }
+  }, [])
 
   function handleAuthFailure(error: unknown) {
     localStorage.removeItem(TOKEN_KEY)
@@ -44,17 +110,37 @@ export default function App() {
 
   useEffect(() => {
     if (!token) {
-      return
+      let active = true
+      async function loadGuestDictionaries() {
+        try {
+          const dicts = await api.listPublicDictionaries()
+          if (!active) return
+          setDictionaries(dicts)
+          setDictionaryError('')
+        } catch (error) {
+          if (!active) return
+          setDictionaryError(getErrorMessage(error))
+        }
+      }
+      void loadGuestDictionaries()
+      return () => {
+        active = false
+      }
     }
     const authToken = token
 
     let active = true
     async function bootstrap() {
       try {
-        const [me, dicts] = await Promise.all([api.me(authToken), api.listDictionaries(authToken)])
+        const [me, dicts, prefs] = await Promise.all([
+          api.me(authToken),
+          api.listDictionaries(authToken),
+          api.getPreferences(authToken),
+        ])
         if (!active) return
         setUser(me)
         setDictionaries(dicts)
+        setPreferences(prefs)
         setDictionaryError('')
       } catch (error) {
         if (!active) return
@@ -100,11 +186,10 @@ export default function App() {
   }
 
   async function refreshDictionaries() {
-    if (!token) return
     setDictionaryLoading(true)
     setDictionaryError('')
     try {
-      const dicts = await api.listDictionaries(token)
+      const dicts = token ? await api.listDictionaries(token) : await api.listPublicDictionaries()
       setDictionaries(dicts)
     } catch (error) {
       setDictionaryError(getErrorMessage(error))
@@ -114,12 +199,20 @@ export default function App() {
   }
 
   async function handleSearch(query: string, dictionaryId?: number) {
-    if (!token) return
+    const normalizedQuery = query.trim()
+    if (!normalizedQuery) return
     setSearching(true)
     setSearchError('')
     try {
-      const data = await api.search(token, query, dictionaryId)
+      const data = token
+        ? await api.search(token, normalizedQuery, dictionaryId)
+        : await api.publicSearch(normalizedQuery, dictionaryId)
       setResults(data)
+      setRecentSearches((current) => {
+        const next = [normalizedQuery, ...current.filter((item) => item !== normalizedQuery)].slice(0, 8)
+        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next))
+        return next
+      })
     } catch (error) {
       setResults([])
       setSearchError(getErrorMessage(error))
@@ -131,21 +224,45 @@ export default function App() {
   async function handleUpload(mdxFile: File, mddFiles: File[]) {
     if (!token) return
     await api.uploadDictionary(token, mdxFile, mddFiles)
+    setMaintenanceReport(null)
     await refreshDictionaries()
   }
 
   async function handleToggle(dictionary: DictionarySummary) {
     if (!token) return
     await api.toggleDictionary(token, dictionary.id, !dictionary.enabled)
+    setMaintenanceReport(null)
+    await refreshDictionaries()
+  }
+
+  async function handleTogglePublic(dictionary: DictionarySummary) {
+    if (!token) return
+    await api.setDictionaryPublic(token, dictionary.id, !dictionary.public)
+    setMaintenanceReport(null)
+    await refreshDictionaries()
+  }
+
+  async function handleRefreshDictionary(dictionary: DictionarySummary) {
+    if (!token) return
+    const report = await api.refreshDictionary(token, dictionary.id)
+    setMaintenanceReport(report)
+    await refreshDictionaries()
+  }
+
+  async function handleRefreshLibrary() {
+    if (!token) return
+    const report = await api.refreshLibrary(token)
+    setMaintenanceReport(report)
     await refreshDictionaries()
   }
 
   async function handleDelete(dictionary: DictionarySummary) {
     if (!token) return
-    if (!window.confirm(`Delete dictionary “${dictionary.title || dictionary.name}”?`)) {
+    if (!window.confirm(t.deleteDictionaryConfirm(dictionary.title || dictionary.name))) {
       return
     }
     await api.deleteDictionary(token, dictionary.id)
+    setMaintenanceReport(null)
     await refreshDictionaries()
     setResults((current) => current.filter((item) => item.dictionary_id !== dictionary.id))
   }
@@ -158,81 +275,179 @@ export default function App() {
     setResults([])
   }
 
+  async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode'>>) {
+    if (!token) {
+      setPreferences((current) => ({
+        ...current,
+        ...patch,
+      }))
+      return
+    }
+    const next = await api.updatePreferences(token, {
+      language: patch.language ?? preferences.language,
+      theme: patch.theme ?? preferences.theme,
+      font_mode: patch.font_mode ?? preferences.font_mode,
+    })
+    setPreferences(next)
+  }
+
+  async function handleFontUpload(file: File) {
+    if (!token) return
+    const next = await api.uploadFont(token, file)
+    setPreferences(next)
+  }
+
   if (!token || !user) {
     return (
-      <div className="app-shell">
-        <header className="topbar minimal-topbar">
-          <div className="brand-block">
-            <div className="brand-icon">🦉</div>
-            <div>
-              <strong>Owl</strong>
-              <p>Web dictionary for MDX / MDD</p>
+      <I18nContext.Provider value={{ language: preferences.language, t }}>
+        <div className="app-shell">
+          <header className="topbar minimal-topbar">
+            <div className="brand-block">
+              <div className="brand-icon">🦉</div>
+              <div>
+                <strong>Owl</strong>
+                <p>{healthInfo ? `${healthInfo.full_version} · ${healthInfo.os}/${healthInfo.arch}` : t.appTagline}</p>
+              </div>
             </div>
-          </div>
-          <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))} />
-        </header>
+            <button className="secondary-button" type="button" onClick={() => setSettingsOpen(true)}>
+              {t.settings}
+            </button>
+          </header>
 
-        <main className="auth-main">
-          <AuthPanel loading={authLoading} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
-        </main>
-      </div>
+          <main className="auth-main">
+            <AuthPanel loading={authLoading} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
+            <section className="guest-search-shell">
+              <SearchPage
+                dictionaries={dictionaries}
+                loading={dictionaryLoading}
+                searching={searching}
+                results={results}
+                error={searchError || dictionaryError}
+                isGuest
+                token={null}
+                recentSearches={recentSearches}
+                onSearch={handleSearch}
+              />
+              <p className="guest-search-hint">{t.guestSearchHint}</p>
+            </section>
+          </main>
+
+          {settingsOpen ? (
+            <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>
+              <div className="settings-drawer" role="dialog" aria-modal="true" aria-label={t.settings} onClick={(event) => event.stopPropagation()}>
+                <div className="settings-drawer-head">
+                  <div>
+                    <div className="eyebrow">{t.settings}</div>
+                    <h3>{t.preferences}</h3>
+                  </div>
+                  <button className="secondary-button" type="button" onClick={() => setSettingsOpen(false)}>
+                    {t.close}
+                  </button>
+                </div>
+                <SettingsPanel
+                  preferences={preferences}
+                  onLanguageChange={async (language) => updatePreferences({ language })}
+                  onThemeChange={async (theme) => updatePreferences({ theme })}
+                  onFontModeChange={async (font_mode) => updatePreferences({ font_mode })}
+                  onFontUpload={handleFontUpload}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </I18nContext.Provider>
     )
   }
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-block">
-          <div className="brand-icon">🦉</div>
-          <div>
-            <strong>Owl</strong>
-            <p>
-              {user.username} · {enabledDictionaryCount} enabled dictionaries
-            </p>
+    <I18nContext.Provider value={{ language: preferences.language, t }}>
+      <div className="app-shell">
+        <header className="topbar">
+          <div className="brand-block">
+            <div className="brand-icon">🦉</div>
+            <div>
+              <strong>Owl</strong>
+              <p>
+                {user.username} · {enabledDictionaryCount} enabled dictionaries
+                {healthInfo ? ` · ${healthInfo.version}` : ''}
+              </p>
+            </div>
           </div>
-        </div>
 
         <nav className="nav-tabs">
           <button className={page === 'search' ? 'active' : ''} type="button" onClick={() => setPage('search')}>
-            Search
+            {t.search}
           </button>
           <button className={page === 'manage' ? 'active' : ''} type="button" onClick={() => setPage('manage')}>
-            Manage
+            {t.manage}
           </button>
         </nav>
 
-        <div className="toolbar-actions">
-          {user.is_admin ? <span className="status-pill active">Admin</span> : null}
-          <ThemeToggle theme={theme} onToggle={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))} />
-          <button className="secondary-button" type="button" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      </header>
+          <div className="toolbar-actions">
+            {user.is_admin ? <span className="status-pill active">{t.admin}</span> : null}
+            <button className="secondary-button" type="button" onClick={() => setSettingsOpen(true)}>
+              {t.settings}
+            </button>
+            <button className="secondary-button" type="button" onClick={handleLogout}>
+              {t.logout}
+            </button>
+          </div>
+        </header>
 
-      <main className="dashboard-main">
-        {page === 'search' ? (
-          <SearchPage
-            dictionaries={dictionaries}
-            loading={dictionaryLoading}
-            searching={searching}
-            results={results}
-            error={searchError}
-            onSearch={handleSearch}
-          />
-        ) : (
-          <DictionaryManagerPage
-            dictionaries={dictionaries}
-            loading={dictionaryLoading}
-            error={dictionaryError}
-            onRefresh={refreshDictionaries}
-            onUpload={handleUpload}
-            onToggle={handleToggle}
-            onDelete={handleDelete}
-          />
-        )}
-      </main>
-    </div>
+        <main className="dashboard-main">
+          {page === 'search' ? (
+            <SearchPage
+              dictionaries={dictionaries}
+              loading={dictionaryLoading}
+              searching={searching}
+              results={results}
+              error={searchError}
+              isGuest={false}
+              token={token}
+              recentSearches={recentSearches}
+              onSearch={handleSearch}
+            />
+          ) : (
+            <DictionaryManagerPage
+              dictionaries={dictionaries}
+              loading={dictionaryLoading}
+              error={dictionaryError}
+              maintenanceReport={maintenanceReport}
+              onRefresh={refreshDictionaries}
+              onRefreshLibrary={handleRefreshLibrary}
+              onUpload={handleUpload}
+              onToggle={handleToggle}
+              onTogglePublic={handleTogglePublic}
+              onRefreshItem={handleRefreshDictionary}
+              onDelete={handleDelete}
+            />
+          )}
+        </main>
+
+        {settingsOpen ? (
+          <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>
+            <div className="settings-drawer" role="dialog" aria-modal="true" aria-label={t.settings} onClick={(event) => event.stopPropagation()}>
+              <div className="settings-drawer-head">
+                <div>
+                  <div className="eyebrow">{t.settings}</div>
+                  <h3>{t.preferences}</h3>
+                </div>
+                <button className="secondary-button" type="button" onClick={() => setSettingsOpen(false)}>
+                  {t.close}
+                </button>
+              </div>
+              <SettingsPanel
+                preferences={preferences}
+                onLanguageChange={async (language) => updatePreferences({ language })}
+                onThemeChange={async (theme) => updatePreferences({ theme })}
+                onFontModeChange={async (font_mode) => updatePreferences({ font_mode })}
+                onFontUpload={handleFontUpload}
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </I18nContext.Provider>
   )
 }
 

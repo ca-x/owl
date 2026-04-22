@@ -13,6 +13,7 @@ type Config struct {
 	JWTSecret     string
 	DataDir       string
 	UploadsDir    string
+	LibraryDir    string
 	DatabasePath  string
 	DatabaseDSN   string
 	FrontendOrigin string
@@ -34,6 +35,7 @@ func Load() (Config, error) {
 		JWTSecret:      jwtSecret,
 		DataDir:        dataDir,
 		UploadsDir:     uploadsDir,
+		LibraryDir:     getEnv("OWL_LIBRARY_DIR", uploadsDir),
 		DatabasePath:   databasePath,
 		DatabaseDSN:    sqliteDSN(databasePath),
 		FrontendOrigin: getEnv("OWL_FRONTEND_ORIGIN", "*"),

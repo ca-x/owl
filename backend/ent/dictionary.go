@@ -34,6 +34,8 @@ type Dictionary struct {
 	EntryCount int `json:"entry_count,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
+	// Public holds the value of the "public" field.
+	Public bool `json:"public,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -70,7 +72,7 @@ func (*Dictionary) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case dictionary.FieldEnabled:
+		case dictionary.FieldEnabled, dictionary.FieldPublic:
 			values[i] = new(sql.NullBool)
 		case dictionary.FieldID, dictionary.FieldEntryCount:
 			values[i] = new(sql.NullInt64)
@@ -148,6 +150,12 @@ func (_m *Dictionary) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field enabled", values[i])
 			} else if value.Valid {
 				_m.Enabled = value.Bool
+			}
+		case dictionary.FieldPublic:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field public", values[i])
+			} else if value.Valid {
+				_m.Public = value.Bool
 			}
 		case dictionary.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -232,6 +240,9 @@ func (_m *Dictionary) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))
+	builder.WriteString(", ")
+	builder.WriteString("public=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Public))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

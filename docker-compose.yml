@@ -1,8 +1,8 @@
 services:
-  backend:
+  owl:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     env_file:
       - .env
     environment:
@@ -13,21 +13,13 @@ services:
       OWL_ADMIN_PASSWORD: ${OWL_ADMIN_PASSWORD:-admin123456}
       OWL_DATA_DIR: /app/data
       OWL_UPLOADS_DIR: /app/data/uploads
+      OWL_LIBRARY_DIR: /app/data/uploads
       OWL_DB_PATH: /app/data/data.db
       OWL_FRONTEND_ORIGIN: '*'
     ports:
       - '${OWL_PORT:-8080}:8080'
     volumes:
       - owl_data:/app/data
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    depends_on:
-      - backend
-    ports:
-      - '${OWL_FRONTEND_PORT:-3000}:3000'
 
 volumes:
   owl_data:

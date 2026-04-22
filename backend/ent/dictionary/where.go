@@ -95,6 +95,11 @@ func Enabled(v bool) predicate.Dictionary {
 	return predicate.Dictionary(sql.FieldEQ(FieldEnabled, v))
 }
 
+// Public applies equality check predicate on the "public" field. It's identical to PublicEQ.
+func Public(v bool) predicate.Dictionary {
+	return predicate.Dictionary(sql.FieldEQ(FieldPublic, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Dictionary {
 	return predicate.Dictionary(sql.FieldEQ(FieldCreatedAt, v))
@@ -543,6 +548,16 @@ func EnabledEQ(v bool) predicate.Dictionary {
 // EnabledNEQ applies the NEQ predicate on the "enabled" field.
 func EnabledNEQ(v bool) predicate.Dictionary {
 	return predicate.Dictionary(sql.FieldNEQ(FieldEnabled, v))
+}
+
+// PublicEQ applies the EQ predicate on the "public" field.
+func PublicEQ(v bool) predicate.Dictionary {
+	return predicate.Dictionary(sql.FieldEQ(FieldPublic, v))
+}
+
+// PublicNEQ applies the NEQ predicate on the "public" field.
+func PublicNEQ(v bool) predicate.Dictionary {
+	return predicate.Dictionary(sql.FieldNEQ(FieldPublic, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

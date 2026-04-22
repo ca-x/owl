@@ -22,6 +22,18 @@ type User struct {
 	PasswordHash string `json:"-"`
 	// IsAdmin holds the value of the "is_admin" field.
 	IsAdmin bool `json:"is_admin,omitempty"`
+	// Language holds the value of the "language" field.
+	Language string `json:"language,omitempty"`
+	// Theme holds the value of the "theme" field.
+	Theme string `json:"theme,omitempty"`
+	// FontMode holds the value of the "font_mode" field.
+	FontMode string `json:"font_mode,omitempty"`
+	// CustomFontName holds the value of the "custom_font_name" field.
+	CustomFontName string `json:"custom_font_name,omitempty"`
+	// CustomFontPath holds the value of the "custom_font_path" field.
+	CustomFontPath string `json:"custom_font_path,omitempty"`
+	// CustomFontFamily holds the value of the "custom_font_family" field.
+	CustomFontFamily string `json:"custom_font_family,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -55,7 +67,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordHash:
+		case user.FieldUsername, user.FieldPasswordHash, user.FieldLanguage, user.FieldTheme, user.FieldFontMode, user.FieldCustomFontName, user.FieldCustomFontPath, user.FieldCustomFontFamily:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -95,6 +107,42 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field is_admin", values[i])
 			} else if value.Valid {
 				_m.IsAdmin = value.Bool
+			}
+		case user.FieldLanguage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field language", values[i])
+			} else if value.Valid {
+				_m.Language = value.String
+			}
+		case user.FieldTheme:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field theme", values[i])
+			} else if value.Valid {
+				_m.Theme = value.String
+			}
+		case user.FieldFontMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field font_mode", values[i])
+			} else if value.Valid {
+				_m.FontMode = value.String
+			}
+		case user.FieldCustomFontName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field custom_font_name", values[i])
+			} else if value.Valid {
+				_m.CustomFontName = value.String
+			}
+		case user.FieldCustomFontPath:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field custom_font_path", values[i])
+			} else if value.Valid {
+				_m.CustomFontPath = value.String
+			}
+		case user.FieldCustomFontFamily:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field custom_font_family", values[i])
+			} else if value.Valid {
+				_m.CustomFontFamily = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -144,6 +192,24 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_admin=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsAdmin))
+	builder.WriteString(", ")
+	builder.WriteString("language=")
+	builder.WriteString(_m.Language)
+	builder.WriteString(", ")
+	builder.WriteString("theme=")
+	builder.WriteString(_m.Theme)
+	builder.WriteString(", ")
+	builder.WriteString("font_mode=")
+	builder.WriteString(_m.FontMode)
+	builder.WriteString(", ")
+	builder.WriteString("custom_font_name=")
+	builder.WriteString(_m.CustomFontName)
+	builder.WriteString(", ")
+	builder.WriteString("custom_font_path=")
+	builder.WriteString(_m.CustomFontPath)
+	builder.WriteString(", ")
+	builder.WriteString("custom_font_family=")
+	builder.WriteString(_m.CustomFontFamily)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -1,4 +1,4 @@
-import type { AuthResponse, DictionarySummary, SearchResult, UserSummary } from '../types'
+import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, UserPreferences, UserSummary } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
@@ -47,6 +47,30 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 }
 
 export const api = {
+  health() {
+    return request<HealthInfo>('/health', { method: 'GET' })
+  },
+
+  listPublicDictionaries() {
+    return request<DictionarySummary[]>('/public/dictionaries', { method: 'GET' })
+  },
+
+  publicSearch(query: string, dictionaryId?: number) {
+    const params = new URLSearchParams({ q: query })
+    if (dictionaryId) {
+      params.set('dict', String(dictionaryId))
+    }
+    return request<SearchResult[]>(`/public/search?${params.toString()}`, { method: 'GET' })
+  },
+
+  publicSuggest(query: string, dictionaryId?: number) {
+    const params = new URLSearchParams({ q: query })
+    if (dictionaryId) {
+      params.set('dict', String(dictionaryId))
+    }
+    return request<SearchSuggestion[]>(`/public/suggest?${params.toString()}`, { method: 'GET' })
+  },
+
   register(username: string, password: string) {
     return request<AuthResponse>('/auth/register', {
       method: 'POST',
@@ -63,6 +87,26 @@ export const api = {
 
   me(token: string) {
     return request<UserSummary>('/me', { method: 'GET' }, token)
+  },
+
+  getPreferences(token: string) {
+    return request<UserPreferences>('/preferences', { method: 'GET' }, token)
+  },
+
+  updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode'>) {
+    return request<UserPreferences>('/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    }, token)
+  },
+
+  uploadFont(token: string, fontFile: File) {
+    const formData = new FormData()
+    formData.append('font', fontFile)
+    return request<UserPreferences>('/preferences/font', {
+      method: 'POST',
+      body: formData,
+    }, token)
   },
 
   listDictionaries(token: string) {
@@ -88,6 +132,25 @@ export const api = {
     }, token)
   },
 
+  setDictionaryPublic(token: string, id: number, isPublic: boolean) {
+    return request<DictionarySummary>(`/dictionaries/${id}/public`, {
+      method: 'PATCH',
+      body: JSON.stringify({ public: isPublic }),
+    }, token)
+  },
+
+  refreshDictionary(token: string, id: number) {
+    return request<MaintenanceReport>(`/dictionaries/${id}/refresh`, {
+      method: 'POST',
+    }, token)
+  },
+
+  refreshLibrary(token: string) {
+    return request<MaintenanceReport>('/dictionaries/refresh', {
+      method: 'POST',
+    }, token)
+  },
+
   deleteDictionary(token: string, id: number) {
     return request<void>(`/dictionaries/${id}`, { method: 'DELETE' }, token)
   },
@@ -98,5 +161,13 @@ export const api = {
       params.set('dict', String(dictionaryId))
     }
     return request<SearchResult[]>(`/search?${params.toString()}`, { method: 'GET' }, token)
+  },
+
+  suggest(token: string, query: string, dictionaryId?: number) {
+    const params = new URLSearchParams({ q: query })
+    if (dictionaryId) {
+      params.set('dict', String(dictionaryId))
+    }
+    return request<SearchSuggestion[]>(`/suggest?${params.toString()}`, { method: 'GET' }, token)
   },
 }

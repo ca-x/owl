@@ -13,6 +13,12 @@ func (User) Fields() []ent.Field {
 		field.String("username").Unique().NotEmpty(),
 		field.String("password_hash").Sensitive().NotEmpty(),
 		field.Bool("is_admin").Default(false),
+		field.String("language").Default("zh-CN"),
+		field.String("theme").Default("system"),
+		field.String("font_mode").Default("sans"),
+		field.String("custom_font_name").Default(""),
+		field.String("custom_font_path").Default(""),
+		field.String("custom_font_family").Default(""),
 	}
 }
 

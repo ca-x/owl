@@ -6,3 +6,9 @@ frontend/node_modules/
 frontend/dist/
 
 backend/data/
+backend/web/dist/assets/
+backend/web/dist/*.html
+backend/web/dist/*.svg
+backend/web/dist/*.js
+backend/web/dist/*.css
+!backend/web/dist/.keep

@@ -47,12 +47,16 @@ func init() {
 	dictionaryDescEnabled := dictionaryFields[7].Descriptor()
 	// dictionary.DefaultEnabled holds the default value on creation for the enabled field.
 	dictionary.DefaultEnabled = dictionaryDescEnabled.Default.(bool)
+	// dictionaryDescPublic is the schema descriptor for public field.
+	dictionaryDescPublic := dictionaryFields[8].Descriptor()
+	// dictionary.DefaultPublic holds the default value on creation for the public field.
+	dictionary.DefaultPublic = dictionaryDescPublic.Default.(bool)
 	// dictionaryDescCreatedAt is the schema descriptor for created_at field.
-	dictionaryDescCreatedAt := dictionaryFields[8].Descriptor()
+	dictionaryDescCreatedAt := dictionaryFields[9].Descriptor()
 	// dictionary.DefaultCreatedAt holds the default value on creation for the created_at field.
 	dictionary.DefaultCreatedAt = dictionaryDescCreatedAt.Default.(func() time.Time)
 	// dictionaryDescUpdatedAt is the schema descriptor for updated_at field.
-	dictionaryDescUpdatedAt := dictionaryFields[9].Descriptor()
+	dictionaryDescUpdatedAt := dictionaryFields[10].Descriptor()
 	// dictionary.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	dictionary.DefaultUpdatedAt = dictionaryDescUpdatedAt.Default.(func() time.Time)
 	// dictionary.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -71,4 +75,28 @@ func init() {
 	userDescIsAdmin := userFields[2].Descriptor()
 	// user.DefaultIsAdmin holds the default value on creation for the is_admin field.
 	user.DefaultIsAdmin = userDescIsAdmin.Default.(bool)
+	// userDescLanguage is the schema descriptor for language field.
+	userDescLanguage := userFields[3].Descriptor()
+	// user.DefaultLanguage holds the default value on creation for the language field.
+	user.DefaultLanguage = userDescLanguage.Default.(string)
+	// userDescTheme is the schema descriptor for theme field.
+	userDescTheme := userFields[4].Descriptor()
+	// user.DefaultTheme holds the default value on creation for the theme field.
+	user.DefaultTheme = userDescTheme.Default.(string)
+	// userDescFontMode is the schema descriptor for font_mode field.
+	userDescFontMode := userFields[5].Descriptor()
+	// user.DefaultFontMode holds the default value on creation for the font_mode field.
+	user.DefaultFontMode = userDescFontMode.Default.(string)
+	// userDescCustomFontName is the schema descriptor for custom_font_name field.
+	userDescCustomFontName := userFields[6].Descriptor()
+	// user.DefaultCustomFontName holds the default value on creation for the custom_font_name field.
+	user.DefaultCustomFontName = userDescCustomFontName.Default.(string)
+	// userDescCustomFontPath is the schema descriptor for custom_font_path field.
+	userDescCustomFontPath := userFields[7].Descriptor()
+	// user.DefaultCustomFontPath holds the default value on creation for the custom_font_path field.
+	user.DefaultCustomFontPath = userDescCustomFontPath.Default.(string)
+	// userDescCustomFontFamily is the schema descriptor for custom_font_family field.
+	userDescCustomFontFamily := userFields[8].Descriptor()
+	// user.DefaultCustomFontFamily holds the default value on creation for the custom_font_family field.
+	user.DefaultCustomFontFamily = userDescCustomFontFamily.Default.(string)
 }

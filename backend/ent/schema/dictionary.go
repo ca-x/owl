@@ -20,6 +20,7 @@ func (Dictionary) Fields() []ent.Field {
 		field.String("mdd_paths_json").Default("[]"),
 		field.Int("entry_count").Default(0),
 		field.Bool("enabled").Default(true),
+		field.Bool("public").Default(false),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
