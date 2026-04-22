@@ -361,9 +361,9 @@ img {
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--panel-elevated) 78%, transparent);
+  background: color-mix(in srgb, var(--panel-elevated) 72%, transparent);
 }
 
 .suggestions-head {
@@ -385,9 +385,9 @@ img {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.8rem 0.9rem;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   border-radius: 0.95rem;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
   color: var(--text);
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease;
@@ -473,13 +473,13 @@ img {
 
 .compare-card {
   align-self: start;
-  border-radius: 1.25rem;
+  border-radius: 1.15rem;
   box-shadow: none;
-  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
 }
 
 .reading-compare-card {
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .compare-card-header {
@@ -543,6 +543,14 @@ img {
   border-color: transparent;
 }
 
+.result-visibility-header {
+  padding-inline: 0.2rem;
+}
+
+.result-visibility-header .eyebrow {
+  opacity: 0.85;
+}
+
 .result-card {
   padding-top: 1rem;
   border-top: 1px solid var(--border);
@@ -592,11 +600,13 @@ img {
   line-height: 1.72;
   font-size: 1rem;
   text-wrap: pretty;
+  word-break: normal;
 }
 
 .main-definition {
   max-width: 82ch;
   font-size: 1.03rem;
+  padding-top: 0.25rem;
 }
 
 .compare-definition {
@@ -653,7 +663,7 @@ img {
   align-items: center;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: var(--panel-elevated);
+  background: color-mix(in srgb, var(--panel-elevated) 85%, transparent);
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 700;
@@ -677,6 +687,7 @@ img {
   display: block;
   margin: 0.8rem 0;
   font-size: 1rem;
+  color: color-mix(in srgb, var(--text) 96%, var(--muted));
 }
 
 .definition-html x {
@@ -699,10 +710,27 @@ img {
   color: color-mix(in srgb, var(--accent-strong) 88%, var(--text));
 }
 
+.definition-html sn-gs,
+.definition-html sn-g,
+.definition-html sn-blk,
+.definition-html sn-blk-nolist {
+  display: block;
+}
+
+.definition-html sn-g {
+  padding-top: 0.7rem;
+  margin-top: 0.7rem;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+}
+
 .definition-html a {
   color: var(--accent-strong);
   text-decoration: none;
   border-bottom: 1px dotted color-mix(in srgb, var(--accent-strong) 35%, transparent);
+}
+
+.definition-html a:hover {
+  border-bottom-color: color-mix(in srgb, var(--accent-strong) 75%, transparent);
 }
 
 .definition-html blockquote {
@@ -716,6 +744,7 @@ img {
 .definition-html table {
   width: 100%;
   border-collapse: collapse;
+  border-spacing: 0;
 }
 
 .definition-html th,
@@ -723,6 +752,12 @@ img {
   padding: 0.6rem 0.7rem;
   border-bottom: 1px solid var(--border);
   text-align: left;
+}
+
+.definition-html th {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .definition-html code {
