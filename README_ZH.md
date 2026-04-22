@@ -1,5 +1,7 @@
 # Owl Dictionary（中文说明）
 
+[English](README.md)
+
 Owl 是一个支持 **MDX / MDD** 词典文件的 Web 词典应用。当前架构为：**Go 后端 + 嵌入式 React 前端 + 单二进制部署**。
 
 ## 技术栈

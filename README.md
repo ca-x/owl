@@ -1,5 +1,7 @@
 # Owl Dictionary
 
+[中文说明](README_ZH.md)
+
 Owl is a web dictionary application for **MDX / MDD** files with a Go backend and a modern React frontend that is embedded into the Go server for single-binary deployment.
 
 ## Stack
