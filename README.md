@@ -5,7 +5,7 @@ Owl is a web dictionary application for **MDX / MDD** files with a Go backend an
 ## Stack
 
 - Backend: Go + Echo v5 + ent + SQLite (`github.com/lib-x/entsqlite`)
-- Dictionary engine: `github.com/lib-x/mdx v0.1.5`
+- Dictionary engine: `github.com/lib-x/mdx v0.1.9`
 - Frontend: React + Vite + TypeScript + pnpm (embedded into Go via `go:embed`)
 - Deployment: single Go service / single Docker image
 - CI/CD: GitHub Actions for CI, release binaries, and Docker images
