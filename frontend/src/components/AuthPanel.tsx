@@ -27,56 +27,43 @@ export function AuthPanel({ loading, error, onLogin, onRegister }: AuthPanelProp
   }
 
   return (
-    <div className="auth-shell">
-      <div className="auth-copy card">
-        <div className="eyebrow">Owl Dictionary</div>
-        <h1>{t.authHeroTitle}</h1>
-        <p>{t.authHeroDescription}</p>
-        <ul className="feature-list">
-          <li>{t.authFeatureSearch}</li>
-          <li>{t.authFeatureLibrary}</li>
-          <li>{t.authFeatureTheme}</li>
-        </ul>
+    <form className="auth-card card auth-modal-card" onSubmit={handleSubmit}>
+      <div className="auth-tabs">
+        <button className={mode === 'login' ? 'active' : ''} type="button" onClick={() => setMode('login')}>
+          {t.login}
+        </button>
+        <button className={mode === 'register' ? 'active' : ''} type="button" onClick={() => setMode('register')}>
+          {t.register}
+        </button>
       </div>
 
-      <form className="auth-card card" onSubmit={handleSubmit}>
-        <div className="auth-tabs">
-          <button className={mode === 'login' ? 'active' : ''} type="button" onClick={() => setMode('login')}>
-            {t.login}
-          </button>
-          <button className={mode === 'register' ? 'active' : ''} type="button" onClick={() => setMode('register')}>
-            {t.register}
-          </button>
-        </div>
+      <div>
+        <h2>{title}</h2>
+        <p className="muted">{t.authDescription}</p>
+      </div>
 
-        <div>
-          <h2>{title}</h2>
-          <p className="muted">{t.authDescription}</p>
-        </div>
+      <label className="field">
+        <span>{t.username}</span>
+        <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t.usernamePlaceholder} required />
+      </label>
 
-        <label className="field">
-          <span>{t.username}</span>
-          <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t.usernamePlaceholder} required />
-        </label>
+      <label className="field">
+        <span>{t.password}</span>
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder={t.passwordPlaceholder}
+          minLength={6}
+          required
+        />
+      </label>
 
-        <label className="field">
-          <span>{t.password}</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={t.passwordPlaceholder}
-            minLength={6}
-            required
-          />
-        </label>
+      {error ? <div className="error-banner">{error}</div> : null}
 
-        {error ? <div className="error-banner">{error}</div> : null}
-
-        <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? t.pleaseWait : mode === 'login' ? t.signIn : t.createAccount}
-        </button>
-      </form>
-    </div>
+      <button className="primary-button" type="submit" disabled={loading}>
+        {loading ? t.pleaseWait : mode === 'login' ? t.signIn : t.createAccount}
+      </button>
+    </form>
   )
 }

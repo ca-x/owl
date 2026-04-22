@@ -209,7 +209,7 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 				continue
 			}
 			assetBase := fmt.Sprintf("/api/dictionaries/%d/resource", item.ID)
-			if params.Guest || params.UserID == 0 {
+			if item.Public {
 				assetBase = fmt.Sprintf("/api/public/dictionaries/%d/resource", item.ID)
 			}
 			html := string(mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase))

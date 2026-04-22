@@ -439,12 +439,14 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		authHeader := strings.TrimSpace(c.Request().Header.Get("Authorization"))
 		tokenString := ""
+		tokenFromHeader := false
 		if authHeader != "" {
 			const bearer = "Bearer "
 			if !strings.HasPrefix(authHeader, bearer) {
 				return echo.NewHTTPError(http.StatusUnauthorized, "invalid authorization header")
 			}
 			tokenString = strings.TrimSpace(strings.TrimPrefix(authHeader, bearer))
+			tokenFromHeader = true
 		} else if cookie, err := c.Cookie(authCookieKey); err == nil {
 			tokenString = strings.TrimSpace(cookie.Value)
 		}
@@ -454,6 +456,9 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		claims, err := s.users.ParseToken(tokenString)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+		}
+		if tokenFromHeader {
+			s.setAuthCookie(c, tokenString)
 		}
 		c.Set(authUserKey, authedUser{ID: claims.UserID, Username: claims.Username, IsAdmin: claims.IsAdmin})
 		return next(c)

@@ -29,6 +29,7 @@ export default function App() {
   const [maintenanceReport, setMaintenanceReport] = useState<MaintenanceReport | null>(null)
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
   const [preferences, setPreferences] = useState<UserPreferences>({
     language: 'zh-CN',
     theme: 'system',
@@ -163,6 +164,7 @@ export default function App() {
       setToken(response.token)
       localStorage.setItem(TOKEN_KEY, response.token)
       setUser(response.user)
+      setAuthOpen(false)
     } catch (error) {
       setAuthError(getErrorMessage(error))
     } finally {
@@ -178,6 +180,7 @@ export default function App() {
       setToken(response.token)
       localStorage.setItem(TOKEN_KEY, response.token)
       setUser(response.user)
+      setAuthOpen(false)
     } catch (error) {
       setAuthError(getErrorMessage(error))
     } finally {
@@ -274,6 +277,7 @@ export default function App() {
     setUser(null)
     setDictionaries([])
     setResults([])
+    setMaintenanceReport(null)
   }
 
   async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode'>>) {
@@ -310,13 +314,17 @@ export default function App() {
                 <p>{healthInfo ? `${healthInfo.full_version} · ${healthInfo.os}/${healthInfo.arch}` : t.appTagline}</p>
               </div>
             </div>
-            <button className="secondary-button" type="button" onClick={() => setSettingsOpen(true)}>
-              {t.settings}
-            </button>
+            <div className="toolbar-actions">
+              <button className="secondary-button" type="button" onClick={() => setAuthOpen(true)}>
+                {t.login}
+              </button>
+              <button className="secondary-button" type="button" onClick={() => setSettingsOpen(true)}>
+                {t.settings}
+              </button>
+            </div>
           </header>
 
           <main className="auth-main">
-            <AuthPanel loading={authLoading} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
             <section className="guest-search-shell">
               <SearchPage
                 dictionaries={dictionaries}
@@ -332,6 +340,23 @@ export default function App() {
               <p className="guest-search-hint">{t.guestSearchHint}</p>
             </section>
           </main>
+
+          {authOpen ? (
+            <div className="settings-overlay" role="presentation" onClick={() => setAuthOpen(false)}>
+              <div className="auth-modal-shell" role="dialog" aria-modal="true" aria-label={t.login} onClick={(event) => event.stopPropagation()}>
+                <div className="settings-drawer-head">
+                  <div>
+                    <div className="eyebrow">Owl</div>
+                    <h3>{t.login} / {t.register}</h3>
+                  </div>
+                  <button className="secondary-button" type="button" onClick={() => setAuthOpen(false)}>
+                    {t.close}
+                  </button>
+                </div>
+                <AuthPanel loading={authLoading} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
+              </div>
+            </div>
+          ) : null}
 
           {settingsOpen ? (
             <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>

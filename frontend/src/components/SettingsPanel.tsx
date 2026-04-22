@@ -34,7 +34,7 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="settings-panel card">
+    <div className="settings-panel">
       <div className="settings-section">
         <span className="settings-label">{t.language}</span>
         <div className="settings-chip-row">
@@ -93,7 +93,7 @@ export function SettingsPanel({
             {t.custom}
           </button>
         </div>
-        <label className="font-upload-inline">
+        <label className="font-upload-inline compact-upload">
           <span>{preferences.custom_font_name ? `${t.customFontPrefix}${preferences.custom_font_name}` : t.customFontUpload}</span>
           <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={handleFontUpload} disabled={uploading} />
         </label>

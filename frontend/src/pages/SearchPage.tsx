@@ -167,6 +167,33 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
               placeholder={t.searchPlaceholder}
               required
             />
+            {visibleSuggestions.length > 0 ? (
+              <div className="autocomplete-popover">
+                <div className="autocomplete-head">
+                  <span className="recent-label">{t.suggestions}</span>
+                  <span className="muted">{t.pressEnterHint}</span>
+                </div>
+                <div className="autocomplete-list">
+                  {visibleSuggestions.map((item, index) => (
+                    <button
+                      key={`${item.dictionary_id}-${item.word}-${index}`}
+                      className={activeSuggestion === index ? 'autocomplete-item active' : 'autocomplete-item'}
+                      type="button"
+                      onMouseEnter={() => setActiveSuggestion(index)}
+                      onClick={() => void runQuickSearch(item.word, item.dictionary_id)}
+                    >
+                      <div className="suggestion-main">
+                        <strong>{item.word}</strong>
+                        <span className="suggestion-subline">{item.dictionary_name}</span>
+                      </div>
+                      <span className={item.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
+                        {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </label>
 
           <button className="primary-button hero-search-button" type="submit" disabled={loading || searching}>
@@ -198,34 +225,6 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
           <span className="scope-label">{t.currentScope}</span>
           <strong>{scopeLabel}</strong>
         </div>
-
-        {visibleSuggestions.length > 0 ? (
-          <div className="suggestions-card">
-            <div className="suggestions-head">
-              <span className="recent-label">{t.suggestions}</span>
-              <span className="muted">{t.pressEnterHint}</span>
-            </div>
-            <div className="suggestion-list">
-              {visibleSuggestions.map((item, index) => (
-                <button
-                  key={`${item.dictionary_id}-${item.word}-${index}`}
-                  className={activeSuggestion === index ? 'suggestion-item active' : 'suggestion-item'}
-                  type="button"
-                  onMouseEnter={() => setActiveSuggestion(index)}
-                  onClick={() => void runQuickSearch(item.word, item.dictionary_id)}
-                >
-                  <div className="suggestion-main">
-                    <strong>{item.word}</strong>
-                    <span className="suggestion-subline">{item.dictionary_name}</span>
-                  </div>
-                  <span className={item.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
-                    {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         {recentSearches.length > 0 ? (
           <div className="recent-searches">
