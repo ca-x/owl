@@ -36,6 +36,7 @@ type Service struct {
 	redisPrefixMaxLen    int
 	redisSearchKeyPrefix string
 	redisSearchEnabled   bool
+	audioTranscoder      *audioTranscoder
 	mu                   sync.RWMutex
 	loaded               map[int]*LoadedDictionary
 }
@@ -58,7 +59,7 @@ type SearchParams struct {
 	Guest        bool
 }
 
-func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int, redisSearchKeyPrefix string, redisSearchEnabled bool) *Service {
+func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int, redisSearchKeyPrefix string, redisSearchEnabled bool, audioCacheDir string, ffmpegBin string) *Service {
 	return &Service{
 		client:               client,
 		uploadsDir:           uploadsDir,
@@ -68,6 +69,7 @@ func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisC
 		redisPrefixMaxLen:    redisPrefixMaxLen,
 		redisSearchKeyPrefix: strings.TrimSpace(redisSearchKeyPrefix),
 		redisSearchEnabled:   redisSearchEnabled,
+		audioTranscoder:      newAudioTranscoder(audioCacheDir, firstNonEmpty(strings.TrimSpace(ffmpegBin), resolveFFmpegBinary())),
 		loaded:               make(map[int]*LoadedDictionary),
 	}
 }
@@ -345,7 +347,11 @@ func buildSearchResult(item *ent.Dictionary, loaded *LoadedDictionary, entry mdx
 	if item.Public {
 		assetBase = fmt.Sprintf("/api/public/dictionaries/%d/resource", item.ID)
 	}
-	html := string(mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase))
+	rewritten := mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase)
+	rewritten = mdx.RewriteEntryInternalLinks(rewritten)
+	rewritten = mdx.RewriteEntryLookupLinks(rewritten, "/search?q=")
+	rewritten = mdx.RewriteEntryAudioLinks(rewritten, assetBase)
+	html := string(rewritten)
 	return models.SearchResult{
 		DictionaryID:   item.ID,
 		DictionaryName: displayName(item),
@@ -556,6 +562,13 @@ func (s *Service) OpenResource(ctx context.Context, id int, userID int, isAdmin 
 		resourcePath = decoded
 	}
 
+	if loaded.MDX != nil && loaded.MDX.AssetResolver() != nil {
+		data, resolverErr := loaded.MDX.AssetResolver().Read(resourcePath)
+		if resolverErr == nil {
+			return s.prepareResource(resourcePath, data)
+		}
+	}
+
 	candidates := mdx.AssetLookupCandidates(resourcePath)
 	if len(candidates) == 0 {
 		candidates = []string{resourcePath}
@@ -573,10 +586,20 @@ func (s *Service) OpenResource(ctx context.Context, id int, userID int, isAdmin 
 			if readErr != nil {
 				continue
 			}
-			return data, detectResourceContentType(candidate, data), nil
+			return s.prepareResource(candidate, data)
 		}
 	}
 	return nil, "", fmt.Errorf("resource not found")
+}
+
+func (s *Service) prepareResource(path string, data []byte) ([]byte, string, error) {
+	if s.audioTranscoder != nil && s.audioTranscoder.enabled() && looksLikeSpeex(data) {
+		transcoded, err := s.audioTranscoder.transcodeToMP3(path, data)
+		if err == nil {
+			return transcoded, "audio/mpeg", nil
+		}
+	}
+	return data, detectResourceContentType(path, data), nil
 }
 
 func (s *Service) ensureLoaded(item *ent.Dictionary) (*LoadedDictionary, error) {
@@ -785,6 +808,8 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 		}
 		loaded.MDDs = append(loaded.MDDs, mddDict)
 	}
+	mdx.ConfigureDictionaryPairAssets(mdx.DictionarySpec{ID: slug, Name: slug, MDXPath: mdxPath, MDDPaths: discoverPairedMDDs(mdxPath, mddPaths)}, mdxDict, loaded.MDDs...)
+
 	meta := dictionaryMeta{
 		Name:        firstNonEmpty(mdxDict.Name(), filepath.Base(mdxPath)),
 		Title:       firstNonEmpty(strings.TrimSpace(mdxDict.Title()), mdxDict.Name()),

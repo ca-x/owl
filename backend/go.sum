@@ -59,8 +59,8 @@ github.com/labstack/echo/v5 v5.1.0 h1:MvIRydoN+p9cx/zq8Lff6YXqUW2ZaEsOMISzEGSMrB
 github.com/labstack/echo/v5 v5.1.0/go.mod h1:SyvlSdObGjRXeQfCCXW/sybkZdOOQZBmpKF0bvALaeo=
 github.com/lib-x/entsqlite v0.1.13 h1:q7g5NKd4nJDWuLvBlLFwjkWG2rv3P7rwLKRXi2xkykI=
 github.com/lib-x/entsqlite v0.1.13/go.mod h1:3Bh+hMqf00TpJJM7ilnH5ofTbPUuY50i+JQEl4a93I8=
-github.com/lib-x/mdx v0.1.9 h1:O2PR8WtSTnHxP7HZL7hbcV0PTZpBUQh9NnI3jGST5KM=
-github.com/lib-x/mdx v0.1.9/go.mod h1:li7ykbhNjz2IxFEge0SOTycY/fBsyfNrpZbKVkMpplw=
+github.com/lib-x/mdx v0.1.11 h1:TfxPcOVKtOjpDNvWWetIe20+Ne8tfbi2MTIbcXsLKfk=
+github.com/lib-x/mdx v0.1.11/go.mod h1:li7ykbhNjz2IxFEge0SOTycY/fBsyfNrpZbKVkMpplw=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=

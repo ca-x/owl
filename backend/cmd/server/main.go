@@ -70,6 +70,8 @@ func main() {
 		cfg.RedisPrefixMaxLen,
 		cfg.RedisSearchKeyPrefix,
 		cfg.RedisSearchEnabled,
+		cfg.AudioCacheDir,
+		cfg.FFmpegBin,
 	)
 	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin)
 

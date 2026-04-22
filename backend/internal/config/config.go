@@ -27,6 +27,8 @@ type Config struct {
 	RedisPrefixMaxLen    int
 	RedisSearchKeyPrefix string
 	RedisSearchEnabled   bool
+	AudioCacheDir        string
+	FFmpegBin            string
 }
 
 func Load() (Config, error) {
@@ -56,6 +58,8 @@ func Load() (Config, error) {
 		RedisPrefixMaxLen:    getEnvInt("OWL_REDIS_PREFIX_MAX_LEN", 8),
 		RedisSearchKeyPrefix: getEnv("OWL_REDIS_SEARCH_KEY_PREFIX", "owl:mdx:search"),
 		RedisSearchEnabled:   getEnvBool("OWL_REDIS_SEARCH_ENABLED", true),
+		AudioCacheDir:        getEnv("OWL_AUDIO_CACHE_DIR", filepath.Join(dataDir, "cache", "audio")),
+		FFmpegBin:            strings.TrimSpace(os.Getenv("FFMPEG_BIN")),
 	}
 	return cfg, nil
 }

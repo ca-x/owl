@@ -7,7 +7,7 @@ Owl is a web dictionary application for **MDX / MDD** files with a Go backend an
 ## Stack
 
 - Backend: Go + Echo v5 + ent + SQLite (`github.com/lib-x/entsqlite`)
-- Dictionary engine: `github.com/lib-x/mdx v0.1.9`
+- Dictionary engine: `github.com/lib-x/mdx v0.1.11`
 - Frontend: React + Vite + TypeScript + pnpm (embedded into Go via `go:embed`)
 - Deployment: single Go service / single Docker image
 - CI/CD: GitHub Actions for CI, release binaries, and Docker images
@@ -330,3 +330,13 @@ Verified locally:
 Not verified in this environment:
 - `docker compose up` runtime validation (Docker socket/buildx restrictions in this session)
 - full end-to-end tests with real sample MDX/MDD dictionaries
+
+
+## Audio compatibility
+
+Owl now detects Ogg Speex / `.spx` dictionary audio and, when `ffmpeg` is available, transparently transcodes it to browser-playable MP3 on demand and caches the result under the configured audio cache directory.
+
+
+Environment additions:
+- `OWL_AUDIO_CACHE_DIR`
+- `FFMPEG_BIN`

@@ -26,9 +26,10 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} GOSUMDB=of
 
 FROM alpine:3.22
 WORKDIR /app
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates ffmpeg
 COPY --from=build /out/owl-server /usr/local/bin/owl-server
 RUN mkdir -p /app/data/uploads
 ENV OWL_PORT=8080
+ENV FFMPEG_BIN=/usr/bin/ffmpeg
 EXPOSE 8080
 CMD ["/usr/local/bin/owl-server"]

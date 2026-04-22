@@ -7,7 +7,8 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/lib-x/entsqlite v0.1.13
-	github.com/lib-x/mdx v0.1.9
+	github.com/lib-x/mdx v0.1.11
+	github.com/redis/go-redis/v9 v9.18.0
 	golang.org/x/crypto v0.50.0
 )
 
@@ -31,7 +32,6 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
-	github.com/redis/go-redis/v9 v9.18.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rodaine/table v1.3.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
