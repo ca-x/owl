@@ -194,34 +194,54 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 		return nil, err
 	}
 	results := make([]models.SearchResult, 0)
+	seen := make(map[string]struct{})
 	for _, item := range dicts {
 		loaded, err := s.ensureLoaded(item)
 		if err != nil {
 			continue
 		}
+
+		if exactEntry, ok := loaded.MDX.FindExactEntry(params.Query); ok && exactEntry != nil {
+			result, buildErr := buildSearchResult(item, loaded, mdx.IndexEntry{
+				Keyword:           exactEntry.KeyWord,
+				RecordStartOffset: exactEntry.RecordStartOffset,
+				RecordEndOffset:   exactEntry.RecordEndOffset,
+				KeyBlockIdx:       exactEntry.KeyBlockIdx,
+			}, 1.0, "exact")
+			if buildErr == nil {
+				key := fmt.Sprintf("%d:%s", item.ID, strings.ToLower(result.Word))
+				seen[key] = struct{}{}
+				results = append(results, result)
+			}
+		} else if comparableEntry, ok := loaded.MDX.FindComparableEntry(params.Query); ok && comparableEntry != nil {
+			result, buildErr := buildSearchResult(item, loaded, mdx.IndexEntry{
+				Keyword:           comparableEntry.KeyWord,
+				RecordStartOffset: comparableEntry.RecordStartOffset,
+				RecordEndOffset:   comparableEntry.RecordEndOffset,
+				KeyBlockIdx:       comparableEntry.KeyBlockIdx,
+			}, 0.99, "comparable")
+			if buildErr == nil {
+				key := fmt.Sprintf("%d:%s", item.ID, strings.ToLower(result.Word))
+				seen[key] = struct{}{}
+				results = append(results, result)
+			}
+		}
+
 		hits, err := loaded.FuzzyStore.Search(item.Slug, params.Query, 10)
 		if err != nil {
 			continue
 		}
 		for _, hit := range hits {
-			htmlContent, err := resolveEntryHTML(loaded, hit.Entry, 0, nil)
-			if err != nil {
+			key := fmt.Sprintf("%d:%s", item.ID, strings.ToLower(hit.Entry.Keyword))
+			if _, exists := seen[key]; exists {
 				continue
 			}
-			assetBase := fmt.Sprintf("/api/dictionaries/%d/resource", item.ID)
-			if item.Public {
-				assetBase = fmt.Sprintf("/api/public/dictionaries/%d/resource", item.ID)
+			result, buildErr := buildSearchResult(item, loaded, hit.Entry, hit.Score, hit.Source)
+			if buildErr != nil {
+				continue
 			}
-			html := string(mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase))
-			results = append(results, models.SearchResult{
-				DictionaryID:   item.ID,
-				DictionaryName: displayName(item),
-				Visibility:     visibilityLabel(item.Public),
-				Word:           hit.Entry.Keyword,
-				HTML:           html,
-				Score:          hit.Score,
-				Source:         hit.Source,
-			})
+			seen[key] = struct{}{}
+			results = append(results, result)
 		}
 	}
 	sort.SliceStable(results, func(i, j int) bool {
@@ -245,6 +265,27 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 		return results[i].DictionaryName < results[j].DictionaryName
 	})
 	return results, nil
+}
+
+func buildSearchResult(item *ent.Dictionary, loaded *LoadedDictionary, entry mdx.IndexEntry, score float64, source string) (models.SearchResult, error) {
+	htmlContent, err := resolveEntryHTML(loaded, entry, 0, nil)
+	if err != nil {
+		return models.SearchResult{}, err
+	}
+	assetBase := fmt.Sprintf("/api/dictionaries/%d/resource", item.ID)
+	if item.Public {
+		assetBase = fmt.Sprintf("/api/public/dictionaries/%d/resource", item.ID)
+	}
+	html := string(mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase))
+	return models.SearchResult{
+		DictionaryID:   item.ID,
+		DictionaryName: displayName(item),
+		Visibility:     visibilityLabel(item.Public),
+		Word:           entry.Keyword,
+		HTML:           html,
+		Score:          score,
+		Source:         source,
+	}, nil
 }
 
 func resolveEntryHTML(loaded *LoadedDictionary, entry mdx.IndexEntry, depth int, seen map[string]struct{}) (string, error) {

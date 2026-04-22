@@ -13,6 +13,7 @@ type Page = 'search' | 'manage'
 
 const TOKEN_KEY = 'owl-token'
 const RECENT_SEARCHES_KEY = 'owl-recent-searches'
+const LOGO_SRC = '/android-chrome-192x192.png'
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
@@ -307,7 +308,9 @@ export default function App() {
         <div className="app-shell">
           <header className="topbar minimal-topbar">
             <div className="brand-block">
-              <div className="brand-icon">🦉</div>
+              <div className="brand-icon">
+                <img src={LOGO_SRC} alt="Owl logo" className="brand-logo-image" />
+              </div>
               <div>
                 <strong>Owl</strong>
                 <p>{healthInfo ? `${healthInfo.full_version} · ${healthInfo.os}/${healthInfo.arch}` : t.appTagline}</p>
@@ -392,7 +395,9 @@ export default function App() {
       <div className="app-shell">
         <header className="topbar">
           <div className="brand-block">
-            <div className="brand-icon">🦉</div>
+            <div className="brand-icon">
+              <img src={LOGO_SRC} alt="Owl logo" className="brand-logo-image" />
+            </div>
             <div>
               <strong>Owl</strong>
               <p>{t.workspaceSubtitle(user.username)}</p>

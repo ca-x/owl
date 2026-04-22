@@ -19,6 +19,8 @@ type MessageCatalog = {
   searching: string
   suggestions: string
   allDictionaries: string
+  showFilters: string
+  hideFilters: string
   currentScope: string
   scopeAllPublic: string
   scopeAllAccessible: string
@@ -133,6 +135,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     searching: '查询中…',
     suggestions: '搜索建议',
     allDictionaries: '全部词典',
+    showFilters: '显示筛选',
+    hideFilters: '收起筛选',
     currentScope: '当前范围',
     scopeAllPublic: '全部公开词典',
     scopeAllAccessible: '全部可访问词典',
@@ -245,6 +249,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     searching: 'Searching…',
     suggestions: 'Suggestions',
     allDictionaries: 'All dictionaries',
+    showFilters: 'Show filters',
+    hideFilters: 'Hide filters',
     currentScope: 'Current scope',
     scopeAllPublic: 'All public dictionaries',
     scopeAllAccessible: 'All accessible dictionaries',

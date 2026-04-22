@@ -20,6 +20,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [dictionaryId, setDictionaryId] = useState<number | undefined>()
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [activeSuggestion, setActiveSuggestion] = useState<number>(-1)
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false)
@@ -40,26 +41,8 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
 
   const { topResult, groupedResults } = useMemo(() => {
     const [bestMatch, ...rest] = results
-    const grouped = rest.reduce<Record<string, Record<string, SearchResult[]>>>((accumulator, item) => {
-      const visibilityGroup = item.visibility
-      if (!accumulator[visibilityGroup]) {
-        accumulator[visibilityGroup] = {}
-      }
-      if (!accumulator[visibilityGroup][item.dictionary_name]) {
-        accumulator[visibilityGroup][item.dictionary_name] = []
-      }
-      accumulator[visibilityGroup][item.dictionary_name].push(item)
-      return accumulator
-    }, { public: {}, private: {} })
-    return { topResult: bestMatch ?? null, groupedResults: grouped }
+    return { topResult: bestMatch ?? null, groupedResults: rest }
   }, [results])
-
-  const sameHeadwordGroups = useMemo(() => {
-    if (!topResult) return []
-    const canonical = topResult.word.trim().toLowerCase()
-    if (!canonical) return []
-    return results.filter((item) => item.word.trim().toLowerCase() === canonical)
-  }, [results, topResult])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -201,30 +184,35 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
           </button>
         </form>
 
-        <div className="dictionary-filter-strip">
-          <button
-            className={dictionaryId === undefined ? 'filter-chip active' : 'filter-chip'}
-            type="button"
-            onClick={() => setDictionaryId(undefined)}
-          >
-            {t.allDictionaries}
-          </button>
-          {enabledDictionaries.map((item) => (
-            <button
-              key={item.id}
-              className={dictionaryId === item.id ? 'filter-chip active' : 'filter-chip'}
-              type="button"
-              onClick={() => setDictionaryId(item.id)}
-            >
-              {item.title || item.name}
-            </button>
-          ))}
-        </div>
-
         <div className="scope-banner">
           <span className="scope-label">{t.currentScope}</span>
           <strong>{scopeLabel}</strong>
+          <button className="text-chip" type="button" onClick={() => setFiltersExpanded((current) => !current)}>
+            {filtersExpanded ? t.hideFilters : t.showFilters}
+          </button>
         </div>
+
+        {filtersExpanded ? (
+          <div className="dictionary-filter-strip filter-strip-panel">
+            <button
+              className={dictionaryId === undefined ? 'filter-chip active' : 'filter-chip'}
+              type="button"
+              onClick={() => setDictionaryId(undefined)}
+            >
+              {t.allDictionaries}
+            </button>
+            {enabledDictionaries.map((item) => (
+              <button
+                key={item.id}
+                className={dictionaryId === item.id ? 'filter-chip active' : 'filter-chip'}
+                type="button"
+                onClick={() => setDictionaryId(item.id)}
+              >
+                {item.title || item.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {recentSearches.length > 0 ? (
           <div className="recent-searches">
@@ -272,72 +260,32 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
             </section>
           ) : null}
 
-          {sameHeadwordGroups.length > 1 ? (
+          {groupedResults.length > 0 ? (
             <section className="result-visibility-group">
               <div className="result-visibility-header">
-                <div className="eyebrow">{t.compareSameHeadword}</div>
-                <h3>{topResult?.word}</h3>
+                <div className="eyebrow">{t.moreMatches}</div>
+                <h3>{groupedResults.length}</h3>
               </div>
-              <div className="results-compare-grid semantic-compare-grid">
-                {sameHeadwordGroups.map((item, index) => (
-                  <section key={`${item.dictionary_id}-${index}`} className="card result-group compare-card reading-compare-card">
-                    <div className="result-group-header compare-card-header">
-                      <div>
-                        <h3>{item.dictionary_name}</h3>
-                        <p className="muted">{item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}</p>
+              <div className="result-list simple-result-list">
+                {groupedResults.map((item, index) => (
+                  <article key={`${item.dictionary_id}-${item.word}-${index}`} className="card simple-result-card">
+                    <div className="result-meta compact-result-meta">
+                      <div className="result-title-stack">
+                        <strong>{item.word}</strong>
+                        <span className="result-source-inline">
+                          {item.dictionary_name} · {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
+                        </span>
                       </div>
+                      <button className="text-chip" type="button" onClick={() => void runQuickSearch(item.word, item.dictionary_id)}>
+                        {t.searchOnlyThisDictionary}
+                      </button>
                     </div>
                     <div className="definition-html compare-definition" dangerouslySetInnerHTML={{ __html: item.html }} />
-                  </section>
+                  </article>
                 ))}
               </div>
             </section>
           ) : null}
-
-          {(['public', 'private'] as const).map((visibility) => {
-            const groups = groupedResults[visibility]
-            const entries = Object.entries(groups)
-            if (entries.length === 0) return null
-            return (
-              <section key={visibility} className="result-visibility-group">
-                <div className="result-visibility-header">
-                  <div className="eyebrow">{t.compareAcrossDictionaries}</div>
-                  <h3>{visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}</h3>
-                </div>
-                <div className="results-compare-grid semantic-compare-grid">
-                  {entries.map(([dictionaryName, items]) => (
-                    <section key={dictionaryName} className="card result-group compare-card reading-compare-card">
-                      <div className="result-group-header compare-card-header">
-                        <div>
-                          <h3>{dictionaryName}</h3>
-                          <p className="muted">{t.moreEntriesFromDictionary}</p>
-                        </div>
-                        <span>{items.length}</span>
-                      </div>
-                      <div className="result-list">
-                        {items.map((item, index) => (
-                          <article key={`${item.dictionary_id}-${item.word}-${index}`} className="result-card compact-result-card">
-                            <div className="result-meta compact-result-meta">
-                              <div className="result-title-stack">
-                                <strong>{item.word}</strong>
-                                <span className="result-visibility-inline">
-                                  {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
-                                </span>
-                              </div>
-                              <button className="text-chip" type="button" onClick={() => void runQuickSearch(item.word, item.dictionary_id)}>
-                                {t.searchOnlyThisDictionary}
-                              </button>
-                            </div>
-                            <div className="definition-html compare-definition" dangerouslySetInnerHTML={{ __html: item.html }} />
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              </section>
-            )
-          })}
         </div>
       )}
     </section>
