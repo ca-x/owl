@@ -18,15 +18,15 @@ import (
 )
 
 const (
-	authUserKey  = "auth_user"
+	authUserKey   = "auth_user"
 	authCookieKey = "owl_token"
 )
 
 type Server struct {
-	echo        *echo.Echo
-	users       *user.Service
+	echo         *echo.Echo
+	users        *user.Service
 	dictionaries *dictionary.Service
-	cancel      context.CancelFunc
+	cancel       context.CancelFunc
 }
 
 type registerRequest struct {
@@ -70,6 +70,7 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	e.GET("/api/public/dictionaries", s.handleListPublicDictionaries)
 	e.GET("/api/public/search", s.handlePublicSearch)
 	e.GET("/api/public/suggest", s.handlePublicSuggest)
+	e.GET("/api/public/search-backends", s.handlePublicSearchBackends)
 	e.GET("/api/public/dictionaries/:id/resource/*", s.handlePublicDictionaryResource)
 	e.POST("/api/auth/register", s.handleRegister)
 	e.POST("/api/auth/login", s.handleLogin)
@@ -91,6 +92,7 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	api.GET("/dictionaries/:id/resource/*", s.handleDictionaryResource)
 	api.GET("/search", s.handleSearch)
 	api.GET("/suggest", s.handleSuggest)
+	api.GET("/debug/search-backends", s.handleSearchBackends)
 	s.registerFrontendRoutes()
 	return s
 }
@@ -99,9 +101,9 @@ func (s *Server) Start(addr string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	return echo.StartConfig{
-		Address:     addr,
-		HideBanner:  true,
-		HidePort:    false,
+		Address:         addr,
+		HideBanner:      true,
+		HidePort:        false,
 		GracefulTimeout: 10,
 	}.Start(ctx, s.echo)
 }
@@ -115,14 +117,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) handleHealth(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{
-		"status":      "ok",
-		"version":     version.GetVersion(),
+		"status":       "ok",
+		"version":      version.GetVersion(),
 		"full_version": version.GetFullVersion(),
-		"commit":      version.GitCommit,
-		"build_time":  version.BuildTime,
-		"go_version":  runtime.Version(),
-		"os":          runtime.GOOS,
-		"arch":        runtime.GOARCH,
+		"commit":       version.GitCommit,
+		"build_time":   version.BuildTime,
+		"go_version":   runtime.Version(),
+		"os":           runtime.GOOS,
+		"arch":         runtime.GOARCH,
 	})
 }
 
@@ -180,6 +182,14 @@ func (s *Server) handlePublicSuggest(c *echo.Context) error {
 		return mapEntError(err)
 	}
 	return c.JSON(http.StatusOK, items)
+}
+
+func (s *Server) handlePublicSearchBackends(c *echo.Context) error {
+	info, err := s.dictionaries.SearchBackendDebug(c.Request().Context(), 0, false, true)
+	if err != nil {
+		return mapEntError(err)
+	}
+	return c.JSON(http.StatusOK, info)
 }
 
 func (s *Server) handlePublicDictionaryResource(c *echo.Context) error {
@@ -419,6 +429,15 @@ func (s *Server) handleSuggest(c *echo.Context) error {
 		return mapEntError(err)
 	}
 	return c.JSON(http.StatusOK, items)
+}
+
+func (s *Server) handleSearchBackends(c *echo.Context) error {
+	user := currentUser(c)
+	info, err := s.dictionaries.SearchBackendDebug(c.Request().Context(), user.ID, user.IsAdmin, false)
+	if err != nil {
+		return mapEntError(err)
+	}
+	return c.JSON(http.StatusOK, info)
 }
 
 func (s *Server) handleDictionaryResource(c *echo.Context) error {

@@ -139,6 +139,21 @@ Docker Compose example with Redis + RediSearch:
 docker compose -f docker-compose.yml -f docker-compose.redis.yml up --build
 ```
 
+Redis Stack example (recommended when you want the module bundle explicitly):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up --build
+```
+
+Debug endpoints:
+- guest scope: `GET /api/public/search-backends`
+- authenticated scope: `GET /api/debug/search-backends`
+
+These endpoints show whether each enabled dictionary is currently using:
+- `redisearch`
+- `memory-fuzzy`
+- `redis-prefix`
+
 ## Default admin bootstrap
 
 If `OWL_BOOTSTRAP_ADMIN=true`, Owl creates the admin account on startup if missing.
@@ -156,6 +171,7 @@ Change these before production use.
 - `GET /api/public/dictionaries`
 - `GET /api/public/search?q=word&dict=id`
 - `GET /api/public/suggest?q=prefix&dict=id`
+- `GET /api/public/search-backends`
 - `GET /api/public/dictionaries/:id/resource/*`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -176,6 +192,7 @@ Change these before production use.
 - `GET /api/dictionaries/:id/resource/*`
 - `GET /api/search?q=word&dict=id`
 - `GET /api/suggest?q=prefix&dict=id`
+- `GET /api/debug/search-backends`
 
 ## CI / release automation
 

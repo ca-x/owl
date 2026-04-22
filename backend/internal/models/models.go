@@ -77,3 +77,19 @@ type SearchSuggestion struct {
 	Word    string                   `json:"word"`
 	Sources []SearchSuggestionSource `json:"sources"`
 }
+
+type SearchBackendDictionary struct {
+	DictionaryID   int    `json:"dictionary_id"`
+	DictionaryName string `json:"dictionary_name"`
+	Visibility     string `json:"visibility"`
+	FuzzyBackend   string `json:"fuzzy_backend"`
+	PrefixBackend  string `json:"prefix_backend"`
+	Loaded         bool   `json:"loaded"`
+}
+
+type SearchBackendDebug struct {
+	RedisConfigured    bool                      `json:"redis_configured"`
+	RedisSearchEnabled bool                      `json:"redis_search_enabled"`
+	Scope              string                    `json:"scope"`
+	Dictionaries       []SearchBackendDictionary `json:"dictionaries"`
+}

@@ -128,6 +128,55 @@ func (s *Service) ListPublic(ctx context.Context) ([]models.DictionarySummary, e
 	return out, nil
 }
 
+func (s *Service) SearchBackendDebug(ctx context.Context, userID int, isAdmin bool, guest bool) (*models.SearchBackendDebug, error) {
+	query := s.client.Dictionary.Query().Where(entdict.Enabled(true)).Order(entdict.ByTitle())
+	if !isAdmin {
+		if guest || userID == 0 {
+			query = query.Where(entdict.Public(true))
+		} else {
+			query = query.Where(
+				entdict.Or(
+					entdict.Public(true),
+					entdict.HasOwnerWith(entuser.IDEQ(userID)),
+				),
+			)
+		}
+	}
+	dicts, err := query.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := &models.SearchBackendDebug{
+		RedisConfigured:    s.redisClient != nil,
+		RedisSearchEnabled: s.redisSearchEnabled,
+		Scope:              debugScopeLabel(userID, guest),
+		Dictionaries:       make([]models.SearchBackendDictionary, 0, len(dicts)),
+	}
+	for _, item := range dicts {
+		loaded, err := s.ensureLoaded(item)
+		if err != nil {
+			result.Dictionaries = append(result.Dictionaries, models.SearchBackendDictionary{
+				DictionaryID:   item.ID,
+				DictionaryName: displayName(item),
+				Visibility:     visibilityLabel(item.Public),
+				FuzzyBackend:   "unavailable",
+				PrefixBackend:  "unavailable",
+				Loaded:         false,
+			})
+			continue
+		}
+		result.Dictionaries = append(result.Dictionaries, models.SearchBackendDictionary{
+			DictionaryID:   item.ID,
+			DictionaryName: displayName(item),
+			Visibility:     visibilityLabel(item.Public),
+			FuzzyBackend:   fuzzyBackendName(loaded),
+			PrefixBackend:  prefixBackendName(loaded),
+			Loaded:         true,
+		})
+	}
+	return result, nil
+}
+
 func (s *Service) Delete(ctx context.Context, id int, userID int, isAdmin bool) error {
 	item, err := s.getOwnedDictionary(ctx, id, userID, isAdmin)
 	if err != nil {
@@ -843,6 +892,32 @@ func visibilityLabel(public bool) string {
 		return "public"
 	}
 	return "private"
+}
+
+func debugScopeLabel(userID int, guest bool) string {
+	switch {
+	case guest || userID == 0:
+		return "guest-public"
+	default:
+		return "user-accessible"
+	}
+}
+
+func fuzzyBackendName(loaded *LoadedDictionary) string {
+	if loaded == nil || loaded.FuzzyStore == nil {
+		return "none"
+	}
+	if loaded.RediSearchEnabled {
+		return "redisearch"
+	}
+	return "memory-fuzzy"
+}
+
+func prefixBackendName(loaded *LoadedDictionary) string {
+	if loaded == nil || loaded.PrefixStore == nil {
+		return "none"
+	}
+	return "redis-prefix"
 }
 
 func resultRank(result models.SearchResult, params SearchParams) int {

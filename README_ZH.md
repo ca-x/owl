@@ -143,6 +143,7 @@ docker compose up --build
 - `GET /api/public/dictionaries`
 - `GET /api/public/search?q=word&dict=id`
 - `GET /api/public/suggest?q=prefix&dict=id`
+- `GET /api/public/search-backends`
 - `GET /api/public/dictionaries/:id/resource/*`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -164,6 +165,7 @@ docker compose up --build
 - `GET /api/dictionaries/:id/resource/*`
 - `GET /api/search?q=word&dict=id`
 - `GET /api/suggest?q=prefix&dict=id`
+- `GET /api/debug/search-backends`
 
 ## CI / 发布自动化
 
