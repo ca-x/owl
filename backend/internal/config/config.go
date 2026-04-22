@@ -1,0 +1,68 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+type Config struct {
+	Port          string
+	JWTSecret     string
+	DataDir       string
+	UploadsDir    string
+	DatabasePath  string
+	DatabaseDSN   string
+	FrontendOrigin string
+	BootstrapAdmin bool
+	AdminUsername string
+	AdminPassword string
+}
+
+func Load() (Config, error) {
+	dataDir := getEnv("OWL_DATA_DIR", "./data")
+	uploadsDir := getEnv("OWL_UPLOADS_DIR", filepath.Join(dataDir, "uploads"))
+	databasePath := getEnv("OWL_DB_PATH", filepath.Join(dataDir, "data.db"))
+	jwtSecret := strings.TrimSpace(getEnv("OWL_JWT_SECRET", "dev-secret-change-me"))
+	if jwtSecret == "" {
+		return Config{}, fmt.Errorf("OWL_JWT_SECRET is required")
+	}
+	cfg := Config{
+		Port:           getEnv("OWL_PORT", "8080"),
+		JWTSecret:      jwtSecret,
+		DataDir:        dataDir,
+		UploadsDir:     uploadsDir,
+		DatabasePath:   databasePath,
+		DatabaseDSN:    sqliteDSN(databasePath),
+		FrontendOrigin: getEnv("OWL_FRONTEND_ORIGIN", "*"),
+		BootstrapAdmin: getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
+		AdminUsername:  strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
+		AdminPassword:  getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
+	}
+	return cfg, nil
+}
+
+func sqliteDSN(path string) string {
+	return fmt.Sprintf("file:%s?cache=shared&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)", path)
+}
+
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); strings.TrimSpace(value) != "" {
+		return value
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
