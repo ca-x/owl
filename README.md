@@ -97,6 +97,108 @@ Default address:
 The frontend is served by the Go backend from embedded assets.
 Persistent data is stored in the Docker volume `owl_data`.
 
+## Deployment guide
+
+### Option 1: minimal single-service deployment
+
+Use this when you want the smallest setup and are fine with SQLite + in-memory fuzzy fallback.
+
+```bash
+cp .env.example .env
+# edit OWL_JWT_SECRET / admin credentials first
+docker compose up --build -d
+```
+
+This starts:
+- Owl on `http://localhost:8080`
+- SQLite inside the persistent `owl_data` volume
+- uploaded dictionaries stored under `/app/data/uploads`
+
+### Option 2: Redis + RediSearch deployment
+
+Use this when you want Redis-backed exact/prefix indexes and RediSearch fuzzy lookup.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up --build -d
+```
+
+Recommended behavior in this mode:
+- exact/prefix index: Redis
+- fuzzy search: RediSearch
+- fallback: automatic fallback to in-memory fuzzy search if the module is unavailable
+
+### Mounting an existing dictionary directory
+
+If you already have a host directory full of `.mdx` / `.mdd` files, mount it into `OWL_LIBRARY_DIR`.
+
+Example override:
+
+```yaml
+services:
+  owl:
+    environment:
+      OWL_LIBRARY_DIR: /app/library
+    volumes:
+      - owl_data:/app/data
+      - ./dicts:/app/library
+```
+
+After startup:
+1. sign in
+2. open **Manage**
+3. click **Refresh library**
+
+Owl will scan the mounted directory recursively and pair `name.mdx` with `name.mdd` automatically.
+
+### Pure web-upload deployment
+
+If you do not want a mounted dictionary directory, keep:
+- `OWL_LIBRARY_DIR=/app/data/uploads`
+
+Then all dictionaries can be managed from the web UI only.
+
+### First boot checklist
+
+After the container starts:
+1. open `http://localhost:8080`
+2. sign in with the bootstrap admin account
+3. upload a test dictionary or mount one and refresh the library
+4. optionally set dictionaries public/private in **Manage**
+5. confirm search works from the home page
+
+### How to verify the active search backend
+
+Guest scope:
+
+```bash
+curl http://localhost:8080/api/public/search-backends
+```
+
+Authenticated scope:
+
+```bash
+curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-backends
+```
+
+Important fields:
+- `fuzzy_backend: redisearch` → RediSearch is active
+- `fuzzy_backend: memory-fuzzy` → fallback mode is active
+- `prefix_backend: redis-prefix` → Redis prefix index is active
+
+### Upgrade notes
+
+When upgrading Owl:
+
+```bash
+git pull
+docker compose down
+docker compose up --build -d
+```
+
+If you changed compose overlays, use the same overlay set during restart.
+
+SQLite data and uploaded dictionaries remain in Docker volumes unless you remove them manually.
+
 ## Environment variables
 
 See `.env.example`.

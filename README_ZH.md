@@ -105,6 +105,108 @@ docker compose up --build
 - 前端由 Go 服务端直接提供
 - 数据通过 `owl_data` volume 持久化
 
+## 部署说明
+
+### 方案一：最简单的单服务部署
+
+适合只想先跑起来，使用 SQLite + 内存模糊搜索兜底的场景。
+
+```bash
+cp .env.example .env
+# 先修改 OWL_JWT_SECRET 和管理员账号密码
+docker compose up --build -d
+```
+
+启动后会得到：
+- Owl：`http://localhost:8080`
+- SQLite：存放在持久化 volume `owl_data` 中
+- 上传词典：存放在 `/app/data/uploads`
+
+### 方案二：Redis + RediSearch 部署
+
+如果你希望启用 Redis 精确 / 前缀索引，以及 RediSearch 模糊搜索，推荐这样启动：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up --build -d
+```
+
+这个模式下通常会是：
+- exact/prefix：Redis
+- fuzzy：RediSearch
+- 如果模块不可用：自动回退到内存 fuzzy search
+
+### 挂载已有词典目录
+
+如果你本机已经有很多 `.mdx` / `.mdd` 文件，可以把宿主机目录挂载到 `OWL_LIBRARY_DIR`。
+
+示例覆盖：
+
+```yaml
+services:
+  owl:
+    environment:
+      OWL_LIBRARY_DIR: /app/library
+    volumes:
+      - owl_data:/app/data
+      - ./dicts:/app/library
+```
+
+启动后：
+1. 登录
+2. 打开 **管理**
+3. 点击 **刷新词典库**
+
+Owl 会递归扫描这个目录，并自动把同名的 `name.mdx` 和 `name.mdd` 识别成同一套词典。
+
+### 纯网页上传模式
+
+如果你不想挂载外部词典目录，可以保持：
+- `OWL_LIBRARY_DIR=/app/data/uploads`
+
+这样词典就全部通过网页上传管理。
+
+### 首次启动检查清单
+
+容器启动后建议按这个顺序检查：
+1. 打开 `http://localhost:8080`
+2. 使用初始化管理员账号登录
+3. 上传一本测试词典，或者挂载后刷新词典库
+4. 在 **管理** 页面设置公开 / 私有
+5. 回到首页确认能正常查词
+
+### 如何确认当前实际使用的搜索后端
+
+游客范围：
+
+```bash
+curl http://localhost:8080/api/public/search-backends
+```
+
+登录范围：
+
+```bash
+curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-backends
+```
+
+重点字段含义：
+- `fuzzy_backend: redisearch` → 当前正在使用 RediSearch
+- `fuzzy_backend: memory-fuzzy` → 当前处于回退模式
+- `prefix_backend: redis-prefix` → Redis 前缀索引已生效
+
+### 升级说明
+
+升级 Owl 时建议：
+
+```bash
+git pull
+docker compose down
+docker compose up --build -d
+```
+
+如果你平时用了 compose overlay，请重启时保持同样的 overlay 组合。
+
+SQLite 数据和上传词典会保留在 Docker volume 中，除非你手动删除。
+
 ## 重要环境变量
 
 详见 `.env.example`。
