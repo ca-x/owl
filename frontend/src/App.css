@@ -409,6 +409,16 @@ img {
   text-align: left;
 }
 
+.suggestion-main strong {
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.suggestion-subline {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
 .scope-label {
   font-size: 0.82rem;
   font-weight: 700;
@@ -457,8 +467,24 @@ img {
   gap: 1rem;
 }
 
+.semantic-compare-grid {
+  align-items: start;
+}
+
 .compare-card {
   align-self: start;
+  border-radius: 1.25rem;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+}
+
+.reading-compare-card {
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+.compare-card-header {
+  min-height: 3.8rem;
+  align-items: center;
 }
 
 .result-group-header,
@@ -484,6 +510,8 @@ img {
 
 .hero-result {
   padding: 1.6rem;
+  border: 1px solid color-mix(in srgb, var(--accent-soft) 55%, var(--border));
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
 .hero-result-head {
@@ -563,6 +591,7 @@ img {
   overflow-x: auto;
   line-height: 1.72;
   font-size: 1rem;
+  text-wrap: pretty;
 }
 
 .main-definition {
@@ -570,11 +599,28 @@ img {
   font-size: 1.03rem;
 }
 
+.compare-definition {
+  max-width: 66ch;
+  font-size: 0.98rem;
+}
+
 .definition-html p,
 .definition-html li,
 .definition-html dd,
 .definition-html blockquote {
   color: var(--text);
+}
+
+.definition-html h,
+.definition-html hkey,
+.definition-html top-g,
+.definition-html pron,
+.definition-html pos,
+.definition-html topic,
+.definition-html label-g,
+.definition-html def,
+.definition-html x {
+  color: inherit;
 }
 
 .definition-html p,
@@ -594,8 +640,69 @@ img {
   line-height: 1.2;
 }
 
+.definition-html h {
+  display: inline-block;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 0.45rem;
+}
+
+.definition-html pos {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--panel-elevated);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
+.definition-html topic,
+.definition-html label-g,
+.definition-html x-gs,
+.definition-html sn-gs {
+  display: block;
+}
+
+.definition-html topic {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.definition-html def {
+  display: block;
+  margin: 0.8rem 0;
+  font-size: 1rem;
+}
+
+.definition-html x {
+  display: block;
+  padding: 0.55rem 0.85rem;
+  margin: 0.55rem 0;
+  border-left: 2px solid color-mix(in srgb, var(--accent-soft) 75%, var(--border));
+  color: color-mix(in srgb, var(--text) 90%, var(--muted));
+  background: color-mix(in srgb, var(--panel-elevated) 72%, transparent);
+  border-radius: 0.6rem;
+}
+
+.definition-html chn {
+  color: var(--muted);
+}
+
+.definition-html pron,
+.definition-html phon-blk {
+  font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+  color: color-mix(in srgb, var(--accent-strong) 88%, var(--text));
+}
+
 .definition-html a {
   color: var(--accent-strong);
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--accent-strong) 35%, transparent);
 }
 
 .definition-html blockquote {

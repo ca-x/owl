@@ -216,7 +216,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                 >
                   <div className="suggestion-main">
                     <strong>{item.word}</strong>
-                    <span className="muted">{item.dictionary_name}</span>
+                    <span className="suggestion-subline">{item.dictionary_name}</span>
                   </div>
                   <span className={item.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
                     {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
@@ -256,7 +256,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
       ) : (
         <div className="results-grid">
           {topResult ? (
-            <section className="card hero-result">
+            <section className="card hero-result reading-surface">
               <div className="hero-result-head">
                 <div>
                   <div className="eyebrow">{t.bestMatch}</div>
@@ -279,16 +279,16 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                 <div className="eyebrow">{t.compareSameHeadword}</div>
                 <h3>{topResult?.word}</h3>
               </div>
-              <div className="results-compare-grid">
+              <div className="results-compare-grid semantic-compare-grid">
                 {sameHeadwordGroups.map((item, index) => (
-                  <section key={`${item.dictionary_id}-${index}`} className="card result-group compare-card">
-                    <div className="result-group-header">
+                  <section key={`${item.dictionary_id}-${index}`} className="card result-group compare-card reading-compare-card">
+                    <div className="result-group-header compare-card-header">
                       <div>
                         <h3>{item.dictionary_name}</h3>
                         <p className="muted">{item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}</p>
                       </div>
                     </div>
-                    <div className="definition-html" dangerouslySetInnerHTML={{ __html: item.html }} />
+                    <div className="definition-html compare-definition" dangerouslySetInnerHTML={{ __html: item.html }} />
                   </section>
                 ))}
               </div>
@@ -305,10 +305,10 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                   <div className="eyebrow">{t.compareAcrossDictionaries}</div>
                   <h3>{visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}</h3>
                 </div>
-                <div className="results-compare-grid">
+                <div className="results-compare-grid semantic-compare-grid">
                   {entries.map(([dictionaryName, items]) => (
-                    <section key={dictionaryName} className="card result-group compare-card">
-                      <div className="result-group-header">
+                    <section key={dictionaryName} className="card result-group compare-card reading-compare-card">
+                      <div className="result-group-header compare-card-header">
                         <div>
                           <h3>{dictionaryName}</h3>
                           <p className="muted">{t.moreEntriesFromDictionary}</p>
@@ -329,7 +329,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                                 {t.searchOnlyThisDictionary}
                               </button>
                             </div>
-                            <div className="definition-html" dangerouslySetInnerHTML={{ __html: item.html }} />
+                            <div className="definition-html compare-definition" dangerouslySetInnerHTML={{ __html: item.html }} />
                           </article>
                         ))}
                       </div>
