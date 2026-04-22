@@ -268,6 +268,7 @@ export default function App() {
   }
 
   function handleLogout() {
+    void api.logout().catch(() => {})
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)

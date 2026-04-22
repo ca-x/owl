@@ -17,6 +17,11 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 )
 
+const (
+	authUserKey  = "auth_user"
+	authCookieKey = "owl_token"
+)
+
 type Server struct {
 	echo        *echo.Echo
 	users       *user.Service
@@ -54,8 +59,6 @@ type authedUser struct {
 	IsAdmin  bool
 }
 
-const authUserKey = "auth_user"
-
 func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service, frontendOrigin string) *Server {
 	e := echo.New()
 	e.Use(middleware.Recover())
@@ -70,6 +73,7 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	e.GET("/api/public/dictionaries/:id/resource/*", s.handlePublicDictionaryResource)
 	e.POST("/api/auth/register", s.handleRegister)
 	e.POST("/api/auth/login", s.handleLogin)
+	e.POST("/api/auth/logout", s.handleLogout)
 
 	api := e.Group("/api", s.authMiddleware)
 	api.GET("/me", s.handleMe)
@@ -200,6 +204,7 @@ func (s *Server) handleRegister(c *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+	s.setAuthCookie(c, resp.Token)
 	return c.JSON(http.StatusCreated, resp)
 }
 
@@ -212,7 +217,13 @@ func (s *Server) handleLogin(c *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 	}
+	s.setAuthCookie(c, resp.Token)
 	return c.JSON(http.StatusOK, resp)
+}
+
+func (s *Server) handleLogout(c *echo.Context) error {
+	s.clearAuthCookie(c)
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (s *Server) handleMe(c *echo.Context) error {
@@ -427,20 +438,47 @@ func (s *Server) handleDictionaryResource(c *echo.Context) error {
 func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		authHeader := strings.TrimSpace(c.Request().Header.Get("Authorization"))
-		if authHeader == "" {
+		tokenString := ""
+		if authHeader != "" {
+			const bearer = "Bearer "
+			if !strings.HasPrefix(authHeader, bearer) {
+				return echo.NewHTTPError(http.StatusUnauthorized, "invalid authorization header")
+			}
+			tokenString = strings.TrimSpace(strings.TrimPrefix(authHeader, bearer))
+		} else if cookie, err := c.Cookie(authCookieKey); err == nil {
+			tokenString = strings.TrimSpace(cookie.Value)
+		}
+		if tokenString == "" {
 			return echo.NewHTTPError(http.StatusUnauthorized, "missing authorization header")
 		}
-		const bearer = "Bearer "
-		if !strings.HasPrefix(authHeader, bearer) {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid authorization header")
-		}
-		claims, err := s.users.ParseToken(strings.TrimSpace(strings.TrimPrefix(authHeader, bearer)))
+		claims, err := s.users.ParseToken(tokenString)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
 		}
 		c.Set(authUserKey, authedUser{ID: claims.UserID, Username: claims.Username, IsAdmin: claims.IsAdmin})
 		return next(c)
 	}
+}
+
+func (s *Server) setAuthCookie(c *echo.Context, token string) {
+	c.SetCookie(&http.Cookie{
+		Name:     authCookieKey,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (s *Server) clearAuthCookie(c *echo.Context) {
+	c.SetCookie(&http.Cookie{
+		Name:     authCookieKey,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 }
 
 func currentUser(c *echo.Context) authedUser {

@@ -24,6 +24,7 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers,
+    credentials: 'same-origin',
   })
 
   if (!response.ok) {
@@ -82,6 +83,12 @@ export const api = {
     return request<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+    })
+  },
+
+  logout() {
+    return request<void>('/auth/logout', {
+      method: 'POST',
     })
   },
 

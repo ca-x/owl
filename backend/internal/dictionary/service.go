@@ -1,8 +1,10 @@
 package dictionary
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"html"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -202,7 +204,7 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 			continue
 		}
 		for _, hit := range hits {
-			htmlBytes, err := loaded.MDX.Resolve(hit.Entry)
+			htmlContent, err := resolveEntryHTML(loaded, hit.Entry, 0, nil)
 			if err != nil {
 				continue
 			}
@@ -210,7 +212,7 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 			if params.Guest || params.UserID == 0 {
 				assetBase = fmt.Sprintf("/api/public/dictionaries/%d/resource", item.ID)
 			}
-			html := string(mdx.RewriteEntryResourceURLs(htmlBytes, assetBase))
+			html := string(mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase))
 			results = append(results, models.SearchResult{
 				DictionaryID:   item.ID,
 				DictionaryName: displayName(item),
@@ -243,6 +245,48 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 		return results[i].DictionaryName < results[j].DictionaryName
 	})
 	return results, nil
+}
+
+func resolveEntryHTML(loaded *LoadedDictionary, entry mdx.IndexEntry, depth int, seen map[string]struct{}) (string, error) {
+	if loaded == nil || loaded.MDX == nil {
+		return "", fmt.Errorf("dictionary not loaded")
+	}
+	if depth > 6 {
+		return "", fmt.Errorf("link depth exceeded")
+	}
+	content, err := loaded.MDX.Resolve(entry)
+	if err != nil {
+		return "", err
+	}
+	text := strings.TrimSpace(string(content))
+	if !strings.HasPrefix(text, "@@@LINK=") {
+		return text, nil
+	}
+
+	target := strings.TrimSpace(strings.TrimPrefix(text, "@@@LINK="))
+	if target == "" {
+		return "", fmt.Errorf("empty link target")
+	}
+	if seen == nil {
+		seen = make(map[string]struct{})
+	}
+	key := strings.ToLower(target)
+	if _, ok := seen[key]; ok {
+		return fmt.Sprintf("<p>%s</p>", html.EscapeString(target)), nil
+	}
+	seen[key] = struct{}{}
+
+	targetContent, lookupErr := loaded.MDX.Lookup(target)
+	if lookupErr != nil {
+		return fmt.Sprintf("<p>%s</p>", html.EscapeString(target)), nil
+	}
+
+	targetText := strings.TrimSpace(string(targetContent))
+	if strings.HasPrefix(targetText, "@@@LINK=") {
+		nextEntry := mdx.IndexEntry{Keyword: target}
+		return resolveEntryHTML(loaded, nextEntry, depth+1, seen)
+	}
+	return targetText, nil
 }
 
 func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) ([]models.SearchSuggestion, error) {
@@ -337,7 +381,7 @@ func (s *Service) OpenResource(ctx context.Context, id int, userID int, isAdmin 
 			if readErr != nil {
 				continue
 			}
-			return data, http.DetectContentType(data), nil
+			return data, detectResourceContentType(candidate, data), nil
 		}
 	}
 	return nil, "", fmt.Errorf("resource not found")
@@ -817,4 +861,49 @@ func maintenanceMessage(action string) string {
 	default:
 		return "No changes applied"
 	}
+}
+
+func detectResourceContentType(path string, data []byte) string {
+	lowerExt := strings.ToLower(filepath.Ext(path))
+	switch lowerExt {
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
+	case ".gif":
+		return "image/gif"
+	case ".svg":
+		return "image/svg+xml"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".js":
+		return "application/javascript; charset=utf-8"
+	case ".mp3":
+		return "audio/mpeg"
+	case ".wav":
+		return "audio/wav"
+	case ".ogg", ".spx":
+		return "audio/ogg"
+	case ".snd":
+		return detectSndContentType(data)
+	}
+	return http.DetectContentType(data)
+}
+
+func detectSndContentType(data []byte) string {
+	if len(data) >= 4 {
+		if bytes.Equal(data[:4], []byte("RIFF")) && bytes.Contains(data[:16], []byte("WAVE")) {
+			return "audio/wav"
+		}
+		if bytes.Equal(data[:3], []byte("ID3")) {
+			return "audio/mpeg"
+		}
+		if data[0] == 0xFF && len(data) > 1 && (data[1]&0xE0) == 0xE0 {
+			return "audio/mpeg"
+		}
+		if bytes.Equal(data[:4], []byte("OggS")) {
+			return "audio/ogg"
+		}
+	}
+	return "application/octet-stream"
 }
