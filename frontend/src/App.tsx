@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { AuthPanel } from './components/AuthPanel'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -154,7 +154,6 @@ export default function App() {
     }
   }, [token])
 
-  const enabledDictionaryCount = useMemo(() => dictionaries.filter((item) => item.enabled).length, [dictionaries])
 
   async function handleLogin(username: string, password: string) {
     setAuthLoading(true)
@@ -370,6 +369,9 @@ export default function App() {
                     {t.close}
                   </button>
                 </div>
+                {healthInfo ? (
+                  <p className="settings-build-meta">{t.versionLabel}: {healthInfo.version}</p>
+                ) : null}
                 <SettingsPanel
                   preferences={preferences}
                   onLanguageChange={async (language) => updatePreferences({ language })}
@@ -393,10 +395,7 @@ export default function App() {
             <div className="brand-icon">🦉</div>
             <div>
               <strong>Owl</strong>
-              <p>
-                {user.username} · {enabledDictionaryCount} enabled dictionaries
-                {healthInfo ? ` · ${healthInfo.version}` : ''}
-              </p>
+              <p>{t.workspaceSubtitle(user.username)}</p>
             </div>
           </div>
 

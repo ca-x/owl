@@ -110,6 +110,8 @@ type MessageCatalog = {
   serif: string
   mono: string
   custom: string
+  workspaceSubtitle: (username: string) => string
+  versionLabel: string
   deleteDictionaryConfirm: (name: string) => string
 }
 
@@ -222,6 +224,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     serif: '衬线',
     mono: '等宽',
     custom: '自定义',
+    workspaceSubtitle: (username) => `${username} 的词典工作台`,
+    versionLabel: '版本',
     deleteDictionaryConfirm: (name) => `删除词典“${name}”？`,
   },
   en: {
@@ -332,6 +336,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     serif: 'serif',
     mono: 'mono',
     custom: 'custom',
+    workspaceSubtitle: (username) => `${username}'s dictionary workspace`,
+    versionLabel: 'Version',
     deleteDictionaryConfirm: (name) => `Delete dictionary “${name}”?`,
   },
 }

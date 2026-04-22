@@ -960,6 +960,12 @@ img {
   margin: 0.35rem 0 0;
 }
 
+.settings-build-meta {
+  margin: -0.2rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .settings-panel {
   display: grid;
   gap: 1rem;
