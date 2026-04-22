@@ -1,8 +1,9 @@
 services:
   owl:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: czyt/owl:latest
+    container_name: owl
+    restart: unless-stopped
+    pull_policy: always
     env_file:
       - .env
     environment:
@@ -13,7 +14,7 @@ services:
       OWL_ADMIN_PASSWORD: ${OWL_ADMIN_PASSWORD:-admin123456}
       OWL_DATA_DIR: /app/data
       OWL_UPLOADS_DIR: /app/data/uploads
-      OWL_LIBRARY_DIR: /app/data/uploads
+      OWL_LIBRARY_DIR: ${OWL_LIBRARY_DIR:-/app/data/uploads}
       OWL_DB_PATH: /app/data/data.db
       OWL_FRONTEND_ORIGIN: '*'
       OWL_REDIS_ADDR: ${OWL_REDIS_ADDR:-}

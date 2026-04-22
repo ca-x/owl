@@ -1,6 +1,7 @@
 services:
   redis:
     image: redislabs/redisearch:2.10.20
+    container_name: owl-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -11,6 +12,7 @@ services:
       - redis
     environment:
       OWL_REDIS_ADDR: redis:6379
+      OWL_REDIS_SEARCH_ENABLED: 'true'
 
 volumes:
   owl_redis:

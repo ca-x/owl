@@ -88,7 +88,8 @@ The dev server still proxies `/api` to the backend.
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose pull
+docker compose up -d
 ```
 
 Default address:
@@ -96,6 +97,7 @@ Default address:
 
 The frontend is served by the Go backend from embedded assets.
 Persistent data is stored in the Docker volume `owl_data`.
+The compose files in this repository now use the published image `czyt/owl:latest` directly.
 
 ## Deployment guide
 
@@ -106,7 +108,8 @@ Use this when you want the smallest setup and are fine with SQLite + in-memory f
 ```bash
 cp .env.example .env
 # edit OWL_JWT_SECRET / admin credentials first
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 ```
 
 This starts:
@@ -119,7 +122,8 @@ This starts:
 Use this when you want Redis-backed exact/prefix indexes and RediSearch fuzzy lookup.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml pull
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up -d
 ```
 
 Recommended behavior in this mode:
@@ -192,7 +196,8 @@ When upgrading Owl:
 ```bash
 git pull
 docker compose down
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 ```
 
 If you changed compose overlays, use the same overlay set during restart.
@@ -238,13 +243,15 @@ Enable it by setting:
 Docker Compose example with Redis + RediSearch:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.redis.yml up --build
+docker compose -f docker-compose.yml -f docker-compose.redis.yml pull
+docker compose -f docker-compose.yml -f docker-compose.redis.yml up -d
 ```
 
 Redis Stack example (recommended when you want the module bundle explicitly):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up --build
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml pull
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up -d
 ```
 
 Debug endpoints:

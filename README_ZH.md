@@ -95,7 +95,8 @@ pnpm dev
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose pull
+docker compose up -d
 ```
 
 默认地址：
@@ -104,6 +105,7 @@ docker compose up --build
 说明：
 - 前端由 Go 服务端直接提供
 - 数据通过 `owl_data` volume 持久化
+- 仓库内的 compose 默认直接使用镜像 `czyt/owl:latest`
 
 ## 部署说明
 
@@ -114,7 +116,8 @@ docker compose up --build
 ```bash
 cp .env.example .env
 # 先修改 OWL_JWT_SECRET 和管理员账号密码
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 ```
 
 启动后会得到：
@@ -127,7 +130,8 @@ docker compose up --build -d
 如果你希望启用 Redis 精确 / 前缀索引，以及 RediSearch 模糊搜索，推荐这样启动：
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml pull
+docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up -d
 ```
 
 这个模式下通常会是：
@@ -200,7 +204,8 @@ curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-b
 ```bash
 git pull
 docker compose down
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 ```
 
 如果你平时用了 compose overlay，请重启时保持同样的 overlay 组合。
