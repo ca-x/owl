@@ -61,7 +61,16 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	dictSvc := dictionary.NewService(client, cfg.UploadsDir, cfg.LibraryDir, redisClient, cfg.RedisKeyPrefix, cfg.RedisPrefixMaxLen)
+	dictSvc := dictionary.NewService(
+		client,
+		cfg.UploadsDir,
+		cfg.LibraryDir,
+		redisClient,
+		cfg.RedisKeyPrefix,
+		cfg.RedisPrefixMaxLen,
+		cfg.RedisSearchKeyPrefix,
+		cfg.RedisSearchEnabled,
+	)
 	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin)
 
 	go func() {

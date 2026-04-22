@@ -28,23 +28,26 @@ import (
 )
 
 type Service struct {
-	client            *ent.Client
-	uploadsDir        string
-	libraryDir        string
-	redisClient       *redis.Client
-	redisKeyPrefix    string
-	redisPrefixMaxLen int
-	mu                sync.RWMutex
-	loaded            map[int]*LoadedDictionary
+	client               *ent.Client
+	uploadsDir           string
+	libraryDir           string
+	redisClient          *redis.Client
+	redisKeyPrefix       string
+	redisPrefixMaxLen    int
+	redisSearchKeyPrefix string
+	redisSearchEnabled   bool
+	mu                   sync.RWMutex
+	loaded               map[int]*LoadedDictionary
 }
 
 type LoadedDictionary struct {
-	MDX         *mdx.Mdict
-	MDDs        []*mdx.Mdict
-	FuzzyStore  mdx.FuzzyIndexStore
-	PrefixStore mdx.IndexStore
-	Entries     []mdx.IndexEntry
-	Info        mdx.DictionaryInfo
+	MDX               *mdx.Mdict
+	MDDs              []*mdx.Mdict
+	FuzzyStore        mdx.FuzzyIndexStore
+	PrefixStore       mdx.IndexStore
+	Entries           []mdx.IndexEntry
+	Info              mdx.DictionaryInfo
+	RediSearchEnabled bool
 }
 
 type SearchParams struct {
@@ -55,15 +58,17 @@ type SearchParams struct {
 	Guest        bool
 }
 
-func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int) *Service {
+func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int, redisSearchKeyPrefix string, redisSearchEnabled bool) *Service {
 	return &Service{
-		client:            client,
-		uploadsDir:        uploadsDir,
-		libraryDir:        libraryDir,
-		redisClient:       redisClient,
-		redisKeyPrefix:    strings.TrimSpace(redisKeyPrefix),
-		redisPrefixMaxLen: redisPrefixMaxLen,
-		loaded:            make(map[int]*LoadedDictionary),
+		client:               client,
+		uploadsDir:           uploadsDir,
+		libraryDir:           libraryDir,
+		redisClient:          redisClient,
+		redisKeyPrefix:       strings.TrimSpace(redisKeyPrefix),
+		redisPrefixMaxLen:    redisPrefixMaxLen,
+		redisSearchKeyPrefix: strings.TrimSpace(redisSearchKeyPrefix),
+		redisSearchEnabled:   redisSearchEnabled,
+		loaded:               make(map[int]*LoadedDictionary),
 	}
 }
 
@@ -390,7 +395,15 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 		}
 
 		var hits []mdx.SearchHit
-		if loaded.PrefixStore != nil {
+		if loaded.FuzzyStore != nil {
+			searchHits, searchErr := loaded.FuzzyStore.Search(item.Slug, params.Query, max(limit*3, limit))
+			if searchErr == nil {
+				hits = searchHits
+			} else if loaded.RediSearchEnabled && !errors.Is(searchErr, mdx.ErrIndexMiss) && !isRediSearchUnavailable(searchErr) {
+				continue
+			}
+		}
+		if len(hits) == 0 && loaded.PrefixStore != nil {
 			entries, prefixErr := loaded.PrefixStore.PrefixSearch(item.Slug, params.Query, max(limit*4, limit))
 			if prefixErr == nil {
 				for _, entry := range entries {
@@ -399,13 +412,6 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 			} else if !errors.Is(prefixErr, mdx.ErrIndexMiss) {
 				continue
 			}
-		}
-		if len(hits) == 0 && loaded.FuzzyStore != nil {
-			searchHits, searchErr := loaded.FuzzyStore.Search(item.Slug, params.Query, max(limit*3, limit))
-			if searchErr != nil {
-				continue
-			}
-			hits = searchHits
 		}
 		for _, hit := range hits {
 			word := strings.TrimSpace(hit.Entry.Keyword)
@@ -688,15 +694,17 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 	if err != nil {
 		return nil, dictionaryMeta{}, err
 	}
-	fuzzyStore := mdx.NewMemoryFuzzyIndexStore()
+	fallbackFuzzyStore := mdx.NewMemoryFuzzyIndexStore()
 	info := mdxDict.DictionaryInfo()
 	slug := sanitizeSlug(firstNonEmpty(info.Name, mdxDict.Name(), strings.TrimSuffix(filepath.Base(mdxPath), filepath.Ext(mdxPath))))
 	info.Name = slug
-	if err := fuzzyStore.Put(info, entries); err != nil {
+	if err := fallbackFuzzyStore.Put(info, entries); err != nil {
 		return nil, dictionaryMeta{}, err
 	}
 
 	var prefixStore mdx.IndexStore
+	fuzzyStore := mdx.FuzzyIndexStore(fallbackFuzzyStore)
+	rediSearchEnabled := false
 	if s.redisClient != nil {
 		prefixStore = mdx.NewRedisIndexStore(s.redisClient,
 			mdx.WithRedisIndexContext(context.Background()),
@@ -706,9 +714,18 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 		if err := prefixStore.Put(info, entries); err != nil {
 			return nil, dictionaryMeta{}, err
 		}
+		if s.redisSearchEnabled {
+			searchStore := newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), info.Name)
+			if err := searchStore.Put(info, entries); err == nil {
+				fuzzyStore = searchStore
+				rediSearchEnabled = true
+			} else if !isRediSearchUnavailable(err) {
+				return nil, dictionaryMeta{}, err
+			}
+		}
 	}
 
-	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, Entries: entries, Info: info}
+	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, Entries: entries, Info: info, RediSearchEnabled: rediSearchEnabled}
 	for _, mddPath := range discoverPairedMDDs(mdxPath, mddPaths) {
 		mddDict, err := mdx.New(mddPath)
 		if err != nil {

@@ -121,16 +121,19 @@ Important values:
 Owl can optionally use Redis as the MDX exact/prefix index cache layer.
 
 Current behavior:
-- exact/prefix suggestion indexing can be stored in Redis
+- when Redis is configured, Owl first tries RediSearch-based fuzzy lookup (scheme B)
+- exact/prefix suggestion indexing is also stored in Redis
 - grouped autocomplete suggestions are aggregated by the backend
-- fuzzy ranking still falls back to the in-memory mdx fuzzy store
+- if RediSearch is unavailable, Owl automatically falls back to the in-memory mdx fuzzy store
 
 Enable it by setting:
 - `OWL_REDIS_ADDR=redis:6379`
 - optional `OWL_REDIS_PASSWORD` / `OWL_REDIS_DB`
 - optional `OWL_REDIS_KEY_PREFIX` / `OWL_REDIS_PREFIX_MAX_LEN`
+- `OWL_REDIS_SEARCH_ENABLED=true`
+- optional `OWL_REDIS_SEARCH_KEY_PREFIX`
 
-Docker Compose example with Redis:
+Docker Compose example with Redis + RediSearch:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.redis.yml up --build

@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:8-alpine
+    image: redislabs/redisearch:2.10.20
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:

@@ -123,6 +123,8 @@ docker compose up --build
 - `OWL_REDIS_DB`
 - `OWL_REDIS_KEY_PREFIX`
 - `OWL_REDIS_PREFIX_MAX_LEN`
+- `OWL_REDIS_SEARCH_ENABLED`
+- `OWL_REDIS_SEARCH_KEY_PREFIX`
 
 ## 默认管理员账号
 

@@ -21,6 +21,8 @@ services:
       OWL_REDIS_DB: ${OWL_REDIS_DB:-0}
       OWL_REDIS_KEY_PREFIX: ${OWL_REDIS_KEY_PREFIX:-owl:mdx:index}
       OWL_REDIS_PREFIX_MAX_LEN: ${OWL_REDIS_PREFIX_MAX_LEN:-8}
+      OWL_REDIS_SEARCH_ENABLED: ${OWL_REDIS_SEARCH_ENABLED:-true}
+      OWL_REDIS_SEARCH_KEY_PREFIX: ${OWL_REDIS_SEARCH_KEY_PREFIX:-owl:mdx:search}
     ports:
       - '${OWL_PORT:-8080}:8080'
     volumes:
