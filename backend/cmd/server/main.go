@@ -16,6 +16,7 @@ import (
 	"owl/backend/internal/user"
 
 	_ "github.com/lib-x/entsqlite"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -37,13 +38,30 @@ func main() {
 	if err := client.Schema.Create(context.Background(), migrate.WithForeignKeys(true)); err != nil {
 		log.Fatal(err)
 	}
+	var redisClient *redis.Client
+	if cfg.RedisAddr != "" {
+		redisClient = redis.NewClient(&redis.Options{
+			Addr:     cfg.RedisAddr,
+			Password: cfg.RedisPassword,
+			DB:       cfg.RedisDB,
+		})
+		if err := redisClient.Ping(context.Background()).Err(); err != nil {
+			log.Fatalf("connect redis: %v", err)
+		}
+		defer func() {
+			if err := redisClient.Close(); err != nil {
+				log.Printf("close redis: %v", err)
+			}
+		}()
+	}
+
 	userSvc := user.NewService(client, cfg.JWTSecret, cfg.DataDir)
 	if cfg.BootstrapAdmin {
 		if err := userSvc.EnsureAdmin(context.Background(), cfg.AdminUsername, cfg.AdminPassword); err != nil {
 			log.Fatal(err)
 		}
 	}
-	dictSvc := dictionary.NewService(client, cfg.UploadsDir, cfg.LibraryDir)
+	dictSvc := dictionary.NewService(client, cfg.UploadsDir, cfg.LibraryDir, redisClient, cfg.RedisKeyPrefix, cfg.RedisPrefixMaxLen)
 	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin)
 
 	go func() {

@@ -118,6 +118,11 @@ docker compose up --build
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
 - `OWL_DB_PATH`
+- `OWL_REDIS_ADDR`（可选）
+- `OWL_REDIS_PASSWORD`
+- `OWL_REDIS_DB`
+- `OWL_REDIS_KEY_PREFIX`
+- `OWL_REDIS_PREFIX_MAX_LEN`
 
 ## 默认管理员账号
 

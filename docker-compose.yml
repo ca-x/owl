@@ -16,6 +16,11 @@ services:
       OWL_LIBRARY_DIR: /app/data/uploads
       OWL_DB_PATH: /app/data/data.db
       OWL_FRONTEND_ORIGIN: '*'
+      OWL_REDIS_ADDR: ${OWL_REDIS_ADDR:-}
+      OWL_REDIS_PASSWORD: ${OWL_REDIS_PASSWORD:-}
+      OWL_REDIS_DB: ${OWL_REDIS_DB:-0}
+      OWL_REDIS_KEY_PREFIX: ${OWL_REDIS_KEY_PREFIX:-owl:mdx:index}
+      OWL_REDIS_PREFIX_MAX_LEN: ${OWL_REDIS_PREFIX_MAX_LEN:-8}
     ports:
       - '${OWL_PORT:-8080}:8080'
     volumes:

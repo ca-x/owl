@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { DictionaryEntryHtml } from '../components/DictionaryEntryHtml'
 import { useI18n } from '../i18n'
 import { api } from '../services/api'
 import type { DictionarySummary, SearchResult, SearchSuggestion } from '../types'
@@ -44,19 +45,22 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
     return { topResult: bestMatch ?? null, groupedResults: rest }
   }, [results])
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const keyword = activeSuggestion >= 0 ? suggestions[activeSuggestion]?.word ?? query : query
-    await onSearch(keyword, dictionaryId)
-  }
-
   async function runQuickSearch(nextQuery: string, nextDictionaryId?: number) {
-    setQuery(nextQuery)
+    const normalizedQuery = nextQuery.trim()
+    if (!normalizedQuery) return
+    setQuery(normalizedQuery)
     setSuggestionsDismissed(true)
+    setActiveSuggestion(-1)
     if (nextDictionaryId !== undefined) {
       setDictionaryId(nextDictionaryId)
     }
-    await onSearch(nextQuery, nextDictionaryId ?? dictionaryId)
+    await onSearch(normalizedQuery, nextDictionaryId ?? dictionaryId)
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const keyword = activeSuggestion >= 0 ? visibleSuggestions[activeSuggestion]?.word ?? query : query
+    await runQuickSearch(keyword, dictionaryId)
   }
 
   useEffect(() => {
@@ -74,11 +78,12 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
             : []
         if (!active) return
         setSuggestions(nextSuggestions)
-        setActiveSuggestion(-1)
+        setActiveSuggestion(nextSuggestions.length > 0 ? 0 : -1)
         setSuggestionsDismissed(false)
       } catch {
         if (!active) return
         setSuggestions([])
+        setActiveSuggestion(-1)
       }
     }, 180)
 
@@ -105,18 +110,11 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
       setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1))
       return
     }
-    if (event.key === 'Enter' && activeSuggestion >= 0) {
+    if ((event.key === 'Enter' || event.key === 'Tab') && activeSuggestion >= 0) {
       event.preventDefault()
       const suggestion = visibleSuggestions[activeSuggestion]
       if (!suggestion) return
-      await runQuickSearch(suggestion.word, suggestion.dictionary_id)
-      return
-    }
-    if (event.key === 'Tab' && activeSuggestion >= 0) {
-      const suggestion = visibleSuggestions[activeSuggestion]
-      if (!suggestion) return
-      event.preventDefault()
-      await runQuickSearch(suggestion.word, suggestion.dictionary_id)
+      await runQuickSearch(suggestion.word)
     }
   }
 
@@ -158,21 +156,37 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                 </div>
                 <div className="autocomplete-list">
                   {visibleSuggestions.map((item, index) => (
-                    <button
-                      key={`${item.dictionary_id}-${item.word}-${index}`}
-                      className={activeSuggestion === index ? 'autocomplete-item active' : 'autocomplete-item'}
-                      type="button"
+                    <div
+                      key={`${item.word}-${index}`}
+                      className={activeSuggestion === index ? 'autocomplete-group active' : 'autocomplete-group'}
                       onMouseEnter={() => setActiveSuggestion(index)}
-                      onClick={() => void runQuickSearch(item.word, item.dictionary_id)}
                     >
-                      <div className="suggestion-main">
-                        <strong>{item.word}</strong>
-                        <span className="suggestion-subline">{item.dictionary_name}</span>
+                      <button
+                        className="autocomplete-item autocomplete-word-button"
+                        type="button"
+                        onClick={() => void runQuickSearch(item.word)}
+                      >
+                        <div className="suggestion-main">
+                          <strong>{item.word}</strong>
+                          <span className="suggestion-subline">{item.sources.map((source) => source.dictionary_name).join(' · ')}</span>
+                        </div>
+                      </button>
+                      <div className="autocomplete-source-list">
+                        {item.sources.map((source) => (
+                          <button
+                            key={`${item.word}-${source.dictionary_id}`}
+                            className="autocomplete-source-chip"
+                            type="button"
+                            onClick={() => void runQuickSearch(item.word, source.dictionary_id)}
+                          >
+                            <span>{source.dictionary_name}</span>
+                            <span className={source.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
+                              {source.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
+                            </span>
+                          </button>
+                        ))}
                       </div>
-                      <span className={item.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
-                        {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
-                      </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -256,7 +270,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                   </span>
                 </div>
               </div>
-              <div className="definition-html main-definition" dangerouslySetInnerHTML={{ __html: topResult.html }} />
+              <DictionaryEntryHtml html={topResult.html} className="definition-html main-definition" onLookup={runQuickSearch} />
             </section>
           ) : null}
 
@@ -280,7 +294,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                         {t.searchOnlyThisDictionary}
                       </button>
                     </div>
-                    <div className="definition-html compare-definition" dangerouslySetInnerHTML={{ __html: item.html }} />
+                    <DictionaryEntryHtml html={item.html} className="definition-html compare-definition" onLookup={runQuickSearch} />
                   </article>
                 ))}
               </div>

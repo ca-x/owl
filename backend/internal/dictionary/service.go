@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"html"
+	"errors"
 	"fmt"
+	"html"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -23,21 +24,27 @@ import (
 	"owl/backend/internal/models"
 
 	"github.com/lib-x/mdx"
+	"github.com/redis/go-redis/v9"
 )
 
 type Service struct {
-	client     *ent.Client
-	uploadsDir string
-	libraryDir string
-	mu         sync.RWMutex
-	loaded     map[int]*LoadedDictionary
+	client            *ent.Client
+	uploadsDir        string
+	libraryDir        string
+	redisClient       *redis.Client
+	redisKeyPrefix    string
+	redisPrefixMaxLen int
+	mu                sync.RWMutex
+	loaded            map[int]*LoadedDictionary
 }
 
 type LoadedDictionary struct {
-	MDX        *mdx.Mdict
-	MDDs       []*mdx.Mdict
-	FuzzyStore *mdx.MemoryFuzzyIndexStore
-	Entries    []mdx.IndexEntry
+	MDX         *mdx.Mdict
+	MDDs        []*mdx.Mdict
+	FuzzyStore  mdx.FuzzyIndexStore
+	PrefixStore mdx.IndexStore
+	Entries     []mdx.IndexEntry
+	Info        mdx.DictionaryInfo
 }
 
 type SearchParams struct {
@@ -48,8 +55,16 @@ type SearchParams struct {
 	Guest        bool
 }
 
-func NewService(client *ent.Client, uploadsDir string, libraryDir string) *Service {
-	return &Service{client: client, uploadsDir: uploadsDir, libraryDir: libraryDir, loaded: make(map[int]*LoadedDictionary)}
+func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int) *Service {
+	return &Service{
+		client:            client,
+		uploadsDir:        uploadsDir,
+		libraryDir:        libraryDir,
+		redisClient:       redisClient,
+		redisKeyPrefix:    strings.TrimSpace(redisKeyPrefix),
+		redisPrefixMaxLen: redisPrefixMaxLen,
+		loaded:            make(map[int]*LoadedDictionary),
+	}
 }
 
 func (s *Service) List(ctx context.Context, userID int, isAdmin bool) ([]models.DictionarySummary, error) {
@@ -144,7 +159,7 @@ func (s *Service) Upload(ctx context.Context, userID int, mdxFile *multipart.Fil
 		}
 		mddPaths = append(mddPaths, path)
 	}
-	loaded, meta, err := buildLoadedDictionary(mdxPath, mddPaths)
+	loaded, meta, err := s.buildLoadedDictionary(mdxPath, mddPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -355,38 +370,119 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 		return nil, err
 	}
 
-	suggestions := make([]models.SearchSuggestion, 0, limit)
-	seen := make(map[string]struct{})
+	type aggregatedSuggestion struct {
+		word       string
+		sources    []models.SearchSuggestionSource
+		bestScore  float64
+		bestRank   int
+		firstIndex int
+	}
+
+	aggregated := make(map[string]*aggregatedSuggestion)
+	orderedKeys := make([]string, 0, limit)
+	seenSources := make(map[string]struct{})
+	globalIndex := 0
+
 	for _, item := range dicts {
 		loaded, loadErr := s.ensureLoaded(item)
 		if loadErr != nil {
 			continue
 		}
-		hits, searchErr := loaded.FuzzyStore.Search(item.Slug, params.Query, limit)
-		if searchErr != nil {
-			continue
+
+		var hits []mdx.SearchHit
+		if loaded.PrefixStore != nil {
+			entries, prefixErr := loaded.PrefixStore.PrefixSearch(item.Slug, params.Query, max(limit*4, limit))
+			if prefixErr == nil {
+				for _, entry := range entries {
+					hits = append(hits, mdx.SearchHit{Entry: entry, Score: prefixScore(params.Query, entry.Keyword), Source: "redis-prefix"})
+				}
+			} else if !errors.Is(prefixErr, mdx.ErrIndexMiss) {
+				continue
+			}
+		}
+		if len(hits) == 0 && loaded.FuzzyStore != nil {
+			searchHits, searchErr := loaded.FuzzyStore.Search(item.Slug, params.Query, max(limit*3, limit))
+			if searchErr != nil {
+				continue
+			}
+			hits = searchHits
 		}
 		for _, hit := range hits {
 			word := strings.TrimSpace(hit.Entry.Keyword)
 			if word == "" {
 				continue
 			}
-			key := fmt.Sprintf("%d:%s", item.ID, strings.ToLower(word))
-			if _, ok := seen[key]; ok {
+
+			normalizedWord := strings.ToLower(word)
+			sourceKey := fmt.Sprintf("%s:%d", normalizedWord, item.ID)
+			if _, ok := seenSources[sourceKey]; ok {
 				continue
 			}
-			seen[key] = struct{}{}
-			suggestions = append(suggestions, models.SearchSuggestion{
-				Word:           word,
+			seenSources[sourceKey] = struct{}{}
+
+			agg, ok := aggregated[normalizedWord]
+			if !ok {
+				agg = &aggregatedSuggestion{
+					word:       word,
+					bestScore:  hit.Score,
+					bestRank:   suggestionRank(word, params.Query),
+					firstIndex: globalIndex,
+				}
+				aggregated[normalizedWord] = agg
+				orderedKeys = append(orderedKeys, normalizedWord)
+			}
+
+			rank := suggestionRank(word, params.Query)
+			if rank < agg.bestRank || (rank == agg.bestRank && hit.Score > agg.bestScore) {
+				agg.bestRank = rank
+				agg.bestScore = hit.Score
+				agg.word = word
+			}
+
+			agg.sources = append(agg.sources, models.SearchSuggestionSource{
 				DictionaryID:   item.ID,
 				DictionaryName: displayName(item),
 				Visibility:     visibilityLabel(item.Public),
 				Source:         hit.Source,
 			})
-			if len(suggestions) >= limit {
-				return suggestions, nil
-			}
+			globalIndex++
 		}
+	}
+
+	sort.SliceStable(orderedKeys, func(i, j int) bool {
+		left := aggregated[orderedKeys[i]]
+		right := aggregated[orderedKeys[j]]
+		if left.bestRank != right.bestRank {
+			return left.bestRank < right.bestRank
+		}
+		if left.bestScore != right.bestScore {
+			return left.bestScore > right.bestScore
+		}
+		if len(left.sources) != len(right.sources) {
+			return len(left.sources) > len(right.sources)
+		}
+		return left.firstIndex < right.firstIndex
+	})
+
+	if len(orderedKeys) > limit {
+		orderedKeys = orderedKeys[:limit]
+	}
+
+	suggestions := make([]models.SearchSuggestion, 0, len(orderedKeys))
+	for _, key := range orderedKeys {
+		agg := aggregated[key]
+		sort.SliceStable(agg.sources, func(i, j int) bool {
+			left := agg.sources[i]
+			right := agg.sources[j]
+			if left.Visibility != right.Visibility {
+				return left.Visibility == "public"
+			}
+			return left.DictionaryName < right.DictionaryName
+		})
+		suggestions = append(suggestions, models.SearchSuggestion{
+			Word:    agg.word,
+			Sources: agg.sources,
+		})
 	}
 	return suggestions, nil
 }
@@ -435,7 +531,7 @@ func (s *Service) ensureLoaded(item *ent.Dictionary) (*LoadedDictionary, error) 
 	if ok {
 		return loaded, nil
 	}
-	fresh, _, err := buildLoadedDictionary(item.MdxPath, decodePaths(item.MddPathsJSON))
+	fresh, _, err := s.buildLoadedDictionary(item.MdxPath, decodePaths(item.MddPathsJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +579,7 @@ func (s *Service) Refresh(ctx context.Context, id int, userID int, isAdmin bool)
 		return nil, err
 	}
 	mddPaths := discoverPairedMDDs(item.MdxPath, decodePaths(item.MddPathsJSON))
-	loaded, meta, err := buildLoadedDictionary(item.MdxPath, mddPaths)
+	loaded, meta, err := s.buildLoadedDictionary(item.MdxPath, mddPaths)
 	if err != nil {
 		return &models.MaintenanceReport{
 			Summary: "refresh failed",
@@ -573,14 +669,14 @@ func (s *Service) RefreshLibrary(ctx context.Context, userID int, isAdmin bool) 
 }
 
 type dictionaryMeta struct {
-	Name string
-	Title string
+	Name        string
+	Title       string
 	Description string
-	Slug string
-	EntryCount int
+	Slug        string
+	EntryCount  int
 }
 
-func buildLoadedDictionary(mdxPath string, mddPaths []string) (*LoadedDictionary, dictionaryMeta, error) {
+func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*LoadedDictionary, dictionaryMeta, error) {
 	mdxDict, err := mdx.New(mdxPath)
 	if err != nil {
 		return nil, dictionaryMeta{}, err
@@ -592,14 +688,27 @@ func buildLoadedDictionary(mdxPath string, mddPaths []string) (*LoadedDictionary
 	if err != nil {
 		return nil, dictionaryMeta{}, err
 	}
-	store := mdx.NewMemoryFuzzyIndexStore()
+	fuzzyStore := mdx.NewMemoryFuzzyIndexStore()
 	info := mdxDict.DictionaryInfo()
 	slug := sanitizeSlug(firstNonEmpty(info.Name, mdxDict.Name(), strings.TrimSuffix(filepath.Base(mdxPath), filepath.Ext(mdxPath))))
 	info.Name = slug
-	if err := store.Put(info, entries); err != nil {
+	if err := fuzzyStore.Put(info, entries); err != nil {
 		return nil, dictionaryMeta{}, err
 	}
-	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: store, Entries: entries}
+
+	var prefixStore mdx.IndexStore
+	if s.redisClient != nil {
+		prefixStore = mdx.NewRedisIndexStore(s.redisClient,
+			mdx.WithRedisIndexContext(context.Background()),
+			mdx.WithRedisKeyPrefix(firstNonEmpty(s.redisKeyPrefix, "owl:mdx:index")),
+			mdx.WithRedisPrefixIndexMaxLen(max(s.redisPrefixMaxLen, 1)),
+		)
+		if err := prefixStore.Put(info, entries); err != nil {
+			return nil, dictionaryMeta{}, err
+		}
+	}
+
+	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, Entries: entries, Info: info}
 	for _, mddPath := range discoverPairedMDDs(mdxPath, mddPaths) {
 		mddDict, err := mdx.New(mddPath)
 		if err != nil {
@@ -611,31 +720,38 @@ func buildLoadedDictionary(mdxPath string, mddPaths []string) (*LoadedDictionary
 		loaded.MDDs = append(loaded.MDDs, mddDict)
 	}
 	meta := dictionaryMeta{
-		Name: firstNonEmpty(mdxDict.Name(), filepath.Base(mdxPath)),
-		Title: firstNonEmpty(strings.TrimSpace(mdxDict.Title()), mdxDict.Name()),
+		Name:        firstNonEmpty(mdxDict.Name(), filepath.Base(mdxPath)),
+		Title:       firstNonEmpty(strings.TrimSpace(mdxDict.Title()), mdxDict.Name()),
 		Description: strings.TrimSpace(mdxDict.Description()),
-		Slug: slug,
-		EntryCount: int(info.EntryCount),
+		Slug:        slug,
+		EntryCount:  int(info.EntryCount),
 	}
 	return loaded, meta, nil
 }
 
 func toSummary(item *ent.Dictionary) models.DictionarySummary {
-	fileStatus, missingFiles := assessDictionaryFiles(item.MdxPath, decodePaths(item.MddPathsJSON))
+	mddPaths := decodePaths(item.MddPathsJSON)
+	if mddPaths == nil {
+		mddPaths = []string{}
+	}
+	fileStatus, missingFiles := assessDictionaryFiles(item.MdxPath, mddPaths)
+	if missingFiles == nil {
+		missingFiles = []string{}
+	}
 	summary := models.DictionarySummary{
-		ID: item.ID,
-		Name: item.Name,
-		Title: item.Title,
-		Description: item.Description,
-		EntryCount: item.EntryCount,
-		Enabled: item.Enabled,
-		Public: item.Public,
-		FileStatus: fileStatus,
+		ID:           item.ID,
+		Name:         item.Name,
+		Title:        item.Title,
+		Description:  item.Description,
+		EntryCount:   item.EntryCount,
+		Enabled:      item.Enabled,
+		Public:       item.Public,
+		FileStatus:   fileStatus,
 		MissingFiles: missingFiles,
-		MdxPath: item.MdxPath,
-		MddPaths: decodePaths(item.MddPathsJSON),
-		CreatedAt: item.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: item.UpdatedAt.Format(time.RFC3339),
+		MdxPath:      item.MdxPath,
+		MddPaths:     mddPaths,
+		CreatedAt:    item.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    item.UpdatedAt.Format(time.RFC3339),
 	}
 	if item.Edges.Owner != nil {
 		summary.OwnerID = item.Edges.Owner.ID
@@ -727,6 +843,41 @@ func resultRank(result models.SearchResult, params SearchParams) int {
 	}
 }
 
+func suggestionRank(word string, query string) int {
+	normalizedWord := strings.ToLower(strings.TrimSpace(word))
+	normalizedQuery := strings.ToLower(strings.TrimSpace(query))
+	switch {
+	case normalizedWord == normalizedQuery:
+		return 0
+	case strings.HasPrefix(normalizedWord, normalizedQuery):
+		return 1
+	case strings.Contains(normalizedWord, normalizedQuery):
+		return 2
+	default:
+		return 3
+	}
+}
+
+func prefixScore(query string, word string) float64 {
+	switch suggestionRank(word, query) {
+	case 0:
+		return 1.0
+	case 1:
+		return 0.95
+	case 2:
+		return 0.8
+	default:
+		return 0.5
+	}
+}
+
+func max(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func discoverPairedMDDs(mdxPath string, existing []string) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0, len(existing)+1)
@@ -786,7 +937,7 @@ func assessDictionaryFiles(mdxPath string, mddPaths []string) (string, []string)
 }
 
 type dictionaryPair struct {
-	MDXPath string
+	MDXPath  string
 	MDDPaths []string
 }
 
@@ -833,7 +984,7 @@ func scanDictionaryPairs(root string) ([]dictionaryPair, error) {
 	out := make([]dictionaryPair, 0, len(mdxByBase))
 	for base, mdxPath := range mdxByBase {
 		out = append(out, dictionaryPair{
-			MDXPath: mdxPath,
+			MDXPath:  mdxPath,
 			MDDPaths: discoverPairedMDDs(mdxPath, mddByBase[base]),
 		})
 	}
@@ -841,7 +992,7 @@ func scanDictionaryPairs(root string) ([]dictionaryPair, error) {
 }
 
 func (s *Service) upsertDictionaryFromPair(ctx context.Context, pair dictionaryPair, userID int, isAdmin bool) (*models.DictionarySummary, string, error) {
-	loaded, meta, err := buildLoadedDictionary(pair.MDXPath, pair.MDDPaths)
+	loaded, meta, err := s.buildLoadedDictionary(pair.MDXPath, pair.MDDPaths)
 	if err != nil {
 		return nil, "failed", err
 	}

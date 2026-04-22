@@ -9,17 +9,22 @@ import (
 )
 
 type Config struct {
-	Port          string
-	JWTSecret     string
-	DataDir       string
-	UploadsDir    string
-	LibraryDir    string
-	DatabasePath  string
-	DatabaseDSN   string
-	FrontendOrigin string
-	BootstrapAdmin bool
-	AdminUsername string
-	AdminPassword string
+	Port              string
+	JWTSecret         string
+	DataDir           string
+	UploadsDir        string
+	LibraryDir        string
+	DatabasePath      string
+	DatabaseDSN       string
+	FrontendOrigin    string
+	BootstrapAdmin    bool
+	AdminUsername     string
+	AdminPassword     string
+	RedisAddr         string
+	RedisPassword     string
+	RedisDB           int
+	RedisKeyPrefix    string
+	RedisPrefixMaxLen int
 }
 
 func Load() (Config, error) {
@@ -31,17 +36,22 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("OWL_JWT_SECRET is required")
 	}
 	cfg := Config{
-		Port:           getEnv("OWL_PORT", "8080"),
-		JWTSecret:      jwtSecret,
-		DataDir:        dataDir,
-		UploadsDir:     uploadsDir,
-		LibraryDir:     getEnv("OWL_LIBRARY_DIR", uploadsDir),
-		DatabasePath:   databasePath,
-		DatabaseDSN:    sqliteDSN(databasePath),
-		FrontendOrigin: getEnv("OWL_FRONTEND_ORIGIN", "*"),
-		BootstrapAdmin: getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
-		AdminUsername:  strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
-		AdminPassword:  getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
+		Port:              getEnv("OWL_PORT", "8080"),
+		JWTSecret:         jwtSecret,
+		DataDir:           dataDir,
+		UploadsDir:        uploadsDir,
+		LibraryDir:        getEnv("OWL_LIBRARY_DIR", uploadsDir),
+		DatabasePath:      databasePath,
+		DatabaseDSN:       sqliteDSN(databasePath),
+		FrontendOrigin:    getEnv("OWL_FRONTEND_ORIGIN", "*"),
+		BootstrapAdmin:    getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
+		AdminUsername:     strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
+		AdminPassword:     getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
+		RedisAddr:         strings.TrimSpace(os.Getenv("OWL_REDIS_ADDR")),
+		RedisPassword:     os.Getenv("OWL_REDIS_PASSWORD"),
+		RedisDB:           getEnvInt("OWL_REDIS_DB", 0),
+		RedisKeyPrefix:    getEnv("OWL_REDIS_KEY_PREFIX", "owl:mdx:index"),
+		RedisPrefixMaxLen: getEnvInt("OWL_REDIS_PREFIX_MAX_LEN", 8),
 	}
 	return cfg, nil
 }
@@ -63,6 +73,18 @@ func getEnvBool(key string, fallback bool) bool {
 		return fallback
 	}
 	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func getEnvInt(key string, fallback int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
 	if err != nil {
 		return fallback
 	}

@@ -1084,3 +1084,53 @@ img {
     flex-direction: column;
   }
 }
+
+.autocomplete-group {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--panel-elevated) 65%, transparent);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.autocomplete-group.active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel));
+}
+
+.autocomplete-word-button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.25rem 0.2rem 0;
+  justify-content: flex-start;
+}
+
+.autocomplete-word-button:hover {
+  background: transparent;
+}
+
+.autocomplete-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.autocomplete-source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.42rem 0.68rem;
+  cursor: pointer;
+}
+
+.autocomplete-source-chip:hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--panel));
+}

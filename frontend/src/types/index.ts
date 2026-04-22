@@ -37,12 +37,16 @@ export interface SearchResult {
   source: string
 }
 
-export interface SearchSuggestion {
-  word: string
+export interface SearchSuggestionSource {
   dictionary_id: number
   dictionary_name: string
   visibility: 'public' | 'private'
   source: string
+}
+
+export interface SearchSuggestion {
+  word: string
+  sources: SearchSuggestionSource[]
 }
 
 export interface HealthInfo {

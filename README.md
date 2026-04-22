@@ -23,9 +23,9 @@ Owl is a web dictionary application for **MDX / MDD** files with a Go backend an
 - Search results render MDX HTML and serve paired MDD resources (images/audio/CSS/fonts)
 - Search UI includes:
   - best match highlighting
-  - same-headword cross-dictionary comparison
+  - lightweight source labels per result
   - public/private result grouping
-  - search suggestions with keyboard navigation
+  - backend-aggregated search suggestions with keyboard navigation
 
 ### Dictionary maintenance
 
@@ -110,6 +110,31 @@ Important values:
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
 - `OWL_DB_PATH`
+- `OWL_REDIS_ADDR` (optional)
+- `OWL_REDIS_PASSWORD`
+- `OWL_REDIS_DB`
+- `OWL_REDIS_KEY_PREFIX`
+- `OWL_REDIS_PREFIX_MAX_LEN`
+
+## Optional Redis index cache
+
+Owl can optionally use Redis as the MDX exact/prefix index cache layer.
+
+Current behavior:
+- exact/prefix suggestion indexing can be stored in Redis
+- grouped autocomplete suggestions are aggregated by the backend
+- fuzzy ranking still falls back to the in-memory mdx fuzzy store
+
+Enable it by setting:
+- `OWL_REDIS_ADDR=redis:6379`
+- optional `OWL_REDIS_PASSWORD` / `OWL_REDIS_DB`
+- optional `OWL_REDIS_KEY_PREFIX` / `OWL_REDIS_PREFIX_MAX_LEN`
+
+Docker Compose example with Redis:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.redis.yml up --build
+```
 
 ## Default admin bootstrap
 

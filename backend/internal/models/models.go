@@ -21,31 +21,31 @@ type UserPreferences struct {
 }
 
 type DictionarySummary struct {
-	ID          int      `json:"id"`
-	Name        string   `json:"name"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	EntryCount  int      `json:"entry_count"`
-	Enabled     bool     `json:"enabled"`
-	Public      bool     `json:"public"`
-	FileStatus  string   `json:"file_status"`
+	ID           int      `json:"id"`
+	Name         string   `json:"name"`
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+	EntryCount   int      `json:"entry_count"`
+	Enabled      bool     `json:"enabled"`
+	Public       bool     `json:"public"`
+	FileStatus   string   `json:"file_status"`
 	MissingFiles []string `json:"missing_files"`
-	MdxPath     string   `json:"mdx_path"`
-	MddPaths    []string `json:"mdd_paths"`
-	CreatedAt   string   `json:"created_at"`
-	UpdatedAt   string   `json:"updated_at"`
-	OwnerID     int      `json:"owner_id"`
-	OwnerName   string   `json:"owner_name,omitempty"`
+	MdxPath      string   `json:"mdx_path"`
+	MddPaths     []string `json:"mdd_paths"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
+	OwnerID      int      `json:"owner_id"`
+	OwnerName    string   `json:"owner_name,omitempty"`
 }
 
 type SearchResult struct {
-	DictionaryID   int    `json:"dictionary_id"`
-	DictionaryName string `json:"dictionary_name"`
-	Visibility     string `json:"visibility"`
-	Word           string `json:"word"`
-	HTML           string `json:"html"`
+	DictionaryID   int     `json:"dictionary_id"`
+	DictionaryName string  `json:"dictionary_name"`
+	Visibility     string  `json:"visibility"`
+	Word           string  `json:"word"`
+	HTML           string  `json:"html"`
 	Score          float64 `json:"score"`
-	Source         string `json:"source"`
+	Source         string  `json:"source"`
 }
 
 type MaintenanceItemReport struct {
@@ -66,10 +66,14 @@ type MaintenanceReport struct {
 	Items      []MaintenanceItemReport `json:"items"`
 }
 
-type SearchSuggestion struct {
-	Word           string `json:"word"`
+type SearchSuggestionSource struct {
 	DictionaryID   int    `json:"dictionary_id"`
 	DictionaryName string `json:"dictionary_name"`
 	Visibility     string `json:"visibility"`
 	Source         string `json:"source"`
+}
+
+type SearchSuggestion struct {
+	Word    string                   `json:"word"`
+	Sources []SearchSuggestionSource `json:"sources"`
 }

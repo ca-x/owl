@@ -400,7 +400,7 @@ export default function App() {
             </div>
             <div>
               <strong>Owl</strong>
-              <p>{t.workspaceSubtitle(user.username)}</p>
+              <p>{user.username ? t.workspaceSubtitle(user.username) : t.genericWorkspaceSubtitle}</p>
             </div>
           </div>
 

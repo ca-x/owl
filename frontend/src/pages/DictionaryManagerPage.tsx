@@ -148,7 +148,10 @@ export function DictionaryManagerPage({
       ) : null}
 
       <div className="dictionary-grid">
-        {dictionaries.map((item) => (
+        {dictionaries.map((item) => {
+          const mddPaths = item.mdd_paths ?? []
+          const missingFiles = item.missing_files ?? []
+          return (
           <article key={item.id} id={`dictionary-card-${item.id}`} className="card dictionary-card">
             <div className="dictionary-card-head">
               <div>
@@ -169,11 +172,11 @@ export function DictionaryManagerPage({
               </span>
             </div>
 
-            {item.missing_files.length > 0 ? (
+            {missingFiles.length > 0 ? (
               <div className="warning-banner">
                 <strong>{t.missingFiles}</strong>
                 <ul className="missing-file-list">
-                  {item.missing_files.map((path) => (
+                  {missingFiles.map((path) => (
                     <li key={path}>{path}</li>
                   ))}
                 </ul>
@@ -187,7 +190,7 @@ export function DictionaryManagerPage({
               </div>
               <div>
                 <dt>{t.mddFiles}</dt>
-                <dd>{item.mdd_paths.length}</dd>
+                <dd>{mddPaths.length}</dd>
               </div>
               <div>
                 <dt>{t.uploadedAt}</dt>
@@ -214,7 +217,7 @@ export function DictionaryManagerPage({
               </button>
             </div>
           </article>
-        ))}
+        )})}
 
         {dictionaries.length === 0 ? (
           <div className="card empty-state">
