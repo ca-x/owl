@@ -86,50 +86,49 @@ The dev server still proxies `/api` to the backend.
 
 ## Docker deployment
 
+This repository now provides exactly two Docker Compose files:
+- `docker-compose.yml` → no Redis, simplest deployment
+- `docker-compose.redis.yml` → Redis + RediSearch enabled
+
+### Option 1: no Redis
+
 ```bash
 cp .env.example .env
-docker compose pull
-docker compose up -d
+# edit OWL_JWT_SECRET / admin credentials first
+docker compose -f docker-compose.yml pull
+docker compose -f docker-compose.yml up -d
 ```
 
 Default address:
 - Owl app + API: `http://localhost:8080`
 
-The frontend is served by the Go backend from embedded assets.
-Persistent data is stored in the Docker volume `owl_data`.
-The compose files in this repository now use the published image `czyt/owl:latest` directly.
-
-## Deployment guide
-
-### Option 1: minimal single-service deployment
-
-Use this when you want the smallest setup and are fine with SQLite + in-memory fuzzy fallback.
-
-```bash
-cp .env.example .env
-# edit OWL_JWT_SECRET / admin credentials first
-docker compose pull
-docker compose up -d
-```
-
 This starts:
 - Owl on `http://localhost:8080`
 - SQLite inside the persistent `owl_data` volume
 - uploaded dictionaries stored under `/app/data/uploads`
+- in-memory fuzzy search / no Redis dependency
 
-### Option 2: Redis + RediSearch deployment
+### Option 2: enable Redis + RediSearch
 
 Use this when you want Redis-backed exact/prefix indexes and RediSearch fuzzy lookup.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml pull
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up -d
+cp .env.example .env
+# edit OWL_JWT_SECRET / admin credentials first
+docker compose -f docker-compose.redis.yml pull
+docker compose -f docker-compose.redis.yml up -d
 ```
 
 Recommended behavior in this mode:
 - exact/prefix index: Redis
 - fuzzy search: RediSearch
 - fallback: automatic fallback to in-memory fuzzy search if the module is unavailable
+
+The frontend is served by the Go backend from embedded assets.
+Persistent data is stored in the Docker volumes `owl_data` and, when enabled, `owl_redis`.
+The compose files in this repository use the published image `czyt/owl:latest` directly.
+
+## Deployment guide
 
 ### Mounting an existing dictionary directory
 
@@ -191,18 +190,27 @@ Important fields:
 
 ### Upgrade notes
 
-When upgrading Owl:
+When upgrading Owl, use the same compose file you started with.
+
+No Redis:
 
 ```bash
 git pull
-docker compose down
-docker compose pull
-docker compose up -d
+docker compose -f docker-compose.yml down
+docker compose -f docker-compose.yml pull
+docker compose -f docker-compose.yml up -d
 ```
 
-If you changed compose overlays, use the same overlay set during restart.
+With Redis:
 
-SQLite data and uploaded dictionaries remain in Docker volumes unless you remove them manually.
+```bash
+git pull
+docker compose -f docker-compose.redis.yml down
+docker compose -f docker-compose.redis.yml pull
+docker compose -f docker-compose.redis.yml up -d
+```
+
+SQLite data, uploaded dictionaries, and Redis data remain in Docker volumes unless you remove them manually.
 
 ## Environment variables
 
@@ -228,7 +236,7 @@ Important values:
 Owl can optionally use Redis as the MDX exact/prefix index cache layer.
 
 Current behavior:
-- when Redis is configured, Owl first tries RediSearch-based fuzzy lookup (scheme B)
+- when Redis is configured, Owl first tries RediSearch-based fuzzy lookup
 - exact/prefix suggestion indexing is also stored in Redis
 - grouped autocomplete suggestions are aggregated by the backend
 - if RediSearch is unavailable, Owl automatically falls back to the in-memory mdx fuzzy store
@@ -240,18 +248,11 @@ Enable it by setting:
 - `OWL_REDIS_SEARCH_ENABLED=true`
 - optional `OWL_REDIS_SEARCH_KEY_PREFIX`
 
-Docker Compose example with Redis + RediSearch:
+To use the bundled Redis deployment:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.redis.yml pull
-docker compose -f docker-compose.yml -f docker-compose.redis.yml up -d
-```
-
-Redis Stack example (recommended when you want the module bundle explicitly):
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml pull
-docker compose -f docker-compose.yml -f docker-compose.redis-stack.yml up -d
+docker compose -f docker-compose.redis.yml pull
+docker compose -f docker-compose.redis.yml up -d
 ```
 
 Debug endpoints:

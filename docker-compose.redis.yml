@@ -1,18 +1,43 @@
 services:
   redis:
-    image: redislabs/redisearch:2.10.20
+    image: redis/redis-stack-server:7.4.0-v8
     container_name: owl-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - owl_redis:/data
 
   owl:
+    image: czyt/owl:latest
+    container_name: owl
+    restart: unless-stopped
+    pull_policy: always
+    env_file:
+      - .env
     depends_on:
       - redis
     environment:
+      OWL_PORT: ${OWL_PORT:-8080}
+      OWL_JWT_SECRET: ${OWL_JWT_SECRET:-change-me-in-production}
+      OWL_BOOTSTRAP_ADMIN: ${OWL_BOOTSTRAP_ADMIN:-true}
+      OWL_ADMIN_USERNAME: ${OWL_ADMIN_USERNAME:-admin}
+      OWL_ADMIN_PASSWORD: ${OWL_ADMIN_PASSWORD:-admin123456}
+      OWL_DATA_DIR: /app/data
+      OWL_UPLOADS_DIR: /app/data/uploads
+      OWL_LIBRARY_DIR: ${OWL_LIBRARY_DIR:-/app/data/uploads}
+      OWL_DB_PATH: /app/data/data.db
+      OWL_FRONTEND_ORIGIN: '*'
       OWL_REDIS_ADDR: redis:6379
+      OWL_REDIS_PASSWORD: ${OWL_REDIS_PASSWORD:-}
+      OWL_REDIS_DB: ${OWL_REDIS_DB:-0}
+      OWL_REDIS_KEY_PREFIX: ${OWL_REDIS_KEY_PREFIX:-owl:mdx:index}
+      OWL_REDIS_PREFIX_MAX_LEN: ${OWL_REDIS_PREFIX_MAX_LEN:-8}
       OWL_REDIS_SEARCH_ENABLED: 'true'
+      OWL_REDIS_SEARCH_KEY_PREFIX: ${OWL_REDIS_SEARCH_KEY_PREFIX:-owl:mdx:search}
+    ports:
+      - '${OWL_PORT:-8080}:8080'
+    volumes:
+      - owl_data:/app/data
 
 volumes:
+  owl_data:
   owl_redis:
