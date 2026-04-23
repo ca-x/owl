@@ -87,6 +87,23 @@ func (s *redisSearchStore) Put(info mdx.DictionaryInfo, entries []mdx.IndexEntry
 	return err
 }
 
+func (s *redisSearchStore) DeleteDictionary(_ string) error {
+	if s == nil || s.client == nil {
+		return nil
+	}
+	oldKeys, err := s.client.SMembers(s.ctx, s.keysSet).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return err
+	}
+	toDelete := make([]string, 0, len(oldKeys)+1)
+	toDelete = append(toDelete, s.keysSet)
+	toDelete = append(toDelete, oldKeys...)
+	if len(toDelete) == 0 {
+		return nil
+	}
+	return s.client.Del(s.ctx, toDelete...).Err()
+}
+
 func (s *redisSearchStore) Search(_ string, query string, limit int) ([]mdx.SearchHit, error) {
 	if s == nil || s.client == nil {
 		return nil, mdx.ErrIndexMiss

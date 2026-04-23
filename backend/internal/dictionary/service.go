@@ -46,6 +46,7 @@ type LoadedDictionary struct {
 	MDDs              []*mdx.Mdict
 	FuzzyStore        mdx.FuzzyIndexStore
 	PrefixStore       mdx.IndexStore
+	ManagedIndexStore mdx.ManagedIndexStore
 	Entries           []mdx.IndexEntry
 	Info              mdx.DictionaryInfo
 	RediSearchEnabled bool
@@ -112,6 +113,19 @@ func (s *Service) SetPublic(ctx context.Context, id int, public bool, userID int
 		return nil, err
 	}
 	return ptrSummary(updated), nil
+}
+
+func (s *Service) WarmEnabledDictionaries(ctx context.Context) error {
+	dicts, err := s.client.Dictionary.Query().Where(entdict.Enabled(true)).Order(entdict.ByTitle()).All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, item := range dicts {
+		if _, err := s.ensureLoaded(item); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) ListPublic(ctx context.Context) ([]models.DictionarySummary, error) {
@@ -775,29 +789,38 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 	}
 
 	var prefixStore mdx.IndexStore
+	var managedStore mdx.ManagedIndexStore
 	fuzzyStore := mdx.FuzzyIndexStore(fallbackFuzzyStore)
 	rediSearchEnabled := false
 	if s.redisClient != nil {
-		prefixStore = mdx.NewRedisIndexStore(s.redisClient,
+		redisPrefixStore := mdx.NewRedisIndexStore(s.redisClient,
 			mdx.WithRedisIndexContext(context.Background()),
 			mdx.WithRedisKeyPrefix(firstNonEmpty(s.redisKeyPrefix, "owl:mdx:index")),
 			mdx.WithRedisPrefixIndexMaxLen(max(s.redisPrefixMaxLen, 1)),
 		)
+		var searchStore *redisSearchStore
+		if s.redisSearchEnabled {
+			searchStore = newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), info.Name)
+		}
+		managed := newManagedDictionaryIndexStore(redisPrefixStore, searchStore)
+		if _, err := mdx.EnsureDictionaryIndex(mdxPath, managed, mdx.WithReuseIfUnchanged(true)); err != nil {
+			return nil, dictionaryMeta{}, err
+		}
+		prefixStore = redisPrefixStore
+		managedStore = managed
+		fuzzyStore = fallbackFuzzyStore
+		if searchStore != nil {
+			fuzzyStore = searchStore
+			rediSearchEnabled = true
+		}
+	} else {
+		prefixStore = mdx.NewMemoryIndexStore()
 		if err := prefixStore.Put(info, entries); err != nil {
 			return nil, dictionaryMeta{}, err
 		}
-		if s.redisSearchEnabled {
-			searchStore := newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), info.Name)
-			if err := searchStore.Put(info, entries); err == nil {
-				fuzzyStore = searchStore
-				rediSearchEnabled = true
-			} else if !isRediSearchUnavailable(err) {
-				return nil, dictionaryMeta{}, err
-			}
-		}
 	}
 
-	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, Entries: entries, Info: info, RediSearchEnabled: rediSearchEnabled}
+	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, ManagedIndexStore: managedStore, Entries: entries, Info: info, RediSearchEnabled: rediSearchEnabled}
 	for _, mddPath := range discoverPairedMDDs(mdxPath, mddPaths) {
 		mddDict, err := mdx.New(mddPath)
 		if err != nil {

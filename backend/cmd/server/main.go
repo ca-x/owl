@@ -73,6 +73,12 @@ func main() {
 	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin, cfg.AllowRegister)
 
 	go func() {
+		if err := dictSvc.WarmEnabledDictionaries(context.Background()); err != nil {
+			log.Printf("warm enabled dictionaries: %v", err)
+		}
+	}()
+
+	go func() {
 		if err := server.Start(":" + cfg.Port); err != nil {
 			log.Printf("server stopped: %v", err)
 		}
