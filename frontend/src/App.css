@@ -1017,9 +1017,20 @@ img {
   --muted: #8A8680;
   --border: rgba(46, 50, 56, 0.82);
   --border-strong: rgba(83, 74, 183, 0.48);
-  --accent: #8f85ff;
-  --accent-strong: #afa9ec;
+  --accent: #857dd9;
+  --accent-strong: #c2bdd3;
   --accent-soft: rgba(83, 74, 183, 0.18);
+}
+
+[data-theme='dark'] .eyebrow {
+  color: color-mix(in srgb, var(--text) 86%, var(--muted));
+}
+
+[data-theme='dark'] .page-header h2,
+[data-theme='dark'] .lookup-hero-copy h2,
+[data-theme='dark'] .utility-card-head h3,
+[data-theme='dark'] .hero-result-head h3 {
+  color: color-mix(in srgb, var(--text) 98%, var(--muted));
 }
 
 [data-theme='paper'] {

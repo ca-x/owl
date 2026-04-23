@@ -21,7 +21,28 @@ type ControlButtonProps = {
 
 const TOKEN_KEY = 'owl-token'
 const RECENT_SEARCHES_KEY = 'owl-recent-searches'
+const PREFERENCES_KEY = 'owl-preferences'
 const LOGO_SRC = '/android-chrome-192x192.png'
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+  language: 'zh-CN',
+  theme: 'system',
+  font_mode: 'sans',
+  display_name: '',
+  avatar_url: '',
+  custom_font_name: '',
+  custom_font_family: '',
+}
+
+function readStoredPreferences(): UserPreferences {
+  try {
+    const raw = localStorage.getItem(PREFERENCES_KEY)
+    if (!raw) return { ...DEFAULT_PREFERENCES }
+    return { ...DEFAULT_PREFERENCES, ...(JSON.parse(raw) as Partial<UserPreferences>) }
+  } catch {
+    return { ...DEFAULT_PREFERENCES }
+  }
+}
 
 function ControlButton({ active = false, icon, label, onClick }: ControlButtonProps) {
   return (
@@ -63,15 +84,7 @@ export default function App() {
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    language: 'zh-CN',
-    theme: 'system',
-    font_mode: 'sans',
-    display_name: '',
-    avatar_url: '',
-    custom_font_name: '',
-    custom_font_family: '',
-  })
+  const [preferences, setPreferences] = useState<UserPreferences>(() => readStoredPreferences())
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(RECENT_SEARCHES_KEY)
@@ -82,6 +95,14 @@ export default function App() {
   })
 
   const t = messages[preferences.language]
+
+  useEffect(() => {
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify({
+      language: preferences.language,
+      theme: preferences.theme,
+      font_mode: preferences.font_mode,
+    }))
+  }, [preferences.language, preferences.theme, preferences.font_mode])
 
   useEffect(() => {
     const resolvedTheme = preferences.theme === 'system'
@@ -236,7 +257,12 @@ export default function App() {
 
   async function handleSearch(query: string, dictionaryId?: number) {
     const normalizedQuery = query.trim()
-    if (!normalizedQuery) return
+    if (!normalizedQuery) {
+      setResults([])
+      setSearchError('')
+      setSearching(false)
+      return
+    }
     setSearching(true)
     setSearchError('')
     try {

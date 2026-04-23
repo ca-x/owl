@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 type DictionaryEntryHtmlProps = {
   html: string
   className?: string
-  onLookup?: (query: string) => Promise<void> | void
+  onLookup?: (query: string, dictionaryId?: number) => Promise<void> | void
 }
 
 let activeAudio: HTMLAudioElement | null = null
@@ -26,6 +26,23 @@ export function DictionaryEntryHtml({ html, className, onLookup }: DictionaryEnt
         if (!href) return
 
         const lower = href.toLowerCase()
+
+        try {
+          const url = new URL(anchor.href, window.location.href)
+          if (url.origin === window.location.origin && url.pathname === '/search') {
+            const nextQuery = url.searchParams.get('q')?.trim() ?? ''
+            const rawDict = url.searchParams.get('dict')?.trim() ?? ''
+            const nextDictionaryId = rawDict !== '' && /^\d+$/.test(rawDict) ? Number(rawDict) : undefined
+            if (nextQuery) {
+              event.preventDefault()
+              if (!onLookup) return
+              await onLookup(nextQuery, nextDictionaryId)
+              return
+            }
+          }
+        } catch {
+          // keep default link handling when href cannot be parsed as a URL
+        }
 
         if (lower.startsWith('entry://') || lower.startsWith('mdxentry://') || lower.startsWith('dict://')) {
           event.preventDefault()

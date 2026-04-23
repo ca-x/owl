@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { DictionaryEntryHtml } from '../components/DictionaryEntryHtml'
 import { useI18n } from '../i18n'
@@ -17,14 +17,45 @@ interface SearchPageProps {
   onSearch: (query: string, dictionaryId?: number) => Promise<void>
 }
 
+function updateSearchURL(query: string, dictionaryId?: number, mode: 'replace' | 'push' = 'replace') {
+  const params = new URLSearchParams()
+  const normalizedQuery = query.trim()
+  if (normalizedQuery) {
+    params.set('q', normalizedQuery)
+  }
+  if (dictionaryId !== undefined) {
+    params.set('dict', String(dictionaryId))
+  }
+  const next = params.toString()
+  const target = next ? `/search?${next}` : '/search'
+  if (`${window.location.pathname}${window.location.search}` === target) {
+    return
+  }
+  if (mode === 'push') {
+    window.history.pushState(null, '', target)
+    return
+  }
+  window.history.replaceState(null, '', target)
+}
+
+function readSearchURLState() {
+  const params = new URLSearchParams(window.location.search)
+  const query = params.get('q')?.trim() ?? ''
+  const rawDict = params.get('dict')?.trim() ?? ''
+  const dictionaryId = rawDict !== '' && /^\d+$/.test(rawDict) ? Number(rawDict) : undefined
+  return { query, dictionaryId }
+}
+
 export function SearchPage({ dictionaries, loading, searching, results, error, isGuest, token, recentSearches, onSearch }: SearchPageProps) {
   const { t } = useI18n()
-  const [query, setQuery] = useState('')
-  const [dictionaryId, setDictionaryId] = useState<number | undefined>()
+  const initialURLState = useMemo(() => readSearchURLState(), [])
+  const hydratedFromURL = useRef(false)
+  const [query, setQuery] = useState(initialURLState.query)
+  const [dictionaryId, setDictionaryId] = useState<number | undefined>(initialURLState.dictionaryId)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [activeSuggestion, setActiveSuggestion] = useState<number>(-1)
-  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false)
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(initialURLState.query.length > 0)
 
   const enabledDictionaries = useMemo(() => dictionaries.filter((item) => item.enabled), [dictionaries])
   const visibleSuggestions = useMemo(
@@ -48,14 +79,38 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   async function runQuickSearch(nextQuery: string, nextDictionaryId?: number) {
     const normalizedQuery = nextQuery.trim()
     if (!normalizedQuery) return
+    const resolvedDictionaryId = nextDictionaryId ?? dictionaryId
     setQuery(normalizedQuery)
     setSuggestionsDismissed(true)
     setActiveSuggestion(-1)
-    if (nextDictionaryId !== undefined) {
-      setDictionaryId(nextDictionaryId)
-    }
-    await onSearch(normalizedQuery, nextDictionaryId ?? dictionaryId)
+    setDictionaryId(resolvedDictionaryId)
+    updateSearchURL(normalizedQuery, resolvedDictionaryId, 'push')
+    await onSearch(normalizedQuery, resolvedDictionaryId)
   }
+
+  useEffect(() => {
+    if (hydratedFromURL.current) return
+    hydratedFromURL.current = true
+
+    const applyURLState = (state: ReturnType<typeof readSearchURLState>) => {
+      setQuery(state.query)
+      setDictionaryId(state.dictionaryId)
+      setSuggestionsDismissed(state.query.length > 0)
+      setActiveSuggestion(-1)
+      void onSearch(state.query, state.dictionaryId)
+    }
+
+    applyURLState(initialURLState)
+
+    const handlePopState = () => {
+      applyURLState(readSearchURLState())
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [initialURLState, onSearch])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -162,6 +217,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                       <button
                         className="autocomplete-item autocomplete-word-button"
                         type="button"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => void runQuickSearch(item.word)}
                       >
                         <div className="suggestion-main">
@@ -175,6 +231,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                             key={`${item.word}-${source.dictionary_id}`}
                             className="autocomplete-source-chip"
                             type="button"
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={() => void runQuickSearch(item.word, source.dictionary_id)}
                           >
                             <span>{source.dictionary_name}</span>
