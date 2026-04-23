@@ -24,10 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
-		log.Fatal(err)
-	}
-	if err := os.MkdirAll(cfg.UploadsDir, 0o755); err != nil {
+	if err := config.EnsureRuntimeDirs(cfg); err != nil {
 		log.Fatal(err)
 	}
 	client, err := ent.Open("sqlite3", cfg.DatabaseDSN)

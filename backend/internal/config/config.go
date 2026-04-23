@@ -70,6 +70,18 @@ func sqliteDSN(path string) string {
 	return fmt.Sprintf("file:%s?cache=shared&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)", path)
 }
 
+func EnsureRuntimeDirs(cfg Config) error {
+	for _, dir := range []string{cfg.DataDir, cfg.UploadsDir, cfg.LibraryDir} {
+		if strings.TrimSpace(dir) == "" {
+			continue
+		}
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create runtime dir %s: %w", dir, err)
+		}
+	}
+	return nil
+}
+
 func getEnv(key, fallback string) string {
 	if value := os.Getenv(key); strings.TrimSpace(value) != "" {
 		return value
