@@ -20,6 +20,18 @@ func (f DictionaryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictionaryMutation", m)
 }
 
+// The FontFunc type is an adapter to allow the use of ordinary
+// function as Font mutator.
+type FontFunc func(context.Context, *ent.FontMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FontFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FontMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FontMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)

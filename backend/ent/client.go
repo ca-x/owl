@@ -12,6 +12,7 @@ import (
 	"owl/backend/ent/migrate"
 
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/font"
 	"owl/backend/ent/user"
 
 	"entgo.io/ent"
@@ -27,6 +28,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Dictionary is the client for interacting with the Dictionary builders.
 	Dictionary *DictionaryClient
+	// Font is the client for interacting with the Font builders.
+	Font *FontClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -41,6 +44,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Dictionary = NewDictionaryClient(c.config)
+	c.Font = NewFontClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -135,6 +139,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:        ctx,
 		config:     cfg,
 		Dictionary: NewDictionaryClient(cfg),
+		Font:       NewFontClient(cfg),
 		User:       NewUserClient(cfg),
 	}, nil
 }
@@ -156,6 +161,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:        ctx,
 		config:     cfg,
 		Dictionary: NewDictionaryClient(cfg),
+		Font:       NewFontClient(cfg),
 		User:       NewUserClient(cfg),
 	}, nil
 }
@@ -186,6 +192,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Dictionary.Use(hooks...)
+	c.Font.Use(hooks...)
 	c.User.Use(hooks...)
 }
 
@@ -193,6 +200,7 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Dictionary.Intercept(interceptors...)
+	c.Font.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
 
@@ -201,6 +209,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *DictionaryMutation:
 		return c.Dictionary.mutate(ctx, m)
+	case *FontMutation:
+		return c.Font.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -357,6 +367,155 @@ func (c *DictionaryClient) mutate(ctx context.Context, m *DictionaryMutation) (V
 	}
 }
 
+// FontClient is a client for the Font schema.
+type FontClient struct {
+	config
+}
+
+// NewFontClient returns a client for the Font from the given config.
+func NewFontClient(c config) *FontClient {
+	return &FontClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `font.Hooks(f(g(h())))`.
+func (c *FontClient) Use(hooks ...Hook) {
+	c.hooks.Font = append(c.hooks.Font, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `font.Intercept(f(g(h())))`.
+func (c *FontClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Font = append(c.inters.Font, interceptors...)
+}
+
+// Create returns a builder for creating a Font entity.
+func (c *FontClient) Create() *FontCreate {
+	mutation := newFontMutation(c.config, OpCreate)
+	return &FontCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Font entities.
+func (c *FontClient) CreateBulk(builders ...*FontCreate) *FontCreateBulk {
+	return &FontCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FontClient) MapCreateBulk(slice any, setFunc func(*FontCreate, int)) *FontCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FontCreateBulk{err: fmt.Errorf("calling to FontClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FontCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FontCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Font.
+func (c *FontClient) Update() *FontUpdate {
+	mutation := newFontMutation(c.config, OpUpdate)
+	return &FontUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FontClient) UpdateOne(_m *Font) *FontUpdateOne {
+	mutation := newFontMutation(c.config, OpUpdateOne, withFont(_m))
+	return &FontUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FontClient) UpdateOneID(id int) *FontUpdateOne {
+	mutation := newFontMutation(c.config, OpUpdateOne, withFontID(id))
+	return &FontUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Font.
+func (c *FontClient) Delete() *FontDelete {
+	mutation := newFontMutation(c.config, OpDelete)
+	return &FontDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FontClient) DeleteOne(_m *Font) *FontDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FontClient) DeleteOneID(id int) *FontDeleteOne {
+	builder := c.Delete().Where(font.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FontDeleteOne{builder}
+}
+
+// Query returns a query builder for Font.
+func (c *FontClient) Query() *FontQuery {
+	return &FontQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFont},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Font entity by its id.
+func (c *FontClient) Get(ctx context.Context, id int) (*Font, error) {
+	return c.Query().Where(font.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FontClient) GetX(ctx context.Context, id int) *Font {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySelectedBy queries the selected_by edge of a Font.
+func (c *FontClient) QuerySelectedBy(_m *Font) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(font.Table, font.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, font.SelectedByTable, font.SelectedByColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FontClient) Hooks() []Hook {
+	return c.hooks.Font
+}
+
+// Interceptors returns the client interceptors.
+func (c *FontClient) Interceptors() []Interceptor {
+	return c.inters.Font
+}
+
+func (c *FontClient) mutate(ctx context.Context, m *FontMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FontCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FontUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FontUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FontDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Font mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -481,6 +640,22 @@ func (c *UserClient) QueryDictionaries(_m *User) *DictionaryQuery {
 	return query
 }
 
+// QuerySelectedFont queries the selected_font edge of a User.
+func (c *UserClient) QuerySelectedFont(_m *User) *FontQuery {
+	query := (&FontClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(font.Table, font.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, user.SelectedFontTable, user.SelectedFontColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -509,9 +684,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Dictionary, User []ent.Hook
+		Dictionary, Font, User []ent.Hook
 	}
 	inters struct {
-		Dictionary, User []ent.Interceptor
+		Dictionary, Font, User []ent.Interceptor
 	}
 )

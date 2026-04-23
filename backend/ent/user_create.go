@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/font"
 	"owl/backend/ent/user"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -23,6 +24,62 @@ type UserCreate struct {
 // SetUsername sets the "username" field.
 func (_c *UserCreate) SetUsername(v string) *UserCreate {
 	_c.mutation.SetUsername(v)
+	return _c
+}
+
+// SetDisplayName sets the "display_name" field.
+func (_c *UserCreate) SetDisplayName(v string) *UserCreate {
+	_c.mutation.SetDisplayName(v)
+	return _c
+}
+
+// SetNillableDisplayName sets the "display_name" field if the given value is not nil.
+func (_c *UserCreate) SetNillableDisplayName(v *string) *UserCreate {
+	if v != nil {
+		_c.SetDisplayName(*v)
+	}
+	return _c
+}
+
+// SetAvatarName sets the "avatar_name" field.
+func (_c *UserCreate) SetAvatarName(v string) *UserCreate {
+	_c.mutation.SetAvatarName(v)
+	return _c
+}
+
+// SetNillableAvatarName sets the "avatar_name" field if the given value is not nil.
+func (_c *UserCreate) SetNillableAvatarName(v *string) *UserCreate {
+	if v != nil {
+		_c.SetAvatarName(*v)
+	}
+	return _c
+}
+
+// SetAvatarPath sets the "avatar_path" field.
+func (_c *UserCreate) SetAvatarPath(v string) *UserCreate {
+	_c.mutation.SetAvatarPath(v)
+	return _c
+}
+
+// SetNillableAvatarPath sets the "avatar_path" field if the given value is not nil.
+func (_c *UserCreate) SetNillableAvatarPath(v *string) *UserCreate {
+	if v != nil {
+		_c.SetAvatarPath(*v)
+	}
+	return _c
+}
+
+// SetAvatarMime sets the "avatar_mime" field.
+func (_c *UserCreate) SetAvatarMime(v string) *UserCreate {
+	_c.mutation.SetAvatarMime(v)
+	return _c
+}
+
+// SetNillableAvatarMime sets the "avatar_mime" field if the given value is not nil.
+func (_c *UserCreate) SetNillableAvatarMime(v *string) *UserCreate {
+	if v != nil {
+		_c.SetAvatarMime(*v)
+	}
 	return _c
 }
 
@@ -88,48 +145,6 @@ func (_c *UserCreate) SetNillableFontMode(v *string) *UserCreate {
 	return _c
 }
 
-// SetCustomFontName sets the "custom_font_name" field.
-func (_c *UserCreate) SetCustomFontName(v string) *UserCreate {
-	_c.mutation.SetCustomFontName(v)
-	return _c
-}
-
-// SetNillableCustomFontName sets the "custom_font_name" field if the given value is not nil.
-func (_c *UserCreate) SetNillableCustomFontName(v *string) *UserCreate {
-	if v != nil {
-		_c.SetCustomFontName(*v)
-	}
-	return _c
-}
-
-// SetCustomFontPath sets the "custom_font_path" field.
-func (_c *UserCreate) SetCustomFontPath(v string) *UserCreate {
-	_c.mutation.SetCustomFontPath(v)
-	return _c
-}
-
-// SetNillableCustomFontPath sets the "custom_font_path" field if the given value is not nil.
-func (_c *UserCreate) SetNillableCustomFontPath(v *string) *UserCreate {
-	if v != nil {
-		_c.SetCustomFontPath(*v)
-	}
-	return _c
-}
-
-// SetCustomFontFamily sets the "custom_font_family" field.
-func (_c *UserCreate) SetCustomFontFamily(v string) *UserCreate {
-	_c.mutation.SetCustomFontFamily(v)
-	return _c
-}
-
-// SetNillableCustomFontFamily sets the "custom_font_family" field if the given value is not nil.
-func (_c *UserCreate) SetNillableCustomFontFamily(v *string) *UserCreate {
-	if v != nil {
-		_c.SetCustomFontFamily(*v)
-	}
-	return _c
-}
-
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_c *UserCreate) AddDictionaryIDs(ids ...int) *UserCreate {
 	_c.mutation.AddDictionaryIDs(ids...)
@@ -143,6 +158,25 @@ func (_c *UserCreate) AddDictionaries(v ...*Dictionary) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddDictionaryIDs(ids...)
+}
+
+// SetSelectedFontID sets the "selected_font" edge to the Font entity by ID.
+func (_c *UserCreate) SetSelectedFontID(id int) *UserCreate {
+	_c.mutation.SetSelectedFontID(id)
+	return _c
+}
+
+// SetNillableSelectedFontID sets the "selected_font" edge to the Font entity by ID if the given value is not nil.
+func (_c *UserCreate) SetNillableSelectedFontID(id *int) *UserCreate {
+	if id != nil {
+		_c = _c.SetSelectedFontID(*id)
+	}
+	return _c
+}
+
+// SetSelectedFont sets the "selected_font" edge to the Font entity.
+func (_c *UserCreate) SetSelectedFont(v *Font) *UserCreate {
+	return _c.SetSelectedFontID(v.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -180,6 +214,22 @@ func (_c *UserCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *UserCreate) defaults() {
+	if _, ok := _c.mutation.DisplayName(); !ok {
+		v := user.DefaultDisplayName
+		_c.mutation.SetDisplayName(v)
+	}
+	if _, ok := _c.mutation.AvatarName(); !ok {
+		v := user.DefaultAvatarName
+		_c.mutation.SetAvatarName(v)
+	}
+	if _, ok := _c.mutation.AvatarPath(); !ok {
+		v := user.DefaultAvatarPath
+		_c.mutation.SetAvatarPath(v)
+	}
+	if _, ok := _c.mutation.AvatarMime(); !ok {
+		v := user.DefaultAvatarMime
+		_c.mutation.SetAvatarMime(v)
+	}
 	if _, ok := _c.mutation.IsAdmin(); !ok {
 		v := user.DefaultIsAdmin
 		_c.mutation.SetIsAdmin(v)
@@ -196,18 +246,6 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultFontMode
 		_c.mutation.SetFontMode(v)
 	}
-	if _, ok := _c.mutation.CustomFontName(); !ok {
-		v := user.DefaultCustomFontName
-		_c.mutation.SetCustomFontName(v)
-	}
-	if _, ok := _c.mutation.CustomFontPath(); !ok {
-		v := user.DefaultCustomFontPath
-		_c.mutation.SetCustomFontPath(v)
-	}
-	if _, ok := _c.mutation.CustomFontFamily(); !ok {
-		v := user.DefaultCustomFontFamily
-		_c.mutation.SetCustomFontFamily(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -219,6 +257,18 @@ func (_c *UserCreate) check() error {
 		if err := user.UsernameValidator(v); err != nil {
 			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.DisplayName(); !ok {
+		return &ValidationError{Name: "display_name", err: errors.New(`ent: missing required field "User.display_name"`)}
+	}
+	if _, ok := _c.mutation.AvatarName(); !ok {
+		return &ValidationError{Name: "avatar_name", err: errors.New(`ent: missing required field "User.avatar_name"`)}
+	}
+	if _, ok := _c.mutation.AvatarPath(); !ok {
+		return &ValidationError{Name: "avatar_path", err: errors.New(`ent: missing required field "User.avatar_path"`)}
+	}
+	if _, ok := _c.mutation.AvatarMime(); !ok {
+		return &ValidationError{Name: "avatar_mime", err: errors.New(`ent: missing required field "User.avatar_mime"`)}
 	}
 	if _, ok := _c.mutation.PasswordHash(); !ok {
 		return &ValidationError{Name: "password_hash", err: errors.New(`ent: missing required field "User.password_hash"`)}
@@ -239,15 +289,6 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.FontMode(); !ok {
 		return &ValidationError{Name: "font_mode", err: errors.New(`ent: missing required field "User.font_mode"`)}
-	}
-	if _, ok := _c.mutation.CustomFontName(); !ok {
-		return &ValidationError{Name: "custom_font_name", err: errors.New(`ent: missing required field "User.custom_font_name"`)}
-	}
-	if _, ok := _c.mutation.CustomFontPath(); !ok {
-		return &ValidationError{Name: "custom_font_path", err: errors.New(`ent: missing required field "User.custom_font_path"`)}
-	}
-	if _, ok := _c.mutation.CustomFontFamily(); !ok {
-		return &ValidationError{Name: "custom_font_family", err: errors.New(`ent: missing required field "User.custom_font_family"`)}
 	}
 	return nil
 }
@@ -279,6 +320,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
 		_node.Username = value
 	}
+	if value, ok := _c.mutation.DisplayName(); ok {
+		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
+		_node.DisplayName = value
+	}
+	if value, ok := _c.mutation.AvatarName(); ok {
+		_spec.SetField(user.FieldAvatarName, field.TypeString, value)
+		_node.AvatarName = value
+	}
+	if value, ok := _c.mutation.AvatarPath(); ok {
+		_spec.SetField(user.FieldAvatarPath, field.TypeString, value)
+		_node.AvatarPath = value
+	}
+	if value, ok := _c.mutation.AvatarMime(); ok {
+		_spec.SetField(user.FieldAvatarMime, field.TypeString, value)
+		_node.AvatarMime = value
+	}
 	if value, ok := _c.mutation.PasswordHash(); ok {
 		_spec.SetField(user.FieldPasswordHash, field.TypeString, value)
 		_node.PasswordHash = value
@@ -299,18 +356,6 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
 		_node.FontMode = value
 	}
-	if value, ok := _c.mutation.CustomFontName(); ok {
-		_spec.SetField(user.FieldCustomFontName, field.TypeString, value)
-		_node.CustomFontName = value
-	}
-	if value, ok := _c.mutation.CustomFontPath(); ok {
-		_spec.SetField(user.FieldCustomFontPath, field.TypeString, value)
-		_node.CustomFontPath = value
-	}
-	if value, ok := _c.mutation.CustomFontFamily(); ok {
-		_spec.SetField(user.FieldCustomFontFamily, field.TypeString, value)
-		_node.CustomFontFamily = value
-	}
 	if nodes := _c.mutation.DictionariesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -325,6 +370,23 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.SelectedFontIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.SelectedFontTable,
+			Columns: []string{user.SelectedFontColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.user_selected_font = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

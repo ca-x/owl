@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/font"
 	"owl/backend/ent/predicate"
 	"owl/backend/ent/user"
 
@@ -38,6 +39,62 @@ func (_u *UserUpdate) SetUsername(v string) *UserUpdate {
 func (_u *UserUpdate) SetNillableUsername(v *string) *UserUpdate {
 	if v != nil {
 		_u.SetUsername(*v)
+	}
+	return _u
+}
+
+// SetDisplayName sets the "display_name" field.
+func (_u *UserUpdate) SetDisplayName(v string) *UserUpdate {
+	_u.mutation.SetDisplayName(v)
+	return _u
+}
+
+// SetNillableDisplayName sets the "display_name" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableDisplayName(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetDisplayName(*v)
+	}
+	return _u
+}
+
+// SetAvatarName sets the "avatar_name" field.
+func (_u *UserUpdate) SetAvatarName(v string) *UserUpdate {
+	_u.mutation.SetAvatarName(v)
+	return _u
+}
+
+// SetNillableAvatarName sets the "avatar_name" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableAvatarName(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetAvatarName(*v)
+	}
+	return _u
+}
+
+// SetAvatarPath sets the "avatar_path" field.
+func (_u *UserUpdate) SetAvatarPath(v string) *UserUpdate {
+	_u.mutation.SetAvatarPath(v)
+	return _u
+}
+
+// SetNillableAvatarPath sets the "avatar_path" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableAvatarPath(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetAvatarPath(*v)
+	}
+	return _u
+}
+
+// SetAvatarMime sets the "avatar_mime" field.
+func (_u *UserUpdate) SetAvatarMime(v string) *UserUpdate {
+	_u.mutation.SetAvatarMime(v)
+	return _u
+}
+
+// SetNillableAvatarMime sets the "avatar_mime" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableAvatarMime(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetAvatarMime(*v)
 	}
 	return _u
 }
@@ -112,48 +169,6 @@ func (_u *UserUpdate) SetNillableFontMode(v *string) *UserUpdate {
 	return _u
 }
 
-// SetCustomFontName sets the "custom_font_name" field.
-func (_u *UserUpdate) SetCustomFontName(v string) *UserUpdate {
-	_u.mutation.SetCustomFontName(v)
-	return _u
-}
-
-// SetNillableCustomFontName sets the "custom_font_name" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableCustomFontName(v *string) *UserUpdate {
-	if v != nil {
-		_u.SetCustomFontName(*v)
-	}
-	return _u
-}
-
-// SetCustomFontPath sets the "custom_font_path" field.
-func (_u *UserUpdate) SetCustomFontPath(v string) *UserUpdate {
-	_u.mutation.SetCustomFontPath(v)
-	return _u
-}
-
-// SetNillableCustomFontPath sets the "custom_font_path" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableCustomFontPath(v *string) *UserUpdate {
-	if v != nil {
-		_u.SetCustomFontPath(*v)
-	}
-	return _u
-}
-
-// SetCustomFontFamily sets the "custom_font_family" field.
-func (_u *UserUpdate) SetCustomFontFamily(v string) *UserUpdate {
-	_u.mutation.SetCustomFontFamily(v)
-	return _u
-}
-
-// SetNillableCustomFontFamily sets the "custom_font_family" field if the given value is not nil.
-func (_u *UserUpdate) SetNillableCustomFontFamily(v *string) *UserUpdate {
-	if v != nil {
-		_u.SetCustomFontFamily(*v)
-	}
-	return _u
-}
-
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_u *UserUpdate) AddDictionaryIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddDictionaryIDs(ids...)
@@ -167,6 +182,25 @@ func (_u *UserUpdate) AddDictionaries(v ...*Dictionary) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddDictionaryIDs(ids...)
+}
+
+// SetSelectedFontID sets the "selected_font" edge to the Font entity by ID.
+func (_u *UserUpdate) SetSelectedFontID(id int) *UserUpdate {
+	_u.mutation.SetSelectedFontID(id)
+	return _u
+}
+
+// SetNillableSelectedFontID sets the "selected_font" edge to the Font entity by ID if the given value is not nil.
+func (_u *UserUpdate) SetNillableSelectedFontID(id *int) *UserUpdate {
+	if id != nil {
+		_u = _u.SetSelectedFontID(*id)
+	}
+	return _u
+}
+
+// SetSelectedFont sets the "selected_font" edge to the Font entity.
+func (_u *UserUpdate) SetSelectedFont(v *Font) *UserUpdate {
+	return _u.SetSelectedFontID(v.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -193,6 +227,12 @@ func (_u *UserUpdate) RemoveDictionaries(v ...*Dictionary) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveDictionaryIDs(ids...)
+}
+
+// ClearSelectedFont clears the "selected_font" edge to the Font entity.
+func (_u *UserUpdate) ClearSelectedFont() *UserUpdate {
+	_u.mutation.ClearSelectedFont()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -252,6 +292,18 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.DisplayName(); ok {
+		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AvatarName(); ok {
+		_spec.SetField(user.FieldAvatarName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AvatarPath(); ok {
+		_spec.SetField(user.FieldAvatarPath, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AvatarMime(); ok {
+		_spec.SetField(user.FieldAvatarMime, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.PasswordHash(); ok {
 		_spec.SetField(user.FieldPasswordHash, field.TypeString, value)
 	}
@@ -266,15 +318,6 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomFontName(); ok {
-		_spec.SetField(user.FieldCustomFontName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomFontPath(); ok {
-		_spec.SetField(user.FieldCustomFontPath, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomFontFamily(); ok {
-		_spec.SetField(user.FieldCustomFontFamily, field.TypeString, value)
 	}
 	if _u.mutation.DictionariesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -321,6 +364,35 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.SelectedFontCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.SelectedFontTable,
+			Columns: []string{user.SelectedFontColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SelectedFontIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.SelectedFontTable,
+			Columns: []string{user.SelectedFontColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -351,6 +423,62 @@ func (_u *UserUpdateOne) SetUsername(v string) *UserUpdateOne {
 func (_u *UserUpdateOne) SetNillableUsername(v *string) *UserUpdateOne {
 	if v != nil {
 		_u.SetUsername(*v)
+	}
+	return _u
+}
+
+// SetDisplayName sets the "display_name" field.
+func (_u *UserUpdateOne) SetDisplayName(v string) *UserUpdateOne {
+	_u.mutation.SetDisplayName(v)
+	return _u
+}
+
+// SetNillableDisplayName sets the "display_name" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableDisplayName(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetDisplayName(*v)
+	}
+	return _u
+}
+
+// SetAvatarName sets the "avatar_name" field.
+func (_u *UserUpdateOne) SetAvatarName(v string) *UserUpdateOne {
+	_u.mutation.SetAvatarName(v)
+	return _u
+}
+
+// SetNillableAvatarName sets the "avatar_name" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableAvatarName(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetAvatarName(*v)
+	}
+	return _u
+}
+
+// SetAvatarPath sets the "avatar_path" field.
+func (_u *UserUpdateOne) SetAvatarPath(v string) *UserUpdateOne {
+	_u.mutation.SetAvatarPath(v)
+	return _u
+}
+
+// SetNillableAvatarPath sets the "avatar_path" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableAvatarPath(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetAvatarPath(*v)
+	}
+	return _u
+}
+
+// SetAvatarMime sets the "avatar_mime" field.
+func (_u *UserUpdateOne) SetAvatarMime(v string) *UserUpdateOne {
+	_u.mutation.SetAvatarMime(v)
+	return _u
+}
+
+// SetNillableAvatarMime sets the "avatar_mime" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableAvatarMime(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetAvatarMime(*v)
 	}
 	return _u
 }
@@ -425,48 +553,6 @@ func (_u *UserUpdateOne) SetNillableFontMode(v *string) *UserUpdateOne {
 	return _u
 }
 
-// SetCustomFontName sets the "custom_font_name" field.
-func (_u *UserUpdateOne) SetCustomFontName(v string) *UserUpdateOne {
-	_u.mutation.SetCustomFontName(v)
-	return _u
-}
-
-// SetNillableCustomFontName sets the "custom_font_name" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableCustomFontName(v *string) *UserUpdateOne {
-	if v != nil {
-		_u.SetCustomFontName(*v)
-	}
-	return _u
-}
-
-// SetCustomFontPath sets the "custom_font_path" field.
-func (_u *UserUpdateOne) SetCustomFontPath(v string) *UserUpdateOne {
-	_u.mutation.SetCustomFontPath(v)
-	return _u
-}
-
-// SetNillableCustomFontPath sets the "custom_font_path" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableCustomFontPath(v *string) *UserUpdateOne {
-	if v != nil {
-		_u.SetCustomFontPath(*v)
-	}
-	return _u
-}
-
-// SetCustomFontFamily sets the "custom_font_family" field.
-func (_u *UserUpdateOne) SetCustomFontFamily(v string) *UserUpdateOne {
-	_u.mutation.SetCustomFontFamily(v)
-	return _u
-}
-
-// SetNillableCustomFontFamily sets the "custom_font_family" field if the given value is not nil.
-func (_u *UserUpdateOne) SetNillableCustomFontFamily(v *string) *UserUpdateOne {
-	if v != nil {
-		_u.SetCustomFontFamily(*v)
-	}
-	return _u
-}
-
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_u *UserUpdateOne) AddDictionaryIDs(ids ...int) *UserUpdateOne {
 	_u.mutation.AddDictionaryIDs(ids...)
@@ -480,6 +566,25 @@ func (_u *UserUpdateOne) AddDictionaries(v ...*Dictionary) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddDictionaryIDs(ids...)
+}
+
+// SetSelectedFontID sets the "selected_font" edge to the Font entity by ID.
+func (_u *UserUpdateOne) SetSelectedFontID(id int) *UserUpdateOne {
+	_u.mutation.SetSelectedFontID(id)
+	return _u
+}
+
+// SetNillableSelectedFontID sets the "selected_font" edge to the Font entity by ID if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableSelectedFontID(id *int) *UserUpdateOne {
+	if id != nil {
+		_u = _u.SetSelectedFontID(*id)
+	}
+	return _u
+}
+
+// SetSelectedFont sets the "selected_font" edge to the Font entity.
+func (_u *UserUpdateOne) SetSelectedFont(v *Font) *UserUpdateOne {
+	return _u.SetSelectedFontID(v.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -506,6 +611,12 @@ func (_u *UserUpdateOne) RemoveDictionaries(v ...*Dictionary) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveDictionaryIDs(ids...)
+}
+
+// ClearSelectedFont clears the "selected_font" edge to the Font entity.
+func (_u *UserUpdateOne) ClearSelectedFont() *UserUpdateOne {
+	_u.mutation.ClearSelectedFont()
+	return _u
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -595,6 +706,18 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if value, ok := _u.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.DisplayName(); ok {
+		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AvatarName(); ok {
+		_spec.SetField(user.FieldAvatarName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AvatarPath(); ok {
+		_spec.SetField(user.FieldAvatarPath, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AvatarMime(); ok {
+		_spec.SetField(user.FieldAvatarMime, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.PasswordHash(); ok {
 		_spec.SetField(user.FieldPasswordHash, field.TypeString, value)
 	}
@@ -609,15 +732,6 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomFontName(); ok {
-		_spec.SetField(user.FieldCustomFontName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomFontPath(); ok {
-		_spec.SetField(user.FieldCustomFontPath, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomFontFamily(); ok {
-		_spec.SetField(user.FieldCustomFontFamily, field.TypeString, value)
 	}
 	if _u.mutation.DictionariesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -657,6 +771,35 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(dictionary.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SelectedFontCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.SelectedFontTable,
+			Columns: []string{user.SelectedFontColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SelectedFontIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.SelectedFontTable,
+			Columns: []string{user.SelectedFontColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(font.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

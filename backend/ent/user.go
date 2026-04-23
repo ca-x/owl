@@ -4,6 +4,7 @@ package ent
 
 import (
 	"fmt"
+	"owl/backend/ent/font"
 	"owl/backend/ent/user"
 	"strings"
 
@@ -18,6 +19,14 @@ type User struct {
 	ID int `json:"id,omitempty"`
 	// Username holds the value of the "username" field.
 	Username string `json:"username,omitempty"`
+	// DisplayName holds the value of the "display_name" field.
+	DisplayName string `json:"display_name,omitempty"`
+	// AvatarName holds the value of the "avatar_name" field.
+	AvatarName string `json:"avatar_name,omitempty"`
+	// AvatarPath holds the value of the "avatar_path" field.
+	AvatarPath string `json:"avatar_path,omitempty"`
+	// AvatarMime holds the value of the "avatar_mime" field.
+	AvatarMime string `json:"avatar_mime,omitempty"`
 	// PasswordHash holds the value of the "password_hash" field.
 	PasswordHash string `json:"-"`
 	// IsAdmin holds the value of the "is_admin" field.
@@ -28,25 +37,22 @@ type User struct {
 	Theme string `json:"theme,omitempty"`
 	// FontMode holds the value of the "font_mode" field.
 	FontMode string `json:"font_mode,omitempty"`
-	// CustomFontName holds the value of the "custom_font_name" field.
-	CustomFontName string `json:"custom_font_name,omitempty"`
-	// CustomFontPath holds the value of the "custom_font_path" field.
-	CustomFontPath string `json:"custom_font_path,omitempty"`
-	// CustomFontFamily holds the value of the "custom_font_family" field.
-	CustomFontFamily string `json:"custom_font_family,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
-	Edges        UserEdges `json:"edges"`
-	selectValues sql.SelectValues
+	Edges              UserEdges `json:"edges"`
+	user_selected_font *int
+	selectValues       sql.SelectValues
 }
 
 // UserEdges holds the relations/edges for other nodes in the graph.
 type UserEdges struct {
 	// Dictionaries holds the value of the dictionaries edge.
 	Dictionaries []*Dictionary `json:"dictionaries,omitempty"`
+	// SelectedFont holds the value of the selected_font edge.
+	SelectedFont *Font `json:"selected_font,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // DictionariesOrErr returns the Dictionaries value or an error if the edge
@@ -58,6 +64,17 @@ func (e UserEdges) DictionariesOrErr() ([]*Dictionary, error) {
 	return nil, &NotLoadedError{edge: "dictionaries"}
 }
 
+// SelectedFontOrErr returns the SelectedFont value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) SelectedFontOrErr() (*Font, error) {
+	if e.SelectedFont != nil {
+		return e.SelectedFont, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: font.Label}
+	}
+	return nil, &NotLoadedError{edge: "selected_font"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -67,8 +84,10 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordHash, user.FieldLanguage, user.FieldTheme, user.FieldFontMode, user.FieldCustomFontName, user.FieldCustomFontPath, user.FieldCustomFontFamily:
+		case user.FieldUsername, user.FieldDisplayName, user.FieldAvatarName, user.FieldAvatarPath, user.FieldAvatarMime, user.FieldPasswordHash, user.FieldLanguage, user.FieldTheme, user.FieldFontMode:
 			values[i] = new(sql.NullString)
+		case user.ForeignKeys[0]: // user_selected_font
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -95,6 +114,30 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field username", values[i])
 			} else if value.Valid {
 				_m.Username = value.String
+			}
+		case user.FieldDisplayName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field display_name", values[i])
+			} else if value.Valid {
+				_m.DisplayName = value.String
+			}
+		case user.FieldAvatarName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field avatar_name", values[i])
+			} else if value.Valid {
+				_m.AvatarName = value.String
+			}
+		case user.FieldAvatarPath:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field avatar_path", values[i])
+			} else if value.Valid {
+				_m.AvatarPath = value.String
+			}
+		case user.FieldAvatarMime:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field avatar_mime", values[i])
+			} else if value.Valid {
+				_m.AvatarMime = value.String
 			}
 		case user.FieldPasswordHash:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -126,23 +169,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.FontMode = value.String
 			}
-		case user.FieldCustomFontName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field custom_font_name", values[i])
+		case user.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field user_selected_font", value)
 			} else if value.Valid {
-				_m.CustomFontName = value.String
-			}
-		case user.FieldCustomFontPath:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field custom_font_path", values[i])
-			} else if value.Valid {
-				_m.CustomFontPath = value.String
-			}
-		case user.FieldCustomFontFamily:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field custom_font_family", values[i])
-			} else if value.Valid {
-				_m.CustomFontFamily = value.String
+				_m.user_selected_font = new(int)
+				*_m.user_selected_font = int(value.Int64)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -160,6 +192,11 @@ func (_m *User) Value(name string) (ent.Value, error) {
 // QueryDictionaries queries the "dictionaries" edge of the User entity.
 func (_m *User) QueryDictionaries() *DictionaryQuery {
 	return NewUserClient(_m.config).QueryDictionaries(_m)
+}
+
+// QuerySelectedFont queries the "selected_font" edge of the User entity.
+func (_m *User) QuerySelectedFont() *FontQuery {
+	return NewUserClient(_m.config).QuerySelectedFont(_m)
 }
 
 // Update returns a builder for updating this User.
@@ -188,6 +225,18 @@ func (_m *User) String() string {
 	builder.WriteString("username=")
 	builder.WriteString(_m.Username)
 	builder.WriteString(", ")
+	builder.WriteString("display_name=")
+	builder.WriteString(_m.DisplayName)
+	builder.WriteString(", ")
+	builder.WriteString("avatar_name=")
+	builder.WriteString(_m.AvatarName)
+	builder.WriteString(", ")
+	builder.WriteString("avatar_path=")
+	builder.WriteString(_m.AvatarPath)
+	builder.WriteString(", ")
+	builder.WriteString("avatar_mime=")
+	builder.WriteString(_m.AvatarMime)
+	builder.WriteString(", ")
 	builder.WriteString("password_hash=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("is_admin=")
@@ -201,15 +250,6 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("font_mode=")
 	builder.WriteString(_m.FontMode)
-	builder.WriteString(", ")
-	builder.WriteString("custom_font_name=")
-	builder.WriteString(_m.CustomFontName)
-	builder.WriteString(", ")
-	builder.WriteString("custom_font_path=")
-	builder.WriteString(_m.CustomFontPath)
-	builder.WriteString(", ")
-	builder.WriteString("custom_font_family=")
-	builder.WriteString(_m.CustomFontFamily)
 	builder.WriteByte(')')
 	return builder.String()
 }

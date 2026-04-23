@@ -9,5 +9,8 @@ import (
 // Dictionary is the predicate function for dictionary builders.
 type Dictionary func(*sql.Selector)
 
+// Font is the predicate function for font builders.
+type Font func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

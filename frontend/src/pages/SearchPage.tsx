@@ -79,7 +79,6 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
         if (!active) return
         setSuggestions(nextSuggestions)
         setActiveSuggestion(nextSuggestions.length > 0 ? 0 : -1)
-        setSuggestionsDismissed(false)
       } catch {
         if (!active) return
         setSuggestions([])
@@ -124,7 +123,6 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
         <div className="lookup-hero-copy">
           <div className="eyebrow">{t.dictionaryLookup}</div>
           <h2>{t.lookupTitle}</h2>
-          <p className="muted">{t.lookupDescription}</p>
         </div>
 
         <form className="lookup-form" onSubmit={handleSubmit}>

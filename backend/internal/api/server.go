@@ -23,10 +23,11 @@ const (
 )
 
 type Server struct {
-	echo         *echo.Echo
-	users        *user.Service
-	dictionaries *dictionary.Service
-	cancel       context.CancelFunc
+	echo          *echo.Echo
+	users         *user.Service
+	dictionaries  *dictionary.Service
+	allowRegister bool
+	cancel        context.CancelFunc
 }
 
 type registerRequest struct {
@@ -48,9 +49,11 @@ type publicDictionaryRequest struct {
 }
 
 type preferencesRequest struct {
-	Language string `json:"language"`
-	Theme    string `json:"theme"`
-	FontMode string `json:"font_mode"`
+	Language       string `json:"language"`
+	Theme          string `json:"theme"`
+	FontMode       string `json:"font_mode"`
+	DisplayName    string `json:"display_name"`
+	CustomFontName string `json:"custom_font_name"`
 }
 
 type authedUser struct {
@@ -59,13 +62,13 @@ type authedUser struct {
 	IsAdmin  bool
 }
 
-func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service, frontendOrigin string) *Server {
+func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service, frontendOrigin string, allowRegister bool) *Server {
 	e := echo.New()
 	e.Use(middleware.Recover())
 	e.Use(middleware.RequestID())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: []string{frontendOrigin}, AllowHeaders: []string{"Authorization", "Content-Type"}, AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodDelete, http.MethodOptions}}))
 
-	s := &Server{echo: e, users: userSvc, dictionaries: dictSvc}
+	s := &Server{echo: e, users: userSvc, dictionaries: dictSvc, allowRegister: allowRegister}
 	e.GET("/api/health", s.handleHealth)
 	e.GET("/api/public/dictionaries", s.handleListPublicDictionaries)
 	e.GET("/api/public/search", s.handlePublicSearch)
@@ -81,7 +84,10 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	api.GET("/preferences", s.handleGetPreferences)
 	api.PUT("/preferences", s.handleUpdatePreferences)
 	api.POST("/preferences/font", s.handleUploadFont)
+	api.DELETE("/preferences/font/:name", s.handleDeleteFont)
 	api.GET("/preferences/font", s.handleGetFont)
+	api.POST("/preferences/avatar", s.handleUploadAvatar)
+	api.GET("/preferences/avatar", s.handleGetAvatar)
 	api.GET("/dictionaries", s.handleListDictionaries)
 	api.POST("/dictionaries/upload", s.handleUploadDictionary)
 	api.DELETE("/dictionaries/:id", s.handleDeleteDictionary)
@@ -117,14 +123,15 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) handleHealth(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{
-		"status":       "ok",
-		"version":      version.GetVersion(),
-		"full_version": version.GetFullVersion(),
-		"commit":       version.GitCommit,
-		"build_time":   version.BuildTime,
-		"go_version":   runtime.Version(),
-		"os":           runtime.GOOS,
-		"arch":         runtime.GOARCH,
+		"status":         "ok",
+		"version":        version.GetVersion(),
+		"full_version":   version.GetFullVersion(),
+		"commit":         version.GitCommit,
+		"build_time":     version.BuildTime,
+		"go_version":     runtime.Version(),
+		"os":             runtime.GOOS,
+		"arch":           runtime.GOARCH,
+		"allow_register": s.allowRegister,
 	})
 }
 
@@ -206,6 +213,9 @@ func (s *Server) handlePublicDictionaryResource(c *echo.Context) error {
 }
 
 func (s *Server) handleRegister(c *echo.Context) error {
+	if !s.allowRegister {
+		return echo.NewHTTPError(http.StatusForbidden, "registration is disabled")
+	}
 	var req registerRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
@@ -238,7 +248,11 @@ func (s *Server) handleLogout(c *echo.Context) error {
 
 func (s *Server) handleMe(c *echo.Context) error {
 	user := currentUser(c)
-	return c.JSON(http.StatusOK, user)
+	summary, err := s.users.GetUserSummary(c.Request().Context(), user.ID)
+	if err != nil {
+		return mapEntError(err)
+	}
+	return c.JSON(http.StatusOK, summary)
 }
 
 func (s *Server) handleGetPreferences(c *echo.Context) error {
@@ -257,9 +271,11 @@ func (s *Server) handleUpdatePreferences(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 	prefs, err := s.users.UpdatePreferences(c.Request().Context(), user.ID, models.UserPreferences{
-		Language: req.Language,
-		Theme:    req.Theme,
-		FontMode: req.FontMode,
+		Language:       req.Language,
+		Theme:          req.Theme,
+		FontMode:       req.FontMode,
+		DisplayName:    req.DisplayName,
+		CustomFontName: req.CustomFontName,
 	})
 	if err != nil {
 		return mapEntError(err)
@@ -276,6 +292,37 @@ func (s *Server) handleUploadFont(c *echo.Context) error {
 	prefs, err := s.users.UploadFont(c.Request().Context(), user.ID, fontFile)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	return c.JSON(http.StatusOK, prefs)
+}
+
+func (s *Server) handleUploadAvatar(c *echo.Context) error {
+	user := currentUser(c)
+	avatarFile, err := c.FormFile("avatar")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "avatar file is required")
+	}
+	prefs, err := s.users.UploadAvatar(c.Request().Context(), user.ID, avatarFile)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	return c.JSON(http.StatusOK, prefs)
+}
+
+func (s *Server) handleGetAvatar(c *echo.Context) error {
+	user := currentUser(c)
+	data, contentType, err := s.users.LoadAvatar(c.Request().Context(), user.ID)
+	if err != nil {
+		return mapEntError(err)
+	}
+	return c.Blob(http.StatusOK, contentType, data)
+}
+
+func (s *Server) handleDeleteFont(c *echo.Context) error {
+	user := currentUser(c)
+	prefs, err := s.users.DeleteFont(c.Request().Context(), user.ID, c.Param("name"))
+	if err != nil {
+		return mapEntError(err)
 	}
 	return c.JSON(http.StatusOK, prefs)
 }

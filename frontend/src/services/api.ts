@@ -100,7 +100,7 @@ export const api = {
     return request<UserPreferences>('/preferences', { method: 'GET' }, token)
   },
 
-  updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode'>) {
+  updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>) {
     return request<UserPreferences>('/preferences', {
       method: 'PUT',
       body: JSON.stringify(preferences),
@@ -111,6 +111,21 @@ export const api = {
     const formData = new FormData()
     formData.append('font', fontFile)
     return request<UserPreferences>('/preferences/font', {
+      method: 'POST',
+      body: formData,
+    }, token)
+  },
+
+  deleteFont(token: string, name: string) {
+    return request<UserPreferences>(`/preferences/font/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    }, token)
+  },
+
+  uploadAvatar(token: string, avatarFile: File) {
+    const formData = new FormData()
+    formData.append('avatar', avatarFile)
+    return request<UserPreferences>('/preferences/avatar', {
       method: 'POST',
       body: formData,
     }, token)

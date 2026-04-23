@@ -18,6 +18,7 @@ type Config struct {
 	DatabaseDSN          string
 	FrontendOrigin       string
 	BootstrapAdmin       bool
+	AllowRegister        bool
 	AdminUsername        string
 	AdminPassword        string
 	RedisAddr            string
@@ -49,6 +50,7 @@ func Load() (Config, error) {
 		DatabaseDSN:          sqliteDSN(databasePath),
 		FrontendOrigin:       getEnv("OWL_FRONTEND_ORIGIN", "*"),
 		BootstrapAdmin:       getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
+		AllowRegister:        getEnvBool("OWL_ALLOW_REGISTER", true),
 		AdminUsername:        strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
 		AdminPassword:        getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
 		RedisAddr:            strings.TrimSpace(os.Getenv("OWL_REDIS_ADDR")),

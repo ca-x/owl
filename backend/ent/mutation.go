@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/font"
 	"owl/backend/ent/predicate"
 	"owl/backend/ent/user"
 	"sync"
@@ -26,6 +27,7 @@ const (
 
 	// Node types.
 	TypeDictionary = "Dictionary"
+	TypeFont       = "Font"
 	TypeUser       = "User"
 )
 
@@ -998,28 +1000,720 @@ func (m *DictionaryMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Dictionary edge %s", name)
 }
 
+// FontMutation represents an operation that mutates the Font nodes in the graph.
+type FontMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *int
+	name               *string
+	family             *string
+	_path              *string
+	mime               *string
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	selected_by        map[int]struct{}
+	removedselected_by map[int]struct{}
+	clearedselected_by bool
+	done               bool
+	oldValue           func(context.Context) (*Font, error)
+	predicates         []predicate.Font
+}
+
+var _ ent.Mutation = (*FontMutation)(nil)
+
+// fontOption allows management of the mutation configuration using functional options.
+type fontOption func(*FontMutation)
+
+// newFontMutation creates new mutation for the Font entity.
+func newFontMutation(c config, op Op, opts ...fontOption) *FontMutation {
+	m := &FontMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeFont,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withFontID sets the ID field of the mutation.
+func withFontID(id int) fontOption {
+	return func(m *FontMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Font
+		)
+		m.oldValue = func(ctx context.Context) (*Font, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Font.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withFont sets the old Font of the mutation.
+func withFont(node *Font) fontOption {
+	return func(m *FontMutation) {
+		m.oldValue = func(context.Context) (*Font, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m FontMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m FontMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *FontMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *FontMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Font.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *FontMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *FontMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Font entity.
+// If the Font object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FontMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *FontMutation) ResetName() {
+	m.name = nil
+}
+
+// SetFamily sets the "family" field.
+func (m *FontMutation) SetFamily(s string) {
+	m.family = &s
+}
+
+// Family returns the value of the "family" field in the mutation.
+func (m *FontMutation) Family() (r string, exists bool) {
+	v := m.family
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFamily returns the old "family" field's value of the Font entity.
+// If the Font object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FontMutation) OldFamily(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFamily is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFamily requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFamily: %w", err)
+	}
+	return oldValue.Family, nil
+}
+
+// ResetFamily resets all changes to the "family" field.
+func (m *FontMutation) ResetFamily() {
+	m.family = nil
+}
+
+// SetPath sets the "path" field.
+func (m *FontMutation) SetPath(s string) {
+	m._path = &s
+}
+
+// Path returns the value of the "path" field in the mutation.
+func (m *FontMutation) Path() (r string, exists bool) {
+	v := m._path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPath returns the old "path" field's value of the Font entity.
+// If the Font object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FontMutation) OldPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPath: %w", err)
+	}
+	return oldValue.Path, nil
+}
+
+// ResetPath resets all changes to the "path" field.
+func (m *FontMutation) ResetPath() {
+	m._path = nil
+}
+
+// SetMime sets the "mime" field.
+func (m *FontMutation) SetMime(s string) {
+	m.mime = &s
+}
+
+// Mime returns the value of the "mime" field in the mutation.
+func (m *FontMutation) Mime() (r string, exists bool) {
+	v := m.mime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMime returns the old "mime" field's value of the Font entity.
+// If the Font object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FontMutation) OldMime(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMime: %w", err)
+	}
+	return oldValue.Mime, nil
+}
+
+// ResetMime resets all changes to the "mime" field.
+func (m *FontMutation) ResetMime() {
+	m.mime = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *FontMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *FontMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Font entity.
+// If the Font object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FontMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *FontMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *FontMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *FontMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Font entity.
+// If the Font object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FontMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *FontMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// AddSelectedByIDs adds the "selected_by" edge to the User entity by ids.
+func (m *FontMutation) AddSelectedByIDs(ids ...int) {
+	if m.selected_by == nil {
+		m.selected_by = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.selected_by[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSelectedBy clears the "selected_by" edge to the User entity.
+func (m *FontMutation) ClearSelectedBy() {
+	m.clearedselected_by = true
+}
+
+// SelectedByCleared reports if the "selected_by" edge to the User entity was cleared.
+func (m *FontMutation) SelectedByCleared() bool {
+	return m.clearedselected_by
+}
+
+// RemoveSelectedByIDs removes the "selected_by" edge to the User entity by IDs.
+func (m *FontMutation) RemoveSelectedByIDs(ids ...int) {
+	if m.removedselected_by == nil {
+		m.removedselected_by = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.selected_by, ids[i])
+		m.removedselected_by[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSelectedBy returns the removed IDs of the "selected_by" edge to the User entity.
+func (m *FontMutation) RemovedSelectedByIDs() (ids []int) {
+	for id := range m.removedselected_by {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SelectedByIDs returns the "selected_by" edge IDs in the mutation.
+func (m *FontMutation) SelectedByIDs() (ids []int) {
+	for id := range m.selected_by {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSelectedBy resets all changes to the "selected_by" edge.
+func (m *FontMutation) ResetSelectedBy() {
+	m.selected_by = nil
+	m.clearedselected_by = false
+	m.removedselected_by = nil
+}
+
+// Where appends a list predicates to the FontMutation builder.
+func (m *FontMutation) Where(ps ...predicate.Font) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the FontMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *FontMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Font, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *FontMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *FontMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Font).
+func (m *FontMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *FontMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.name != nil {
+		fields = append(fields, font.FieldName)
+	}
+	if m.family != nil {
+		fields = append(fields, font.FieldFamily)
+	}
+	if m._path != nil {
+		fields = append(fields, font.FieldPath)
+	}
+	if m.mime != nil {
+		fields = append(fields, font.FieldMime)
+	}
+	if m.created_at != nil {
+		fields = append(fields, font.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, font.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *FontMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case font.FieldName:
+		return m.Name()
+	case font.FieldFamily:
+		return m.Family()
+	case font.FieldPath:
+		return m.Path()
+	case font.FieldMime:
+		return m.Mime()
+	case font.FieldCreatedAt:
+		return m.CreatedAt()
+	case font.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *FontMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case font.FieldName:
+		return m.OldName(ctx)
+	case font.FieldFamily:
+		return m.OldFamily(ctx)
+	case font.FieldPath:
+		return m.OldPath(ctx)
+	case font.FieldMime:
+		return m.OldMime(ctx)
+	case font.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case font.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Font field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FontMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case font.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case font.FieldFamily:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFamily(v)
+		return nil
+	case font.FieldPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPath(v)
+		return nil
+	case font.FieldMime:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMime(v)
+		return nil
+	case font.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case font.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Font field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *FontMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *FontMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FontMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Font numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *FontMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *FontMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *FontMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Font nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *FontMutation) ResetField(name string) error {
+	switch name {
+	case font.FieldName:
+		m.ResetName()
+		return nil
+	case font.FieldFamily:
+		m.ResetFamily()
+		return nil
+	case font.FieldPath:
+		m.ResetPath()
+		return nil
+	case font.FieldMime:
+		m.ResetMime()
+		return nil
+	case font.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case font.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Font field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *FontMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.selected_by != nil {
+		edges = append(edges, font.EdgeSelectedBy)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *FontMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case font.EdgeSelectedBy:
+		ids := make([]ent.Value, 0, len(m.selected_by))
+		for id := range m.selected_by {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *FontMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedselected_by != nil {
+		edges = append(edges, font.EdgeSelectedBy)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *FontMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case font.EdgeSelectedBy:
+		ids := make([]ent.Value, 0, len(m.removedselected_by))
+		for id := range m.removedselected_by {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *FontMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedselected_by {
+		edges = append(edges, font.EdgeSelectedBy)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *FontMutation) EdgeCleared(name string) bool {
+	switch name {
+	case font.EdgeSelectedBy:
+		return m.clearedselected_by
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *FontMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Font unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *FontMutation) ResetEdge(name string) error {
+	switch name {
+	case font.EdgeSelectedBy:
+		m.ResetSelectedBy()
+		return nil
+	}
+	return fmt.Errorf("unknown Font edge %s", name)
+}
+
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	username            *string
-	password_hash       *string
-	is_admin            *bool
-	language            *string
-	theme               *string
-	font_mode           *string
-	custom_font_name    *string
-	custom_font_path    *string
-	custom_font_family  *string
-	clearedFields       map[string]struct{}
-	dictionaries        map[int]struct{}
-	removeddictionaries map[int]struct{}
-	cleareddictionaries bool
-	done                bool
-	oldValue            func(context.Context) (*User, error)
-	predicates          []predicate.User
+	op                   Op
+	typ                  string
+	id                   *int
+	username             *string
+	display_name         *string
+	avatar_name          *string
+	avatar_path          *string
+	avatar_mime          *string
+	password_hash        *string
+	is_admin             *bool
+	language             *string
+	theme                *string
+	font_mode            *string
+	clearedFields        map[string]struct{}
+	dictionaries         map[int]struct{}
+	removeddictionaries  map[int]struct{}
+	cleareddictionaries  bool
+	selected_font        *int
+	clearedselected_font bool
+	done                 bool
+	oldValue             func(context.Context) (*User, error)
+	predicates           []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -1154,6 +1848,150 @@ func (m *UserMutation) OldUsername(ctx context.Context) (v string, err error) {
 // ResetUsername resets all changes to the "username" field.
 func (m *UserMutation) ResetUsername() {
 	m.username = nil
+}
+
+// SetDisplayName sets the "display_name" field.
+func (m *UserMutation) SetDisplayName(s string) {
+	m.display_name = &s
+}
+
+// DisplayName returns the value of the "display_name" field in the mutation.
+func (m *UserMutation) DisplayName() (r string, exists bool) {
+	v := m.display_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisplayName returns the old "display_name" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldDisplayName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisplayName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisplayName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisplayName: %w", err)
+	}
+	return oldValue.DisplayName, nil
+}
+
+// ResetDisplayName resets all changes to the "display_name" field.
+func (m *UserMutation) ResetDisplayName() {
+	m.display_name = nil
+}
+
+// SetAvatarName sets the "avatar_name" field.
+func (m *UserMutation) SetAvatarName(s string) {
+	m.avatar_name = &s
+}
+
+// AvatarName returns the value of the "avatar_name" field in the mutation.
+func (m *UserMutation) AvatarName() (r string, exists bool) {
+	v := m.avatar_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvatarName returns the old "avatar_name" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldAvatarName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvatarName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvatarName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvatarName: %w", err)
+	}
+	return oldValue.AvatarName, nil
+}
+
+// ResetAvatarName resets all changes to the "avatar_name" field.
+func (m *UserMutation) ResetAvatarName() {
+	m.avatar_name = nil
+}
+
+// SetAvatarPath sets the "avatar_path" field.
+func (m *UserMutation) SetAvatarPath(s string) {
+	m.avatar_path = &s
+}
+
+// AvatarPath returns the value of the "avatar_path" field in the mutation.
+func (m *UserMutation) AvatarPath() (r string, exists bool) {
+	v := m.avatar_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvatarPath returns the old "avatar_path" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldAvatarPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvatarPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvatarPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvatarPath: %w", err)
+	}
+	return oldValue.AvatarPath, nil
+}
+
+// ResetAvatarPath resets all changes to the "avatar_path" field.
+func (m *UserMutation) ResetAvatarPath() {
+	m.avatar_path = nil
+}
+
+// SetAvatarMime sets the "avatar_mime" field.
+func (m *UserMutation) SetAvatarMime(s string) {
+	m.avatar_mime = &s
+}
+
+// AvatarMime returns the value of the "avatar_mime" field in the mutation.
+func (m *UserMutation) AvatarMime() (r string, exists bool) {
+	v := m.avatar_mime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvatarMime returns the old "avatar_mime" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldAvatarMime(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvatarMime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvatarMime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvatarMime: %w", err)
+	}
+	return oldValue.AvatarMime, nil
+}
+
+// ResetAvatarMime resets all changes to the "avatar_mime" field.
+func (m *UserMutation) ResetAvatarMime() {
+	m.avatar_mime = nil
 }
 
 // SetPasswordHash sets the "password_hash" field.
@@ -1336,114 +2174,6 @@ func (m *UserMutation) ResetFontMode() {
 	m.font_mode = nil
 }
 
-// SetCustomFontName sets the "custom_font_name" field.
-func (m *UserMutation) SetCustomFontName(s string) {
-	m.custom_font_name = &s
-}
-
-// CustomFontName returns the value of the "custom_font_name" field in the mutation.
-func (m *UserMutation) CustomFontName() (r string, exists bool) {
-	v := m.custom_font_name
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCustomFontName returns the old "custom_font_name" field's value of the User entity.
-// If the User object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldCustomFontName(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCustomFontName is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCustomFontName requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCustomFontName: %w", err)
-	}
-	return oldValue.CustomFontName, nil
-}
-
-// ResetCustomFontName resets all changes to the "custom_font_name" field.
-func (m *UserMutation) ResetCustomFontName() {
-	m.custom_font_name = nil
-}
-
-// SetCustomFontPath sets the "custom_font_path" field.
-func (m *UserMutation) SetCustomFontPath(s string) {
-	m.custom_font_path = &s
-}
-
-// CustomFontPath returns the value of the "custom_font_path" field in the mutation.
-func (m *UserMutation) CustomFontPath() (r string, exists bool) {
-	v := m.custom_font_path
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCustomFontPath returns the old "custom_font_path" field's value of the User entity.
-// If the User object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldCustomFontPath(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCustomFontPath is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCustomFontPath requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCustomFontPath: %w", err)
-	}
-	return oldValue.CustomFontPath, nil
-}
-
-// ResetCustomFontPath resets all changes to the "custom_font_path" field.
-func (m *UserMutation) ResetCustomFontPath() {
-	m.custom_font_path = nil
-}
-
-// SetCustomFontFamily sets the "custom_font_family" field.
-func (m *UserMutation) SetCustomFontFamily(s string) {
-	m.custom_font_family = &s
-}
-
-// CustomFontFamily returns the value of the "custom_font_family" field in the mutation.
-func (m *UserMutation) CustomFontFamily() (r string, exists bool) {
-	v := m.custom_font_family
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCustomFontFamily returns the old "custom_font_family" field's value of the User entity.
-// If the User object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldCustomFontFamily(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCustomFontFamily is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCustomFontFamily requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCustomFontFamily: %w", err)
-	}
-	return oldValue.CustomFontFamily, nil
-}
-
-// ResetCustomFontFamily resets all changes to the "custom_font_family" field.
-func (m *UserMutation) ResetCustomFontFamily() {
-	m.custom_font_family = nil
-}
-
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by ids.
 func (m *UserMutation) AddDictionaryIDs(ids ...int) {
 	if m.dictionaries == nil {
@@ -1498,6 +2228,45 @@ func (m *UserMutation) ResetDictionaries() {
 	m.removeddictionaries = nil
 }
 
+// SetSelectedFontID sets the "selected_font" edge to the Font entity by id.
+func (m *UserMutation) SetSelectedFontID(id int) {
+	m.selected_font = &id
+}
+
+// ClearSelectedFont clears the "selected_font" edge to the Font entity.
+func (m *UserMutation) ClearSelectedFont() {
+	m.clearedselected_font = true
+}
+
+// SelectedFontCleared reports if the "selected_font" edge to the Font entity was cleared.
+func (m *UserMutation) SelectedFontCleared() bool {
+	return m.clearedselected_font
+}
+
+// SelectedFontID returns the "selected_font" edge ID in the mutation.
+func (m *UserMutation) SelectedFontID() (id int, exists bool) {
+	if m.selected_font != nil {
+		return *m.selected_font, true
+	}
+	return
+}
+
+// SelectedFontIDs returns the "selected_font" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SelectedFontID instead. It exists only for internal usage by the builders.
+func (m *UserMutation) SelectedFontIDs() (ids []int) {
+	if id := m.selected_font; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSelectedFont resets all changes to the "selected_font" edge.
+func (m *UserMutation) ResetSelectedFont() {
+	m.selected_font = nil
+	m.clearedselected_font = false
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -1532,9 +2301,21 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
+	}
+	if m.display_name != nil {
+		fields = append(fields, user.FieldDisplayName)
+	}
+	if m.avatar_name != nil {
+		fields = append(fields, user.FieldAvatarName)
+	}
+	if m.avatar_path != nil {
+		fields = append(fields, user.FieldAvatarPath)
+	}
+	if m.avatar_mime != nil {
+		fields = append(fields, user.FieldAvatarMime)
 	}
 	if m.password_hash != nil {
 		fields = append(fields, user.FieldPasswordHash)
@@ -1551,15 +2332,6 @@ func (m *UserMutation) Fields() []string {
 	if m.font_mode != nil {
 		fields = append(fields, user.FieldFontMode)
 	}
-	if m.custom_font_name != nil {
-		fields = append(fields, user.FieldCustomFontName)
-	}
-	if m.custom_font_path != nil {
-		fields = append(fields, user.FieldCustomFontPath)
-	}
-	if m.custom_font_family != nil {
-		fields = append(fields, user.FieldCustomFontFamily)
-	}
 	return fields
 }
 
@@ -1570,6 +2342,14 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case user.FieldUsername:
 		return m.Username()
+	case user.FieldDisplayName:
+		return m.DisplayName()
+	case user.FieldAvatarName:
+		return m.AvatarName()
+	case user.FieldAvatarPath:
+		return m.AvatarPath()
+	case user.FieldAvatarMime:
+		return m.AvatarMime()
 	case user.FieldPasswordHash:
 		return m.PasswordHash()
 	case user.FieldIsAdmin:
@@ -1580,12 +2360,6 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Theme()
 	case user.FieldFontMode:
 		return m.FontMode()
-	case user.FieldCustomFontName:
-		return m.CustomFontName()
-	case user.FieldCustomFontPath:
-		return m.CustomFontPath()
-	case user.FieldCustomFontFamily:
-		return m.CustomFontFamily()
 	}
 	return nil, false
 }
@@ -1597,6 +2371,14 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 	switch name {
 	case user.FieldUsername:
 		return m.OldUsername(ctx)
+	case user.FieldDisplayName:
+		return m.OldDisplayName(ctx)
+	case user.FieldAvatarName:
+		return m.OldAvatarName(ctx)
+	case user.FieldAvatarPath:
+		return m.OldAvatarPath(ctx)
+	case user.FieldAvatarMime:
+		return m.OldAvatarMime(ctx)
 	case user.FieldPasswordHash:
 		return m.OldPasswordHash(ctx)
 	case user.FieldIsAdmin:
@@ -1607,12 +2389,6 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTheme(ctx)
 	case user.FieldFontMode:
 		return m.OldFontMode(ctx)
-	case user.FieldCustomFontName:
-		return m.OldCustomFontName(ctx)
-	case user.FieldCustomFontPath:
-		return m.OldCustomFontPath(ctx)
-	case user.FieldCustomFontFamily:
-		return m.OldCustomFontFamily(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -1628,6 +2404,34 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUsername(v)
+		return nil
+	case user.FieldDisplayName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisplayName(v)
+		return nil
+	case user.FieldAvatarName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvatarName(v)
+		return nil
+	case user.FieldAvatarPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvatarPath(v)
+		return nil
+	case user.FieldAvatarMime:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvatarMime(v)
 		return nil
 	case user.FieldPasswordHash:
 		v, ok := value.(string)
@@ -1663,27 +2467,6 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFontMode(v)
-		return nil
-	case user.FieldCustomFontName:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCustomFontName(v)
-		return nil
-	case user.FieldCustomFontPath:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCustomFontPath(v)
-		return nil
-	case user.FieldCustomFontFamily:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCustomFontFamily(v)
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
@@ -1737,6 +2520,18 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldUsername:
 		m.ResetUsername()
 		return nil
+	case user.FieldDisplayName:
+		m.ResetDisplayName()
+		return nil
+	case user.FieldAvatarName:
+		m.ResetAvatarName()
+		return nil
+	case user.FieldAvatarPath:
+		m.ResetAvatarPath()
+		return nil
+	case user.FieldAvatarMime:
+		m.ResetAvatarMime()
+		return nil
 	case user.FieldPasswordHash:
 		m.ResetPasswordHash()
 		return nil
@@ -1752,24 +2547,18 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldFontMode:
 		m.ResetFontMode()
 		return nil
-	case user.FieldCustomFontName:
-		m.ResetCustomFontName()
-		return nil
-	case user.FieldCustomFontPath:
-		m.ResetCustomFontPath()
-		return nil
-	case user.FieldCustomFontFamily:
-		m.ResetCustomFontFamily()
-		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.dictionaries != nil {
 		edges = append(edges, user.EdgeDictionaries)
+	}
+	if m.selected_font != nil {
+		edges = append(edges, user.EdgeSelectedFont)
 	}
 	return edges
 }
@@ -1784,13 +2573,17 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeSelectedFont:
+		if id := m.selected_font; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removeddictionaries != nil {
 		edges = append(edges, user.EdgeDictionaries)
 	}
@@ -1813,9 +2606,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.cleareddictionaries {
 		edges = append(edges, user.EdgeDictionaries)
+	}
+	if m.clearedselected_font {
+		edges = append(edges, user.EdgeSelectedFont)
 	}
 	return edges
 }
@@ -1826,6 +2622,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgeDictionaries:
 		return m.cleareddictionaries
+	case user.EdgeSelectedFont:
+		return m.clearedselected_font
 	}
 	return false
 }
@@ -1834,6 +2632,9 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
 	switch name {
+	case user.EdgeSelectedFont:
+		m.ClearSelectedFont()
+		return nil
 	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
@@ -1844,6 +2645,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 	switch name {
 	case user.EdgeDictionaries:
 		m.ResetDictionaries()
+		return nil
+	case user.EdgeSelectedFont:
+		m.ResetSelectedFont()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

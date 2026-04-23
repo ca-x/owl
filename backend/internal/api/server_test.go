@@ -18,7 +18,7 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	server := New(client, nil, nil, "*")
+	server := New(client, nil, nil, "*", true)
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	res := httptest.NewRecorder()
 	server.echo.ServeHTTP(res, req)

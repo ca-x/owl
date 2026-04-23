@@ -6,18 +6,28 @@ type AuthResponse struct {
 }
 
 type UserSummary struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	IsAdmin  bool   `json:"is_admin"`
+	ID          int    `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
+	IsAdmin     bool   `json:"is_admin"`
+}
+
+type SharedFont struct {
+	Name   string `json:"name"`
+	Family string `json:"family"`
 }
 
 type UserPreferences struct {
-	Language         string `json:"language"`
-	Theme            string `json:"theme"`
-	FontMode         string `json:"font_mode"`
-	CustomFontName   string `json:"custom_font_name"`
-	CustomFontFamily string `json:"custom_font_family"`
-	CustomFontURL    string `json:"custom_font_url,omitempty"`
+	Language         string       `json:"language"`
+	Theme            string       `json:"theme"`
+	FontMode         string       `json:"font_mode"`
+	DisplayName      string       `json:"display_name"`
+	AvatarURL        string       `json:"avatar_url,omitempty"`
+	CustomFontName   string       `json:"custom_font_name"`
+	CustomFontFamily string       `json:"custom_font_family"`
+	CustomFontURL    string       `json:"custom_font_url,omitempty"`
+	AvailableFonts   []SharedFont `json:"available_fonts,omitempty"`
 }
 
 type DictionarySummary struct {

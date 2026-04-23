@@ -1,6 +1,8 @@
 export interface UserSummary {
   id: number
   username: string
+  display_name: string
+  avatar_url?: string
   is_admin: boolean
 }
 
@@ -49,6 +51,11 @@ export interface SearchSuggestion {
   sources: SearchSuggestionSource[]
 }
 
+export interface SharedFont {
+  name: string
+  family: string
+}
+
 export interface HealthInfo {
   status: string
   version: string
@@ -58,15 +65,19 @@ export interface HealthInfo {
   go_version: string
   os: string
   arch: string
+  allow_register: boolean
 }
 
 export interface UserPreferences {
   language: 'zh-CN' | 'en'
-  theme: 'light' | 'dark' | 'sepia' | 'system'
+  theme: 'paper' | 'blue' | 'green' | 'dark' | 'mono' | 'system'
   font_mode: 'sans' | 'serif' | 'mono' | 'custom'
+  display_name: string
+  avatar_url?: string
   custom_font_name: string
   custom_font_family: string
   custom_font_url?: string
+  available_fonts?: SharedFont[]
 }
 
 export interface MaintenanceItemReport {

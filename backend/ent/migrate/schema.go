@@ -38,32 +38,60 @@ var (
 			},
 		},
 	}
+	// FontsColumns holds the columns for the "fonts" table.
+	FontsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "family", Type: field.TypeString},
+		{Name: "path", Type: field.TypeString},
+		{Name: "mime", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// FontsTable holds the schema information for the "fonts" table.
+	FontsTable = &schema.Table{
+		Name:       "fonts",
+		Columns:    FontsColumns,
+		PrimaryKey: []*schema.Column{FontsColumns[0]},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "username", Type: field.TypeString, Unique: true},
+		{Name: "display_name", Type: field.TypeString, Default: ""},
+		{Name: "avatar_name", Type: field.TypeString, Default: ""},
+		{Name: "avatar_path", Type: field.TypeString, Default: ""},
+		{Name: "avatar_mime", Type: field.TypeString, Default: ""},
 		{Name: "password_hash", Type: field.TypeString},
 		{Name: "is_admin", Type: field.TypeBool, Default: false},
 		{Name: "language", Type: field.TypeString, Default: "zh-CN"},
 		{Name: "theme", Type: field.TypeString, Default: "system"},
 		{Name: "font_mode", Type: field.TypeString, Default: "sans"},
-		{Name: "custom_font_name", Type: field.TypeString, Default: ""},
-		{Name: "custom_font_path", Type: field.TypeString, Default: ""},
-		{Name: "custom_font_family", Type: field.TypeString, Default: ""},
+		{Name: "user_selected_font", Type: field.TypeInt, Nullable: true},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
 		Name:       "users",
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "users_fonts_selected_font",
+				Columns:    []*schema.Column{UsersColumns[11]},
+				RefColumns: []*schema.Column{FontsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		DictionariesTable,
+		FontsTable,
 		UsersTable,
 	}
 )
 
 func init() {
 	DictionariesTable.ForeignKeys[0].RefTable = UsersTable
+	UsersTable.ForeignKeys[0].RefTable = FontsTable
 }

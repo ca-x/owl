@@ -4,6 +4,7 @@ package ent
 
 import (
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/font"
 	"owl/backend/ent/schema"
 	"owl/backend/ent/user"
 	"time"
@@ -61,42 +62,74 @@ func init() {
 	dictionary.DefaultUpdatedAt = dictionaryDescUpdatedAt.Default.(func() time.Time)
 	// dictionary.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	dictionary.UpdateDefaultUpdatedAt = dictionaryDescUpdatedAt.UpdateDefault.(func() time.Time)
+	fontFields := schema.Font{}.Fields()
+	_ = fontFields
+	// fontDescName is the schema descriptor for name field.
+	fontDescName := fontFields[0].Descriptor()
+	// font.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	font.NameValidator = fontDescName.Validators[0].(func(string) error)
+	// fontDescFamily is the schema descriptor for family field.
+	fontDescFamily := fontFields[1].Descriptor()
+	// font.FamilyValidator is a validator for the "family" field. It is called by the builders before save.
+	font.FamilyValidator = fontDescFamily.Validators[0].(func(string) error)
+	// fontDescPath is the schema descriptor for path field.
+	fontDescPath := fontFields[2].Descriptor()
+	// font.PathValidator is a validator for the "path" field. It is called by the builders before save.
+	font.PathValidator = fontDescPath.Validators[0].(func(string) error)
+	// fontDescMime is the schema descriptor for mime field.
+	fontDescMime := fontFields[3].Descriptor()
+	// font.MimeValidator is a validator for the "mime" field. It is called by the builders before save.
+	font.MimeValidator = fontDescMime.Validators[0].(func(string) error)
+	// fontDescCreatedAt is the schema descriptor for created_at field.
+	fontDescCreatedAt := fontFields[4].Descriptor()
+	// font.DefaultCreatedAt holds the default value on creation for the created_at field.
+	font.DefaultCreatedAt = fontDescCreatedAt.Default.(func() time.Time)
+	// fontDescUpdatedAt is the schema descriptor for updated_at field.
+	fontDescUpdatedAt := fontFields[5].Descriptor()
+	// font.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	font.DefaultUpdatedAt = fontDescUpdatedAt.Default.(func() time.Time)
+	// font.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	font.UpdateDefaultUpdatedAt = fontDescUpdatedAt.UpdateDefault.(func() time.Time)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescUsername is the schema descriptor for username field.
 	userDescUsername := userFields[0].Descriptor()
 	// user.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	user.UsernameValidator = userDescUsername.Validators[0].(func(string) error)
+	// userDescDisplayName is the schema descriptor for display_name field.
+	userDescDisplayName := userFields[1].Descriptor()
+	// user.DefaultDisplayName holds the default value on creation for the display_name field.
+	user.DefaultDisplayName = userDescDisplayName.Default.(string)
+	// userDescAvatarName is the schema descriptor for avatar_name field.
+	userDescAvatarName := userFields[2].Descriptor()
+	// user.DefaultAvatarName holds the default value on creation for the avatar_name field.
+	user.DefaultAvatarName = userDescAvatarName.Default.(string)
+	// userDescAvatarPath is the schema descriptor for avatar_path field.
+	userDescAvatarPath := userFields[3].Descriptor()
+	// user.DefaultAvatarPath holds the default value on creation for the avatar_path field.
+	user.DefaultAvatarPath = userDescAvatarPath.Default.(string)
+	// userDescAvatarMime is the schema descriptor for avatar_mime field.
+	userDescAvatarMime := userFields[4].Descriptor()
+	// user.DefaultAvatarMime holds the default value on creation for the avatar_mime field.
+	user.DefaultAvatarMime = userDescAvatarMime.Default.(string)
 	// userDescPasswordHash is the schema descriptor for password_hash field.
-	userDescPasswordHash := userFields[1].Descriptor()
+	userDescPasswordHash := userFields[5].Descriptor()
 	// user.PasswordHashValidator is a validator for the "password_hash" field. It is called by the builders before save.
 	user.PasswordHashValidator = userDescPasswordHash.Validators[0].(func(string) error)
 	// userDescIsAdmin is the schema descriptor for is_admin field.
-	userDescIsAdmin := userFields[2].Descriptor()
+	userDescIsAdmin := userFields[6].Descriptor()
 	// user.DefaultIsAdmin holds the default value on creation for the is_admin field.
 	user.DefaultIsAdmin = userDescIsAdmin.Default.(bool)
 	// userDescLanguage is the schema descriptor for language field.
-	userDescLanguage := userFields[3].Descriptor()
+	userDescLanguage := userFields[7].Descriptor()
 	// user.DefaultLanguage holds the default value on creation for the language field.
 	user.DefaultLanguage = userDescLanguage.Default.(string)
 	// userDescTheme is the schema descriptor for theme field.
-	userDescTheme := userFields[4].Descriptor()
+	userDescTheme := userFields[8].Descriptor()
 	// user.DefaultTheme holds the default value on creation for the theme field.
 	user.DefaultTheme = userDescTheme.Default.(string)
 	// userDescFontMode is the schema descriptor for font_mode field.
-	userDescFontMode := userFields[5].Descriptor()
+	userDescFontMode := userFields[9].Descriptor()
 	// user.DefaultFontMode holds the default value on creation for the font_mode field.
 	user.DefaultFontMode = userDescFontMode.Default.(string)
-	// userDescCustomFontName is the schema descriptor for custom_font_name field.
-	userDescCustomFontName := userFields[6].Descriptor()
-	// user.DefaultCustomFontName holds the default value on creation for the custom_font_name field.
-	user.DefaultCustomFontName = userDescCustomFontName.Default.(string)
-	// userDescCustomFontPath is the schema descriptor for custom_font_path field.
-	userDescCustomFontPath := userFields[7].Descriptor()
-	// user.DefaultCustomFontPath holds the default value on creation for the custom_font_path field.
-	user.DefaultCustomFontPath = userDescCustomFontPath.Default.(string)
-	// userDescCustomFontFamily is the schema descriptor for custom_font_family field.
-	userDescCustomFontFamily := userFields[8].Descriptor()
-	// user.DefaultCustomFontFamily holds the default value on creation for the custom_font_family field.
-	user.DefaultCustomFontFamily = userDescCustomFontFamily.Default.(string)
 }

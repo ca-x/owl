@@ -73,7 +73,7 @@ func main() {
 		cfg.AudioCacheDir,
 		cfg.FFmpegBin,
 	)
-	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin)
+	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin, cfg.AllowRegister)
 
 	go func() {
 		if err := server.Start(":" + cfg.Port); err != nil {

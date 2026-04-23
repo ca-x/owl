@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -11,7 +12,8 @@ import (
 	"time"
 
 	"owl/backend/ent"
-	"owl/backend/ent/user"
+	entfont "owl/backend/ent/font"
+	entuser "owl/backend/ent/user"
 	"owl/backend/internal/models"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -40,7 +42,7 @@ func (s *Service) Register(ctx context.Context, username, password string) (*mod
 	if username == "" || strings.TrimSpace(password) == "" {
 		return nil, fmt.Errorf("username and password are required")
 	}
-	exists, err := s.client.User.Query().Where(user.UsernameEQ(username)).Exist(ctx)
+	exists, err := s.client.User.Query().Where(entuser.UsernameEQ(username)).Exist(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +53,7 @@ func (s *Service) Register(ctx context.Context, username, password string) (*mod
 	if err != nil {
 		return nil, err
 	}
-	u, err := s.client.User.Create().SetUsername(username).SetPasswordHash(string(hash)).Save(ctx)
+	u, err := s.client.User.Create().SetUsername(username).SetDisplayName(username).SetPasswordHash(string(hash)).Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,7 @@ func (s *Service) Register(ctx context.Context, username, password string) (*mod
 }
 
 func (s *Service) Login(ctx context.Context, username, password string) (*models.AuthResponse, error) {
-	u, err := s.client.User.Query().Where(user.UsernameEQ(strings.TrimSpace(username))).Only(ctx)
+	u, err := s.client.User.Query().Where(entuser.UsernameEQ(strings.TrimSpace(username))).Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("invalid credentials")
 	}
@@ -84,11 +86,15 @@ func (s *Service) ParseToken(tokenString string) (*Claims, error) {
 }
 
 func (s *Service) UserSummaryFromClaims(claims *Claims) models.UserSummary {
-	return models.UserSummary{ID: claims.UserID, Username: claims.Username, IsAdmin: claims.IsAdmin}
+	u, err := s.client.User.Get(context.Background(), claims.UserID)
+	if err == nil {
+		return s.userSummaryFromUser(u)
+	}
+	return models.UserSummary{ID: claims.UserID, Username: claims.Username, DisplayName: claims.Username, IsAdmin: claims.IsAdmin}
 }
 
 func (s *Service) EnsureAdmin(ctx context.Context, username, password string) error {
-	exists, err := s.client.User.Query().Where(user.UsernameEQ(username)).Exist(ctx)
+	exists, err := s.client.User.Query().Where(entuser.UsernameEQ(username)).Exist(ctx)
 	if err != nil || exists {
 		return err
 	}
@@ -96,7 +102,7 @@ func (s *Service) EnsureAdmin(ctx context.Context, username, password string) er
 	if err != nil {
 		return err
 	}
-	_, err = s.client.User.Create().SetUsername(username).SetPasswordHash(string(hash)).SetIsAdmin(true).Save(ctx)
+	_, err = s.client.User.Create().SetUsername(username).SetDisplayName(username).SetPasswordHash(string(hash)).SetIsAdmin(true).Save(ctx)
 	return err
 }
 
@@ -105,27 +111,103 @@ func (s *Service) GetPreferences(ctx context.Context, userID int) (*models.UserP
 	if err != nil {
 		return nil, err
 	}
-	return s.preferencesFromUser(u), nil
+	return s.buildPreferences(ctx, u), nil
+}
+
+func (s *Service) GetUserSummary(ctx context.Context, userID int) (*models.UserSummary, error) {
+	u, err := s.client.User.Get(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	summary := s.userSummaryFromUser(u)
+	return &summary, nil
 }
 
 func (s *Service) UpdatePreferences(ctx context.Context, userID int, prefs models.UserPreferences) (*models.UserPreferences, error) {
-	updated, err := s.client.User.UpdateOneID(userID).
+	fontMode := normalizeFontMode(prefs.FontMode)
+	update := s.client.User.UpdateOneID(userID).
 		SetLanguage(normalizeLanguage(prefs.Language)).
 		SetTheme(normalizeTheme(prefs.Theme)).
-		SetFontMode(normalizeFontMode(prefs.FontMode)).
+		SetFontMode(fontMode)
+	if displayName := strings.TrimSpace(prefs.DisplayName); displayName != "" {
+		update = update.SetDisplayName(displayName)
+	}
+	if fontMode == "custom" && strings.TrimSpace(prefs.CustomFontName) != "" {
+		fontEntity, err := s.client.Font.Query().Where(entfont.NameEQ(filepath.Base(prefs.CustomFontName))).Only(ctx)
+		if err == nil {
+			update = update.SetSelectedFontID(fontEntity.ID)
+		}
+	} else if fontMode != "custom" {
+		update = update.ClearSelectedFont()
+	}
+	updated, err := update.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildPreferences(ctx, updated), nil
+}
+
+func (s *Service) UploadAvatar(ctx context.Context, userID int, avatarFile *multipart.FileHeader) (*models.UserPreferences, error) {
+	if avatarFile == nil {
+		return nil, fmt.Errorf("avatar file is required")
+	}
+	userDir := filepath.Join(s.dataDir, "avatars", fmt.Sprintf("user-%d", userID))
+	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		return nil, err
+	}
+	filename := filepath.Base(avatarFile.Filename)
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".png", ".jpg", ".jpeg", ".webp":
+	default:
+		return nil, fmt.Errorf("unsupported avatar type")
+	}
+	src, err := avatarFile.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+	avatarPath := filepath.Join(userDir, filename)
+	dst, err := os.Create(avatarPath)
+	if err != nil {
+		return nil, err
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, src); err != nil {
+		return nil, err
+	}
+	updated, err := s.client.User.UpdateOneID(userID).
+		SetAvatarName(filename).
+		SetAvatarPath(avatarPath).
+		SetAvatarMime(detectAvatarContentType(avatarPath)).
 		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.preferencesFromUser(updated), nil
+	return s.buildPreferences(ctx, updated), nil
+}
+
+func (s *Service) LoadAvatar(ctx context.Context, userID int) ([]byte, string, error) {
+	u, err := s.client.User.Get(ctx, userID)
+	if err != nil {
+		return nil, "", err
+	}
+	if strings.TrimSpace(u.AvatarPath) == "" {
+		return nil, "", fmt.Errorf("avatar not found")
+	}
+	data, err := os.ReadFile(u.AvatarPath)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, firstNonEmpty(strings.TrimSpace(u.AvatarMime), detectAvatarContentType(u.AvatarPath)), nil
 }
 
 func (s *Service) UploadFont(ctx context.Context, userID int, fontFile *multipart.FileHeader) (*models.UserPreferences, error) {
 	if fontFile == nil {
 		return nil, fmt.Errorf("font file is required")
 	}
-	userDir := filepath.Join(s.dataDir, "fonts", fmt.Sprintf("user-%d", userID))
-	if err := os.MkdirAll(userDir, 0o755); err != nil {
+	fontDir := s.sharedFontDir()
+	if err := os.MkdirAll(fontDir, 0o755); err != nil {
 		return nil, err
 	}
 	filename := filepath.Base(fontFile.Filename)
@@ -140,28 +222,72 @@ func (s *Service) UploadFont(ctx context.Context, userID int, fontFile *multipar
 		return nil, err
 	}
 	defer src.Close()
-
-	fontPath := filepath.Join(userDir, filename)
+	fontPath := filepath.Join(fontDir, filename)
 	dst, err := os.Create(fontPath)
 	if err != nil {
 		return nil, err
 	}
 	defer dst.Close()
-	if _, err := dst.ReadFrom(src); err != nil {
+	if _, err := io.Copy(dst, src); err != nil {
 		return nil, err
 	}
-
-	fontFamily := sanitizeFontFamily(strings.TrimSuffix(filename, ext))
+	family := sanitizeFontFamily(strings.TrimSuffix(filename, ext))
+	fontEntity, err := s.client.Font.Query().Where(entfont.NameEQ(filename)).Only(ctx)
+	if err == nil {
+		fontEntity, err = s.client.Font.UpdateOneID(fontEntity.ID).
+			SetFamily(family).
+			SetPath(fontPath).
+			SetMime(detectFontContentType(fontPath)).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		fontEntity, err = s.client.Font.Create().
+			SetName(filename).
+			SetFamily(family).
+			SetPath(fontPath).
+			SetMime(detectFontContentType(fontPath)).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	updated, err := s.client.User.UpdateOneID(userID).
 		SetFontMode("custom").
-		SetCustomFontName(filename).
-		SetCustomFontPath(fontPath).
-		SetCustomFontFamily(fontFamily).
+		SetSelectedFontID(fontEntity.ID).
 		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.preferencesFromUser(updated), nil
+	return s.buildPreferences(ctx, updated), nil
+}
+
+func (s *Service) DeleteFont(ctx context.Context, userID int, fontName string) (*models.UserPreferences, error) {
+	target := filepath.Base(strings.TrimSpace(fontName))
+	if target == "" {
+		return nil, fmt.Errorf("font name is required")
+	}
+	fontEntity, err := s.client.Font.Query().Where(entfont.NameEQ(target)).Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_ = os.Remove(fontEntity.Path)
+	if _, err := s.client.User.Update().
+		Where(entuser.HasSelectedFontWith(entfont.IDEQ(fontEntity.ID))).
+		SetFontMode("sans").
+		ClearSelectedFont().
+		Save(ctx); err != nil {
+		return nil, err
+	}
+	if err := s.client.Font.DeleteOneID(fontEntity.ID).Exec(ctx); err != nil {
+		return nil, err
+	}
+	u, err := s.client.User.Get(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildPreferences(ctx, u), nil
 }
 
 func (s *Service) LoadFont(ctx context.Context, userID int) ([]byte, string, error) {
@@ -169,28 +295,29 @@ func (s *Service) LoadFont(ctx context.Context, userID int) ([]byte, string, err
 	if err != nil {
 		return nil, "", err
 	}
-	if strings.TrimSpace(u.CustomFontPath) == "" {
+	selected, err := s.selectedFont(ctx, u)
+	if err != nil || selected == nil {
 		return nil, "", fmt.Errorf("custom font not found")
 	}
-	data, err := os.ReadFile(u.CustomFontPath)
+	data, err := os.ReadFile(selected.Path)
 	if err != nil {
 		return nil, "", err
 	}
-	return data, detectFontContentType(u.CustomFontPath), nil
+	return data, detectFontContentType(selected.Path), nil
 }
 
-func (s *Service) preferencesFromUser(u *ent.User) *models.UserPreferences {
-	prefs := &models.UserPreferences{
-		Language:         normalizeLanguage(u.Language),
-		Theme:            normalizeTheme(u.Theme),
-		FontMode:         normalizeFontMode(u.FontMode),
-		CustomFontName:   u.CustomFontName,
-		CustomFontFamily: u.CustomFontFamily,
+func (s *Service) selectedFont(ctx context.Context, u *ent.User) (*ent.Font, error) {
+	if u == nil {
+		return nil, fmt.Errorf("user is nil")
 	}
-	if strings.TrimSpace(u.CustomFontPath) != "" {
-		prefs.CustomFontURL = "/api/preferences/font"
+	if u.Edges.SelectedFont != nil {
+		return u.Edges.SelectedFont, nil
 	}
-	return prefs
+	selected, err := u.QuerySelectedFont().Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return selected, nil
 }
 
 func normalizeLanguage(value string) string {
@@ -204,8 +331,10 @@ func normalizeLanguage(value string) string {
 
 func normalizeTheme(value string) string {
 	switch strings.TrimSpace(value) {
-	case "light", "dark", "sepia", "system":
+	case "paper", "blue", "green", "dark", "mono", "system":
 		return value
+	case "light", "sepia":
+		return "paper"
 	default:
 		return "system"
 	}
@@ -262,5 +391,89 @@ func (s *Service) buildAuthResponse(u *ent.User) (*models.AuthResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &models.AuthResponse{Token: tokenString, User: models.UserSummary{ID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin}}, nil
+	return &models.AuthResponse{Token: tokenString, User: s.userSummaryFromUser(u)}, nil
+}
+
+func (s *Service) userSummaryFromUser(u *ent.User) models.UserSummary {
+	summary := models.UserSummary{
+		ID:          u.ID,
+		Username:    u.Username,
+		DisplayName: firstNonEmpty(strings.TrimSpace(u.DisplayName), u.Username),
+		IsAdmin:     u.IsAdmin,
+	}
+	if strings.TrimSpace(u.AvatarPath) != "" {
+		summary.AvatarURL = "/api/preferences/avatar"
+	}
+	return summary
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func detectAvatarContentType(path string) string {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	default:
+		return http.DetectContentType([]byte(path))
+	}
+}
+
+func (s *Service) sharedFontDir() string {
+	return filepath.Join(s.dataDir, "shared-fonts")
+}
+
+func (s *Service) listSharedFonts() []models.SharedFont {
+	dir := s.sharedFontDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []models.SharedFont{}
+	}
+	fonts := make([]models.SharedFont, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		ext := strings.ToLower(filepath.Ext(name))
+		switch ext {
+		case ".ttf", ".otf", ".woff", ".woff2":
+		default:
+			continue
+		}
+		fonts = append(fonts, models.SharedFont{
+			Name:   name,
+			Family: sanitizeFontFamily(strings.TrimSuffix(name, ext)),
+		})
+	}
+	return fonts
+}
+
+func (s *Service) buildPreferences(ctx context.Context, u *ent.User) *models.UserPreferences {
+	prefs := &models.UserPreferences{
+		Language:       normalizeLanguage(u.Language),
+		Theme:          normalizeTheme(u.Theme),
+		FontMode:       normalizeFontMode(u.FontMode),
+		DisplayName:    firstNonEmpty(strings.TrimSpace(u.DisplayName), u.Username),
+		AvailableFonts: s.listSharedFonts(),
+	}
+	if selected, err := s.selectedFont(ctx, u); err == nil && selected != nil {
+		prefs.CustomFontName = selected.Name
+		prefs.CustomFontFamily = selected.Family
+		prefs.CustomFontURL = "/api/preferences/font"
+	}
+	if strings.TrimSpace(u.AvatarPath) != "" {
+		prefs.AvatarURL = "/api/preferences/avatar"
+	}
+	return prefs
 }

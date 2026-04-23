@@ -14,6 +14,14 @@ const (
 	FieldID = "id"
 	// FieldUsername holds the string denoting the username field in the database.
 	FieldUsername = "username"
+	// FieldDisplayName holds the string denoting the display_name field in the database.
+	FieldDisplayName = "display_name"
+	// FieldAvatarName holds the string denoting the avatar_name field in the database.
+	FieldAvatarName = "avatar_name"
+	// FieldAvatarPath holds the string denoting the avatar_path field in the database.
+	FieldAvatarPath = "avatar_path"
+	// FieldAvatarMime holds the string denoting the avatar_mime field in the database.
+	FieldAvatarMime = "avatar_mime"
 	// FieldPasswordHash holds the string denoting the password_hash field in the database.
 	FieldPasswordHash = "password_hash"
 	// FieldIsAdmin holds the string denoting the is_admin field in the database.
@@ -24,14 +32,10 @@ const (
 	FieldTheme = "theme"
 	// FieldFontMode holds the string denoting the font_mode field in the database.
 	FieldFontMode = "font_mode"
-	// FieldCustomFontName holds the string denoting the custom_font_name field in the database.
-	FieldCustomFontName = "custom_font_name"
-	// FieldCustomFontPath holds the string denoting the custom_font_path field in the database.
-	FieldCustomFontPath = "custom_font_path"
-	// FieldCustomFontFamily holds the string denoting the custom_font_family field in the database.
-	FieldCustomFontFamily = "custom_font_family"
 	// EdgeDictionaries holds the string denoting the dictionaries edge name in mutations.
 	EdgeDictionaries = "dictionaries"
+	// EdgeSelectedFont holds the string denoting the selected_font edge name in mutations.
+	EdgeSelectedFont = "selected_font"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// DictionariesTable is the table that holds the dictionaries relation/edge.
@@ -41,20 +45,34 @@ const (
 	DictionariesInverseTable = "dictionaries"
 	// DictionariesColumn is the table column denoting the dictionaries relation/edge.
 	DictionariesColumn = "user_dictionaries"
+	// SelectedFontTable is the table that holds the selected_font relation/edge.
+	SelectedFontTable = "users"
+	// SelectedFontInverseTable is the table name for the Font entity.
+	// It exists in this package in order to avoid circular dependency with the "font" package.
+	SelectedFontInverseTable = "fonts"
+	// SelectedFontColumn is the table column denoting the selected_font relation/edge.
+	SelectedFontColumn = "user_selected_font"
 )
 
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
 	FieldUsername,
+	FieldDisplayName,
+	FieldAvatarName,
+	FieldAvatarPath,
+	FieldAvatarMime,
 	FieldPasswordHash,
 	FieldIsAdmin,
 	FieldLanguage,
 	FieldTheme,
 	FieldFontMode,
-	FieldCustomFontName,
-	FieldCustomFontPath,
-	FieldCustomFontFamily,
+}
+
+// ForeignKeys holds the SQL foreign-keys that are owned by the "users"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"user_selected_font",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -64,12 +82,25 @@ func ValidColumn(column string) bool {
 			return true
 		}
 	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
+			return true
+		}
+	}
 	return false
 }
 
 var (
 	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	UsernameValidator func(string) error
+	// DefaultDisplayName holds the default value on creation for the "display_name" field.
+	DefaultDisplayName string
+	// DefaultAvatarName holds the default value on creation for the "avatar_name" field.
+	DefaultAvatarName string
+	// DefaultAvatarPath holds the default value on creation for the "avatar_path" field.
+	DefaultAvatarPath string
+	// DefaultAvatarMime holds the default value on creation for the "avatar_mime" field.
+	DefaultAvatarMime string
 	// PasswordHashValidator is a validator for the "password_hash" field. It is called by the builders before save.
 	PasswordHashValidator func(string) error
 	// DefaultIsAdmin holds the default value on creation for the "is_admin" field.
@@ -80,12 +111,6 @@ var (
 	DefaultTheme string
 	// DefaultFontMode holds the default value on creation for the "font_mode" field.
 	DefaultFontMode string
-	// DefaultCustomFontName holds the default value on creation for the "custom_font_name" field.
-	DefaultCustomFontName string
-	// DefaultCustomFontPath holds the default value on creation for the "custom_font_path" field.
-	DefaultCustomFontPath string
-	// DefaultCustomFontFamily holds the default value on creation for the "custom_font_family" field.
-	DefaultCustomFontFamily string
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -99,6 +124,26 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByUsername orders the results by the username field.
 func ByUsername(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUsername, opts...).ToFunc()
+}
+
+// ByDisplayName orders the results by the display_name field.
+func ByDisplayName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDisplayName, opts...).ToFunc()
+}
+
+// ByAvatarName orders the results by the avatar_name field.
+func ByAvatarName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvatarName, opts...).ToFunc()
+}
+
+// ByAvatarPath orders the results by the avatar_path field.
+func ByAvatarPath(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvatarPath, opts...).ToFunc()
+}
+
+// ByAvatarMime orders the results by the avatar_mime field.
+func ByAvatarMime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvatarMime, opts...).ToFunc()
 }
 
 // ByPasswordHash orders the results by the password_hash field.
@@ -126,21 +171,6 @@ func ByFontMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFontMode, opts...).ToFunc()
 }
 
-// ByCustomFontName orders the results by the custom_font_name field.
-func ByCustomFontName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCustomFontName, opts...).ToFunc()
-}
-
-// ByCustomFontPath orders the results by the custom_font_path field.
-func ByCustomFontPath(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCustomFontPath, opts...).ToFunc()
-}
-
-// ByCustomFontFamily orders the results by the custom_font_family field.
-func ByCustomFontFamily(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCustomFontFamily, opts...).ToFunc()
-}
-
 // ByDictionariesCount orders the results by dictionaries count.
 func ByDictionariesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -154,10 +184,24 @@ func ByDictionaries(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDictionariesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// BySelectedFontField orders the results by selected_font field.
+func BySelectedFontField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSelectedFontStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newDictionariesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DictionariesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, DictionariesTable, DictionariesColumn),
+	)
+}
+func newSelectedFontStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SelectedFontInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, SelectedFontTable, SelectedFontColumn),
 	)
 }

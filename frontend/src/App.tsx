@@ -1,3 +1,4 @@
+import { MagnifyingGlass, SignOut, SlidersHorizontal, StackSimple, UserCircle, X } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 
 import { AuthPanel } from './components/AuthPanel'
@@ -11,9 +12,40 @@ import './App.css'
 
 type Page = 'search' | 'manage'
 
+type ControlButtonProps = {
+  active?: boolean
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+}
+
 const TOKEN_KEY = 'owl-token'
 const RECENT_SEARCHES_KEY = 'owl-recent-searches'
 const LOGO_SRC = '/android-chrome-192x192.png'
+
+function ControlButton({ active = false, icon, label, onClick }: ControlButtonProps) {
+  return (
+    <button className={active ? 'deck-key active' : 'deck-key'} type="button" onClick={onClick} title={label} aria-label={label}>
+      <span className={active ? 'deck-key-led active' : 'deck-key-led'} aria-hidden="true" />
+      <span className="deck-key-icon" aria-hidden="true">{icon}</span>
+      <span className="deck-key-label">{label}</span>
+    </button>
+  )
+}
+
+function IconControlButton({ icon, label, onClick, danger = false }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      className={danger ? 'transport-button danger' : 'transport-button'}
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+    >
+      {icon}
+    </button>
+  )
+}
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
@@ -35,6 +67,8 @@ export default function App() {
     language: 'zh-CN',
     theme: 'system',
     font_mode: 'sans',
+    display_name: '',
+    avatar_url: '',
     custom_font_name: '',
     custom_font_family: '',
   })
@@ -51,7 +85,7 @@ export default function App() {
 
   useEffect(() => {
     const resolvedTheme = preferences.theme === 'system'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'paper')
       : preferences.theme
     document.documentElement.dataset.theme = resolvedTheme
   }, [preferences.theme])
@@ -154,7 +188,6 @@ export default function App() {
       active = false
     }
   }, [token])
-
 
   async function handleLogin(username: string, password: string) {
     setAuthLoading(true)
@@ -280,7 +313,7 @@ export default function App() {
     setMaintenanceReport(null)
   }
 
-  async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode'>>) {
+  async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>>) {
     if (!token) {
       setPreferences((current) => ({
         ...current,
@@ -292,6 +325,8 @@ export default function App() {
       language: patch.language ?? preferences.language,
       theme: patch.theme ?? preferences.theme,
       font_mode: patch.font_mode ?? preferences.font_mode,
+      display_name: patch.display_name ?? preferences.display_name,
+      custom_font_name: patch.custom_font_name ?? preferences.custom_font_name,
     })
     setPreferences(next)
   }
@@ -302,27 +337,39 @@ export default function App() {
     setPreferences(next)
   }
 
+  async function handleAvatarUpload(file: File) {
+    if (!token) return
+    const next = await api.uploadAvatar(token, file)
+    setPreferences(next)
+    setUser((current) => (current ? { ...current, avatar_url: next.avatar_url } : current))
+  }
+
+  async function handleDeleteFont(name: string) {
+    if (!token) return
+    const next = await api.deleteFont(token, name)
+    setPreferences(next)
+  }
+
+
+  const userSubtitle = user?.display_name ? t.workspaceSubtitle(user.display_name) : t.genericWorkspaceSubtitle
+
+  const settingsButton = <IconControlButton icon={<SlidersHorizontal size={18} weight="bold" />} label={t.settings} onClick={() => setSettingsOpen(true)} />
+
   if (!token || !user) {
     return (
       <I18nContext.Provider value={{ language: preferences.language, t }}>
         <div className="app-shell">
-          <header className="topbar minimal-topbar">
-            <div className="brand-block">
-              <div className="brand-icon">
+          <header className="topbar recorder-topbar minimal-topbar">
+            <div className="brand-block recorder-brand recorder-brand-minimal">
+              <div className="brand-icon recorder-brand-icon">
                 <img src={LOGO_SRC} alt="Owl logo" className="brand-logo-image" />
               </div>
-              <div>
-                <strong>Owl</strong>
-                <p>{healthInfo ? `${healthInfo.full_version} · ${healthInfo.os}/${healthInfo.arch}` : t.appTagline}</p>
-              </div>
             </div>
-            <div className="toolbar-actions">
-              <button className="secondary-button" type="button" onClick={() => setAuthOpen(true)}>
-                {t.login}
-              </button>
-              <button className="secondary-button" type="button" onClick={() => setSettingsOpen(true)}>
-                {t.settings}
-              </button>
+            <div className="control-deck guest-control-deck compact-deck">
+              <div className="mode-rail mode-rail-bare" aria-label="dictionary modes">
+                <ControlButton active icon={<MagnifyingGlass size={20} weight="fill" />} label={t.search} onClick={() => undefined} />
+              </div>
+              <div className="transport-cluster">{settingsButton}</div>
             </div>
           </header>
 
@@ -339,48 +386,55 @@ export default function App() {
                 recentSearches={recentSearches}
                 onSearch={handleSearch}
               />
-              <p className="guest-search-hint">{t.guestSearchHint}</p>
             </section>
           </main>
 
           {authOpen ? (
             <div className="settings-overlay" role="presentation" onClick={() => setAuthOpen(false)}>
-              <div className="auth-modal-shell" role="dialog" aria-modal="true" aria-label={t.login} onClick={(event) => event.stopPropagation()}>
-                <div className="settings-drawer-head">
+              <div className="auth-modal-shell recorder-modal-shell" role="dialog" aria-modal="true" aria-label={t.login} onClick={(event) => event.stopPropagation()}>
+                <div className="settings-drawer-head recorder-drawer-head">
                   <div>
                     <div className="eyebrow">Owl</div>
-                    <h3>{t.login} / {t.register}</h3>
+                    <h3>{healthInfo?.allow_register === false ? t.login : `${t.login} / ${t.register}`}</h3>
+                    <p className="muted drawer-subcopy">{t.authDescription}</p>
                   </div>
-                  <button className="secondary-button" type="button" onClick={() => setAuthOpen(false)}>
-                    {t.close}
-                  </button>
+                  <IconControlButton icon={<X size={18} weight="bold" />} label={t.close} onClick={() => setAuthOpen(false)} />
                 </div>
-                <AuthPanel loading={authLoading} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
+                <AuthPanel loading={authLoading} error={authError} allowRegister={healthInfo?.allow_register ?? true} onLogin={handleLogin} onRegister={handleRegister} />
               </div>
             </div>
           ) : null}
 
           {settingsOpen ? (
             <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>
-              <div className="settings-drawer" role="dialog" aria-modal="true" aria-label={t.settings} onClick={(event) => event.stopPropagation()}>
-                <div className="settings-drawer-head">
+              <div className="settings-drawer recorder-drawer" role="dialog" aria-modal="true" aria-label={t.settings} onClick={(event) => event.stopPropagation()}>
+                <div className="settings-drawer-head recorder-drawer-head">
                   <div>
                     <div className="eyebrow">{t.settings}</div>
                     <h3>{t.preferences}</h3>
+                    <p className="muted drawer-subcopy">{healthInfo ? `${t.versionLabel}: ${healthInfo.version}` : t.appTagline}</p>
                   </div>
-                  <button className="secondary-button" type="button" onClick={() => setSettingsOpen(false)}>
-                    {t.close}
+                  <IconControlButton icon={<X size={18} weight="bold" />} label={t.close} onClick={() => setSettingsOpen(false)} />
+                </div>
+                <div className="drawer-user-card guest-drawer-card compact-user-card">
+                  <UserCircle size={28} weight="duotone" />
+                  <div className="drawer-user-meta">
+                    <strong>Guest</strong>
+                    <span className="muted">{t.scopeAllPublic}</span>
+                  </div>
+                </div>
+                <div className="guest-auth-actions">
+                  <button className="primary-button guest-login-button" type="button" onClick={() => { setSettingsOpen(false); setAuthOpen(true) }}>
+                    {t.login}
                   </button>
                 </div>
-                {healthInfo ? (
-                  <p className="settings-build-meta">{t.versionLabel}: {healthInfo.version}</p>
-                ) : null}
                 <SettingsPanel
                   preferences={preferences}
                   onLanguageChange={async (language) => updatePreferences({ language })}
                   onThemeChange={async (theme) => updatePreferences({ theme })}
                   onFontModeChange={async (font_mode) => updatePreferences({ font_mode })}
-                  onFontUpload={handleFontUpload}
+                  onDisplayNameChange={async (display_name) => updatePreferences({ display_name })}
+                  onAvatarUpload={handleAvatarUpload}
                 />
               </div>
             </div>
@@ -393,38 +447,17 @@ export default function App() {
   return (
     <I18nContext.Provider value={{ language: preferences.language, t }}>
       <div className="app-shell">
-        <header className="topbar">
-          <div className="brand-block">
-            <div className="brand-icon">
-              <img src={LOGO_SRC} alt="Owl logo" className="brand-logo-image" />
+        <header className="topbar recorder-topbar compact-topbar">
+          <div className="control-deck compact-deck main-control-deck">
+            <div className="mode-rail mode-rail-bare" aria-label="dictionary modes">
+              <ControlButton active={page === 'search'} icon={<MagnifyingGlass size={20} weight={page === 'search' ? 'fill' : 'regular'} />} label={t.search} onClick={() => setPage('search')} />
+              <ControlButton active={page === 'manage'} icon={<StackSimple size={20} weight={page === 'manage' ? 'fill' : 'regular'} />} label={t.manage} onClick={() => setPage('manage')} />
             </div>
-            <div>
-              <strong>Owl</strong>
-              <p>{user.username ? t.workspaceSubtitle(user.username) : t.genericWorkspaceSubtitle}</p>
-            </div>
-          </div>
-
-        <nav className="nav-tabs">
-          <button className={page === 'search' ? 'active' : ''} type="button" onClick={() => setPage('search')}>
-            {t.search}
-          </button>
-          <button className={page === 'manage' ? 'active' : ''} type="button" onClick={() => setPage('manage')}>
-            {t.manage}
-          </button>
-        </nav>
-
-          <div className="toolbar-actions">
-            {user.is_admin ? <span className="status-pill active">{t.admin}</span> : null}
-            <button className="secondary-button" type="button" onClick={() => setSettingsOpen(true)}>
-              {t.settings}
-            </button>
-            <button className="secondary-button" type="button" onClick={handleLogout}>
-              {t.logout}
-            </button>
+            <div className="transport-cluster">{settingsButton}</div>
           </div>
         </header>
 
-        <main className="dashboard-main">
+        <main className="dashboard-main recorder-main-shell">
           {page === 'search' ? (
             <SearchPage
               dictionaries={dictionaries}
@@ -443,6 +476,7 @@ export default function App() {
               loading={dictionaryLoading}
               error={dictionaryError}
               maintenanceReport={maintenanceReport}
+              preferences={preferences}
               onRefresh={refreshDictionaries}
               onRefreshLibrary={handleRefreshLibrary}
               onUpload={handleUpload}
@@ -450,28 +484,45 @@ export default function App() {
               onTogglePublic={handleTogglePublic}
               onRefreshItem={handleRefreshDictionary}
               onDelete={handleDelete}
+              onLanguageChange={async (language) => updatePreferences({ language })}
+              onThemeChange={async (theme) => updatePreferences({ theme })}
+              onDisplayNameChange={async (display_name) => updatePreferences({ display_name })}
+              onFontUpload={handleFontUpload}
+              onDeleteFont={handleDeleteFont}
+              onAvatarUpload={handleAvatarUpload}
             />
           )}
         </main>
 
         {settingsOpen ? (
           <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>
-            <div className="settings-drawer" role="dialog" aria-modal="true" aria-label={t.settings} onClick={(event) => event.stopPropagation()}>
-              <div className="settings-drawer-head">
+            <div className="settings-drawer recorder-drawer" role="dialog" aria-modal="true" aria-label={t.settings} onClick={(event) => event.stopPropagation()}>
+              <div className="settings-drawer-head recorder-drawer-head">
                 <div>
                   <div className="eyebrow">{t.settings}</div>
                   <h3>{t.preferences}</h3>
+                  <p className="muted drawer-subcopy">{healthInfo ? `${t.versionLabel}: ${healthInfo.version}` : userSubtitle}</p>
                 </div>
-                <button className="secondary-button" type="button" onClick={() => setSettingsOpen(false)}>
-                  {t.close}
-                </button>
+                <div className="drawer-window-controls">
+                  <IconControlButton icon={<SignOut size={18} weight="bold" />} label={t.logout} onClick={handleLogout} danger />
+                  <IconControlButton icon={<X size={18} weight="bold" />} label={t.close} onClick={() => setSettingsOpen(false)} />
+                </div>
+              </div>
+              <div className="drawer-user-card compact-user-card">
+                {user.avatar_url ? <img src={user.avatar_url} alt={user.display_name || user.username} className="drawer-avatar" /> : <UserCircle size={32} weight="duotone" />}
+                <div className="drawer-user-meta">
+                  <strong>{user.display_name || user.username}</strong>
+                  <span className="muted">@{user.username}</span>
+                </div>
               </div>
               <SettingsPanel
                 preferences={preferences}
                 onLanguageChange={async (language) => updatePreferences({ language })}
                 onThemeChange={async (theme) => updatePreferences({ theme })}
                 onFontModeChange={async (font_mode) => updatePreferences({ font_mode })}
-                onFontUpload={handleFontUpload}
+                onDisplayNameChange={async (display_name) => updatePreferences({ display_name })}
+                onCustomFontSelect={async (custom_font_name) => updatePreferences({ font_mode: 'custom', custom_font_name })}
+                onAvatarUpload={handleAvatarUpload}
               />
             </div>
           </div>

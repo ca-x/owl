@@ -105,9 +105,11 @@ type MessageCatalog = {
   readingFont: string
   theme: string
   system: string
-  light: string
+  paper: string
+  blue: string
+  green: string
   dark: string
-  sepia: string
+  mono_theme: string
   sans: string
   serif: string
   mono: string
@@ -116,6 +118,25 @@ type MessageCatalog = {
   workspaceSubtitle: (username: string) => string
   versionLabel: string
   deleteDictionaryConfirm: (name: string) => string
+  audioPlaybackIssue: string
+  audioMissingIssue: string
+  dismissMessage: string
+  profileLabel: string
+  displayName: string
+  displayNamePlaceholder: string
+  uploadAvatar: string
+  updateAvatar: string
+  sharedControls: string
+  sharedControlsDescription: string
+  fontManagement: string
+  fontManagementDescription: string
+  fontModeLabel: string
+  deleteFont: string
+  profileSettings: string
+  showProfileEditor: string
+  hideProfileEditor: string
+  saveProfile: string
+  selectedAvatar: string
 }
 
 export const messages: Record<AppLanguage, MessageCatalog> = {
@@ -222,9 +243,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     readingFont: '阅读字体',
     theme: '主题',
     system: '跟随系统',
-    light: '浅色',
+    paper: '纸书米白',
+    blue: '蓝调',
+    green: '绿调',
     dark: '深色',
-    sepia: '护眼棕',
+    mono_theme: '黑白',
     sans: '无衬线',
     serif: '衬线',
     mono: '等宽',
@@ -233,6 +256,25 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     workspaceSubtitle: (username) => `${username} 的词典工作台`,
     versionLabel: '版本',
     deleteDictionaryConfirm: (name) => `删除词典“${name}”？`,
+    audioPlaybackIssue: '当前环境暂时无法播放该音频。',
+    audioMissingIssue: '当前词典资源包中不存在这条音频。',
+    dismissMessage: '关闭提示',
+    profileLabel: '个人资料',
+    displayName: '昵称',
+    displayNamePlaceholder: '输入昵称',
+    uploadAvatar: '上传头像',
+    updateAvatar: '更新头像',
+    sharedControls: '通用控制',
+    sharedControlsDescription: '个人资料、语言与主题在这里统一维护。',
+    fontManagement: '字体管理',
+    fontManagementDescription: '字体是全局共享设置，因此单独放在管理界面维护。',
+    fontModeLabel: '阅读字体模式',
+    deleteFont: '删除字体',
+    profileSettings: '资料设置',
+    showProfileEditor: '编辑资料',
+    hideProfileEditor: '收起资料设置',
+    saveProfile: '保存资料',
+    selectedAvatar: '已选择头像',
   },
   en: {
     appTagline: 'Dictionary app for MDX / MDD',
@@ -337,9 +379,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     readingFont: 'Reading font',
     theme: 'Theme',
     system: 'system',
-    light: 'light',
+    paper: 'paper',
+    blue: 'blue',
+    green: 'green',
     dark: 'dark',
-    sepia: 'sepia',
+    mono_theme: 'mono',
     sans: 'sans',
     serif: 'serif',
     mono: 'mono',
@@ -348,6 +392,25 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     workspaceSubtitle: (username) => `${username}'s dictionary workspace`,
     versionLabel: 'Version',
     deleteDictionaryConfirm: (name) => `Delete dictionary “${name}”?`,
+    audioPlaybackIssue: 'This audio cannot be played in the current environment.',
+    audioMissingIssue: 'This audio resource is missing from the current dictionary package.',
+    dismissMessage: 'Dismiss',
+    profileLabel: 'Profile',
+    displayName: 'Display name',
+    displayNamePlaceholder: 'Enter display name',
+    uploadAvatar: 'Upload avatar',
+    updateAvatar: 'Update avatar',
+    sharedControls: 'Shared controls',
+    sharedControlsDescription: 'Profile, language, and theme are maintained here for the whole app.',
+    fontManagement: 'Font management',
+    fontManagementDescription: 'Fonts are shared globally, so they are managed separately inside the dictionary workspace.',
+    fontModeLabel: 'Reading font mode',
+    deleteFont: 'Delete font',
+    profileSettings: 'Profile settings',
+    showProfileEditor: 'Edit profile',
+    hideProfileEditor: 'Hide profile editor',
+    saveProfile: 'Save profile',
+    selectedAvatar: 'Avatar selected',
   },
 }
 
