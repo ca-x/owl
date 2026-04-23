@@ -774,6 +774,11 @@ img {
 .definition-html audio {
   width: 100%;
   min-height: 40px;
+  color-scheme: light;
+}
+
+[data-theme='dark'] .definition-html audio {
+  color-scheme: dark;
 }
 
 .definition-html :is(img, audio) {

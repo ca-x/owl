@@ -459,8 +459,9 @@ export default function App() {
                   onLanguageChange={async (language) => updatePreferences({ language })}
                   onThemeChange={async (theme) => updatePreferences({ theme })}
                   onFontModeChange={async (font_mode) => updatePreferences({ font_mode })}
-                  onDisplayNameChange={async (display_name) => updatePreferences({ display_name })}
-                  onAvatarUpload={handleAvatarUpload}
+                  onDisplayNameChange={async () => Promise.resolve()}
+                  onAvatarUpload={async () => Promise.resolve()}
+                  showProfileEditor={false}
                 />
               </div>
             </div>
