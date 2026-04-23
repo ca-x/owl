@@ -1907,10 +1907,11 @@ img {
 
 
 .profile-toggle-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  padding: 0;
+  flex-shrink: 0;
+}
+
+.profile-toggle-button.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: transparent;
 }

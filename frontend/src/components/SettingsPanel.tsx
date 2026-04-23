@@ -63,7 +63,7 @@ export function SettingsPanel({
           <div className="profile-settings-header">
             <span className="settings-label">{t.profileSettings}</span>
             <button
-              className="text-chip profile-toggle-button"
+              className={profileEditorOpen ? 'secondary-button icon-action-button profile-toggle-button active' : 'secondary-button icon-action-button profile-toggle-button'}
               type="button"
               onClick={() => setProfileEditorOpen((current) => !current)}
               title={profileEditorOpen ? t.hideProfileEditor : t.showProfileEditor}
