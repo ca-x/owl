@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -803,9 +804,11 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 			searchStore = newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), info.Name)
 		}
 		managed := newManagedDictionaryIndexStore(redisPrefixStore, searchStore)
-		if _, err := mdx.EnsureDictionaryIndex(mdxPath, managed, mdx.WithReuseIfUnchanged(true)); err != nil {
+		ensureResult, err := mdx.EnsureDictionaryIndex(mdxPath, managed, mdx.WithReuseIfUnchanged(true))
+		if err != nil {
 			return nil, dictionaryMeta{}, err
 		}
+		log.Printf("dictionary index sync name=%s reused=%t rebuilt=%t schema=%s source=%s", ensureResult.DictionaryName, ensureResult.Reused, ensureResult.Rebuilt, ensureResult.Manifest.SchemaVersion, ensureResult.Manifest.SourcePath)
 		prefixStore = redisPrefixStore
 		managedStore = managed
 		fuzzyStore = fallbackFuzzyStore
