@@ -3117,3 +3117,41 @@ textarea:focus-visible,
   border-color: color-mix(in srgb, #ef4444 48%, var(--border-strong));
   color: color-mix(in srgb, #ef4444 78%, var(--text));
 }
+
+.suggestion-subline,
+.autocomplete-source-chip {
+  font-size: 0.76rem;
+}
+
+.autocomplete-source-chip .status-pill {
+  font-size: 0.68rem;
+  padding: 0.26rem 0.5rem;
+}
+
+.autocomplete-source-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.source-visibility-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.source-visibility-icon.public {
+  background: rgba(59, 130, 246, 0.13);
+  color: #3b82f6;
+}
+
+.source-visibility-icon.private {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--muted);
+}

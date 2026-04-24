@@ -581,8 +581,9 @@ export default function App() {
           ) : null}
 
           {showBackToTop ? (
-            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.scrollToTopLabel}>
+            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-labelledby="guest-back-to-top-label">
               <ArrowUp size={22} weight="bold" aria-hidden="true" />
+              <span id="guest-back-to-top-label" className="sr-only">{t.scrollToTopLabel}</span>
             </button>
           ) : null}
         </div>
@@ -680,8 +681,9 @@ export default function App() {
         ) : null}
 
         {showBackToTop ? (
-          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.scrollToTopLabel}>
+          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-labelledby="app-back-to-top-label">
             <ArrowUp size={22} weight="bold" aria-hidden="true" />
+            <span id="app-back-to-top-label" className="sr-only">{t.scrollToTopLabel}</span>
           </button>
         ) : null}
       </div>

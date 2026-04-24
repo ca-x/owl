@@ -1,3 +1,4 @@
+import { GlobeHemisphereEast, LockKey } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { DictionaryEntryHtml } from '../components/DictionaryEntryHtml'
@@ -240,10 +241,11 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => void runQuickSearch(item.word, source.dictionary_id)}
                           >
-                            <span>{source.dictionary_name}</span>
-                            <span className={source.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
-                              {source.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
+                            <span className="autocomplete-source-name">{source.dictionary_name}</span>
+                            <span className={source.visibility === 'public' ? 'source-visibility-icon public' : 'source-visibility-icon private'} aria-hidden="true">
+                              {source.visibility === 'public' ? <GlobeHemisphereEast size={12} weight="fill" /> : <LockKey size={12} weight="fill" />}
                             </span>
+                            <span className="sr-only">{source.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}</span>
                           </button>
                         ))}
                       </div>
