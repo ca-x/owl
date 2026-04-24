@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"owl/backend/ent"
 	_ "github.com/lib-x/entsqlite"
+	"owl/backend/ent"
 )
 
 func TestHealthEndpoint(t *testing.T) {
@@ -18,7 +18,7 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	server := New(client, nil, nil, "*", true)
+	server := New(client, nil, nil, nil, "*")
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	res := httptest.NewRecorder()
 	server.echo.ServeHTTP(res, req)

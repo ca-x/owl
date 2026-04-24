@@ -1077,6 +1077,7 @@ img {
   --accent-soft: rgba(59, 109, 17, 0.12);
 }
 
+
 [data-theme='mono'] {
   --bg: #FFFFFF;
   --panel: rgba(248, 248, 248, 0.96);
@@ -1953,6 +1954,7 @@ img {
   --font-machine: 'SFMono-Regular', 'Cascadia Mono', 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
 }
 
+[data-theme='retro'],
 [data-theme='paper'],
 :root:not([data-theme]),
 [data-theme='blue'],
@@ -1981,6 +1983,99 @@ img {
   --accent-strong: #1c4933;
   --accent-soft: rgba(47, 109, 79, 0.13);
   --border-strong: rgba(47, 109, 79, 0.44);
+}
+
+
+[data-theme='ibm'] {
+  --bg: #FFFFFF;
+  --panel: #F4F4F4;
+  --panel-elevated: #FFFFFF;
+  --text: #161616;
+  --muted: #525252;
+  --border: #E0E0E0;
+  --border-strong: #8D8D8D;
+  --accent: #0043CE;
+  --accent-strong: #002D9C;
+  --accent-soft: rgba(0, 67, 206, 0.1);
+  --retro-plastic: #E0E0E0;
+  --retro-lcd: #F4F4F4;
+  --retro-lcd-ink: #161616;
+  --retro-grid: rgba(0, 67, 206, 0.045);
+  --retro-screw: #8D8D8D;
+}
+
+[data-theme='nokia'] {
+  --bg: #EAEEF2;
+  --panel: #FFFFFF;
+  --panel-elevated: #FFFFFF;
+  --text: #2B2F36;
+  --muted: #6C7480;
+  --border: #BCC4CE;
+  --border-strong: #BCC4CE;
+  --accent: #005AFF;
+  --accent-strong: #0042BD;
+  --accent-soft: rgba(0, 90, 255, 0.1);
+  --retro-plastic: #D6DCE4;
+  --retro-lcd: #FFFFFF;
+  --retro-lcd-ink: #2B2F36;
+  --retro-grid: rgba(0, 90, 255, 0.035);
+  --retro-shadow: rgba(43, 47, 54, 0.08);
+  --retro-screw: #BCC4CE;
+}
+
+[data-theme='gameboy'] {
+  --bg: #8B956D;
+  --panel: #8B956D;
+  --panel-elevated: #9AA57A;
+  --text: #0F380F;
+  --muted: #306230;
+  --border: #4A4A3A;
+  --border-strong: #4A4A3A;
+  --accent: #7B1F3A;
+  --accent-strong: #4A1023;
+  --accent-soft: rgba(123, 31, 58, 0.16);
+  --retro-plastic: #8B956D;
+  --retro-lcd: #0F380F;
+  --retro-lcd-ink: #9BBC0F;
+  --retro-grid: rgba(15, 56, 15, 0.13);
+  --retro-screw: #4A4A3A;
+}
+
+[data-theme='blackberry'] {
+  --bg: #1C1C1E;
+  --panel: #2A2A2E;
+  --panel-elevated: #3A3A3F;
+  --text: #E8E8E8;
+  --muted: #9E9E9E;
+  --border: #444448;
+  --border-strong: #444448;
+  --accent: #CC0000;
+  --accent-strong: #FF8C8C;
+  --accent-soft: rgba(204, 0, 0, 0.14);
+  --retro-plastic: #3A3A3F;
+  --retro-lcd: #1C1C1E;
+  --retro-lcd-ink: #E8E8E8;
+  --retro-grid: rgba(232, 232, 232, 0.035);
+  --retro-shadow: rgba(0, 0, 0, 0.46);
+  --retro-screw: #444448;
+}
+
+[data-theme='nintendo'] {
+  --bg: #FFFFFF;
+  --panel: #FFFFFF;
+  --panel-elevated: #FFFFFF;
+  --text: #1A1A1A;
+  --muted: #4A4A4A;
+  --border: #000000;
+  --border-strong: #000000;
+  --accent: #E4000F;
+  --accent-strong: #0033A0;
+  --accent-soft: rgba(255, 215, 0, 0.3);
+  --retro-plastic: #FFFFFF;
+  --retro-lcd: #1A1A1A;
+  --retro-lcd-ink: #FFFFFF;
+  --retro-grid: rgba(0, 0, 0, 0.045);
+  --retro-screw: #000000;
 }
 
 [data-theme='mono'] {
@@ -2732,4 +2827,141 @@ textarea:focus-visible,
 .auth-main {
   position: relative;
   z-index: 1;
+}
+
+
+[data-theme='ibm'] .deck-key,
+[data-theme='ibm'] .primary-button {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+[data-theme='gameboy'] .app-shell::before {
+  background-size: 10px 10px, 10px 10px, 100% 100%;
+}
+
+[data-theme='blackberry'] .deck-key,
+[data-theme='blackberry'] .transport-button {
+  border-radius: 7px;
+}
+
+[data-theme='blackberry'] .lookup-form {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.28)),
+    repeating-linear-gradient(90deg, transparent 0 18px, rgba(255,255,255,0.035) 18px 19px),
+    color-mix(in srgb, var(--retro-plastic) 72%, black 12%);
+}
+
+[data-theme='nintendo'] .transport-button {
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255,255,255,0.42), transparent 26%),
+    linear-gradient(180deg, #00c3e3, #0086a8);
+  border-color: #006b86;
+  box-shadow:
+    0 5px 0 #006b86,
+    0 10px 18px rgba(32, 27, 31, 0.2),
+    inset 0 1px 0 rgba(255,255,255,0.35);
+}
+
+.registration-toggle-chip {
+  justify-self: start;
+}
+
+.system-access-card {
+  gap: 1rem;
+}
+
+
+/* Style-family specific behavior based on the retro-tech prompt contract. */
+[data-theme='nintendo'] :is(.card, .lookup-hero.card, .dictionary-card, .upload-card, .maintenance-report-card, .simple-result-card, .hero-result, .empty-state.card, .manager-utility-card, .settings-section, .drawer-user-card, .auth-card, .recorder-topbar) {
+  border: 3px solid #000000;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 #000000;
+  background: #FFFFFF;
+}
+
+[data-theme='nintendo'] :is(.primary-button, .deck-key.active, .filter-chip.active) {
+  background: #E4000F;
+  border-color: #000000;
+  color: #FFFFFF;
+}
+
+[data-theme='nintendo'] :is(.secondary-button, .filter-chip, .recent-chip, .text-chip):hover {
+  background: #FFD700;
+  color: #000000;
+}
+
+[data-theme='nintendo'] .transport-button {
+  background: #0033A0;
+  border-color: #000000;
+  box-shadow: 5px 5px 0 #000000;
+  color: #FFFFFF;
+}
+
+[data-theme='blackberry'] :is(.card, .lookup-hero.card, .dictionary-card, .upload-card, .maintenance-report-card, .simple-result-card, .hero-result, .empty-state.card, .manager-utility-card, .settings-section, .drawer-user-card, .auth-card, .recorder-topbar) {
+  border-width: 1px;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+[data-theme='blackberry'] :is(.deck-key, .secondary-button, .filter-chip, .recent-chip, .text-chip, .toggle-chip) {
+  box-shadow: none;
+  border-radius: 3px;
+}
+
+[data-theme='blackberry'] :is(.deck-key:hover, .secondary-button:hover, .filter-chip:hover, .recent-chip:hover, .text-chip:hover, .toggle-chip:hover) {
+  border-left: 2px solid #CC0000;
+  background: #3F3F45;
+}
+
+[data-theme='nokia'] :is(.card, .lookup-hero.card, .dictionary-card, .upload-card, .maintenance-report-card, .simple-result-card, .hero-result, .empty-state.card, .manager-utility-card, .settings-section, .drawer-user-card, .auth-card, .recorder-topbar) {
+  border: 1px solid #BCC4CE;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+[data-theme='nokia'] :is(.primary-button, .transport-button, .deck-key.active, .filter-chip.active) {
+  background: #005AFF;
+  border-color: #005AFF;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+[data-theme='gameboy'] :is(.lookup-input input, .field input, .field select, .definition-html code) {
+  background: #0F380F;
+  color: #9BBC0F;
+  border-color: #4A4A3A;
+  image-rendering: pixelated;
+}
+
+[data-theme='gameboy'] :is(.card, .lookup-hero.card, .dictionary-card, .upload-card, .maintenance-report-card, .simple-result-card, .hero-result, .empty-state.card, .manager-utility-card, .settings-section, .drawer-user-card, .auth-card) {
+  background:
+    linear-gradient(45deg, rgba(15, 56, 15, 0.08) 25%, transparent 25% 75%, rgba(15, 56, 15, 0.08) 75%),
+    #8B956D;
+  background-size: 8px 8px;
+  border-color: #4A4A3A;
+}
+
+[data-theme='gameboy'] :is(.primary-button, .transport-button, .deck-key.active) {
+  background: #7B1F3A;
+  border-color: #4A4A3A;
+  color: #FFFFFF;
+}
+
+[data-theme='ibm'] :is(.card, .lookup-hero.card, .dictionary-card, .upload-card, .maintenance-report-card, .simple-result-card, .hero-result, .empty-state.card, .manager-utility-card, .settings-section, .drawer-user-card, .auth-card, .recorder-topbar) {
+  border: 1px solid #E0E0E0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+[data-theme='ibm'] :is(.primary-button, .transport-button, .deck-key.active, .filter-chip.active) {
+  background: #0043CE;
+  border-color: #0043CE;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+[data-theme='ibm'] :is(.primary-button:hover, .transport-button:hover, .filter-chip:hover) {
+  background: #002D9C;
+  color: #FFFFFF;
 }

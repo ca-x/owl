@@ -331,7 +331,7 @@ func normalizeLanguage(value string) string {
 
 func normalizeTheme(value string) string {
 	switch strings.TrimSpace(value) {
-	case "paper", "blue", "green", "dark", "mono", "system":
+	case "paper", "blue", "green", "retro", "ibm", "nokia", "gameboy", "blackberry", "nintendo", "dark", "mono", "system":
 		return value
 	case "light", "sepia":
 		return "paper"

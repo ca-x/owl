@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 
 import { SettingsPanel } from '../components/SettingsPanel'
 import { useI18n } from '../i18n'
-import type { DictionarySummary, MaintenanceReport, UserPreferences } from '../types'
+import type { DictionarySummary, MaintenanceReport, SystemSettings, UserPreferences } from '../types'
 
 interface DictionaryManagerPageProps {
   dictionaries: DictionarySummary[]
@@ -11,6 +11,9 @@ interface DictionaryManagerPageProps {
   error: string
   maintenanceReport: MaintenanceReport | null
   preferences: UserPreferences
+  isAdmin: boolean
+  systemSettings: SystemSettings | null
+  onSystemSettingsChange: (settings: SystemSettings) => Promise<void>
   onRefresh: () => Promise<void>
   onRefreshLibrary: () => Promise<void>
   onUpload: (mdxFile: File, mddFiles: File[]) => Promise<void>
@@ -32,6 +35,9 @@ export function DictionaryManagerPage({
   error,
   maintenanceReport,
   preferences,
+  isAdmin,
+  systemSettings,
+  onSystemSettingsChange,
   onRefresh,
   onRefreshLibrary,
   onUpload,
@@ -51,8 +57,24 @@ export function DictionaryManagerPage({
   const [mddFiles, setMddFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [systemSettingsSaving, setSystemSettingsSaving] = useState(false)
+  const [systemSettingsError, setSystemSettingsError] = useState('')
 
   const enabledCount = useMemo(() => dictionaries.filter((item) => item.enabled).length, [dictionaries])
+
+
+  async function handleRegistrationToggle() {
+    if (!systemSettings) return
+    setSystemSettingsSaving(true)
+    setSystemSettingsError('')
+    try {
+      await onSystemSettingsChange({ allow_register: !systemSettings.allow_register })
+    } catch (settingsErr) {
+      setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : 'Update failed')
+    } finally {
+      setSystemSettingsSaving(false)
+    }
+  }
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -113,6 +135,33 @@ export function DictionaryManagerPage({
           showFontMode={false}
         />
       </section>
+
+
+      {isAdmin && systemSettings ? (
+        <section className="card manager-utility-card system-access-card">
+          <div className="utility-card-head">
+            <div>
+              <div className="eyebrow">{t.systemAccess}</div>
+              <h3>{t.registrationGate}</h3>
+              <p className="muted">{t.registrationGateDescription}</p>
+            </div>
+            <span className={systemSettings.allow_register ? 'status-pill active' : 'status-pill muted-pill'}>
+              {systemSettings.allow_register ? t.registrationOpen : t.registrationClosed}
+            </span>
+          </div>
+          <button
+            className={systemSettings.allow_register ? 'toggle-chip active registration-toggle-chip' : 'toggle-chip registration-toggle-chip'}
+            type="button"
+            onClick={() => void handleRegistrationToggle()}
+            disabled={systemSettingsSaving}
+            aria-pressed={systemSettings.allow_register}
+          >
+            <span className="toggle-mark"><CheckCircle size={16} weight="fill" /></span>
+            <span>{systemSettings.allow_register ? t.registrationOpen : t.registrationClosed}</span>
+          </button>
+          {systemSettingsError ? <div className="error-banner">{systemSettingsError}</div> : null}
+        </section>
+      ) : null}
 
       <section className="card manager-utility-card font-management-card">
         <div className="utility-card-head">

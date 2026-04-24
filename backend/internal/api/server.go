@@ -10,6 +10,7 @@ import (
 	"owl/backend/ent"
 	"owl/backend/internal/dictionary"
 	"owl/backend/internal/models"
+	"owl/backend/internal/settings"
 	"owl/backend/internal/user"
 	"owl/backend/pkg/version"
 
@@ -23,11 +24,11 @@ const (
 )
 
 type Server struct {
-	echo          *echo.Echo
-	users         *user.Service
-	dictionaries  *dictionary.Service
-	allowRegister bool
-	cancel        context.CancelFunc
+	echo         *echo.Echo
+	users        *user.Service
+	dictionaries *dictionary.Service
+	settings     *settings.Service
+	cancel       context.CancelFunc
 }
 
 type registerRequest struct {
@@ -56,19 +57,23 @@ type preferencesRequest struct {
 	CustomFontName string `json:"custom_font_name"`
 }
 
+type systemSettingsRequest struct {
+	AllowRegister bool `json:"allow_register"`
+}
+
 type authedUser struct {
 	ID       int
 	Username string
 	IsAdmin  bool
 }
 
-func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service, frontendOrigin string, allowRegister bool) *Server {
+func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service, settingsSvc *settings.Service, frontendOrigin string) *Server {
 	e := echo.New()
 	e.Use(middleware.Recover())
 	e.Use(middleware.RequestID())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: []string{frontendOrigin}, AllowHeaders: []string{"Authorization", "Content-Type"}, AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodDelete, http.MethodOptions}}))
 
-	s := &Server{echo: e, users: userSvc, dictionaries: dictSvc, allowRegister: allowRegister}
+	s := &Server{echo: e, users: userSvc, dictionaries: dictSvc, settings: settingsSvc}
 	e.GET("/api/health", s.handleHealth)
 	e.GET("/api/public/dictionaries", s.handleListPublicDictionaries)
 	e.GET("/api/public/search", s.handlePublicSearch)
@@ -88,6 +93,8 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	api.GET("/preferences/font", s.handleGetFont)
 	api.POST("/preferences/avatar", s.handleUploadAvatar)
 	api.GET("/preferences/avatar", s.handleGetAvatar)
+	api.GET("/settings/system", s.handleGetSystemSettings)
+	api.PUT("/settings/system", s.handleUpdateSystemSettings)
 	api.GET("/dictionaries", s.handleListDictionaries)
 	api.POST("/dictionaries/upload", s.handleUploadDictionary)
 	api.DELETE("/dictionaries/:id", s.handleDeleteDictionary)
@@ -131,7 +138,7 @@ func (s *Server) handleHealth(c *echo.Context) error {
 		"go_version":     runtime.Version(),
 		"os":             runtime.GOOS,
 		"arch":           runtime.GOARCH,
-		"allow_register": s.allowRegister,
+		"allow_register": s.systemSettings(c.Request().Context()).AllowRegister,
 	})
 }
 
@@ -213,7 +220,7 @@ func (s *Server) handlePublicDictionaryResource(c *echo.Context) error {
 }
 
 func (s *Server) handleRegister(c *echo.Context) error {
-	if !s.allowRegister {
+	if !s.systemSettings(c.Request().Context()).AllowRegister {
 		return echo.NewHTTPError(http.StatusForbidden, "registration is disabled")
 	}
 	var req registerRequest
@@ -281,6 +288,40 @@ func (s *Server) handleUpdatePreferences(c *echo.Context) error {
 		return mapEntError(err)
 	}
 	return c.JSON(http.StatusOK, prefs)
+}
+
+func (s *Server) systemSettings(ctx context.Context) models.SystemSettings {
+	if s.settings == nil {
+		return models.SystemSettings{AllowRegister: true}
+	}
+	return s.settings.Get(ctx)
+}
+
+func (s *Server) handleGetSystemSettings(c *echo.Context) error {
+	user := currentUser(c)
+	if !user.IsAdmin {
+		return echo.NewHTTPError(http.StatusForbidden, "admin access required")
+	}
+	return c.JSON(http.StatusOK, s.systemSettings(c.Request().Context()))
+}
+
+func (s *Server) handleUpdateSystemSettings(c *echo.Context) error {
+	user := currentUser(c)
+	if !user.IsAdmin {
+		return echo.NewHTTPError(http.StatusForbidden, "admin access required")
+	}
+	if s.settings == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "system settings are not configured")
+	}
+	var req systemSettingsRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
+	}
+	next, err := s.settings.Update(c.Request().Context(), models.SystemSettings{AllowRegister: req.AllowRegister})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, next)
 }
 
 func (s *Server) handleUploadFont(c *echo.Context) error {

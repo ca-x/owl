@@ -1,4 +1,4 @@
-import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, UserPreferences, UserSummary } from '../types'
+import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, SystemSettings, UserPreferences, UserSummary } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
@@ -98,6 +98,17 @@ export const api = {
 
   getPreferences(token: string) {
     return request<UserPreferences>('/preferences', { method: 'GET' }, token)
+  },
+
+  getSystemSettings(token: string) {
+    return request<SystemSettings>('/settings/system', { method: 'GET' }, token)
+  },
+
+  updateSystemSettings(token: string, settings: SystemSettings) {
+    return request<SystemSettings>('/settings/system', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    }, token)
   },
 
   updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>) {

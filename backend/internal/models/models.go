@@ -18,6 +18,10 @@ type SharedFont struct {
 	Family string `json:"family"`
 }
 
+type SystemSettings struct {
+	AllowRegister bool `json:"allow_register"`
+}
+
 type UserPreferences struct {
 	Language         string       `json:"language"`
 	Theme            string       `json:"theme"`

@@ -68,9 +68,13 @@ export interface HealthInfo {
   allow_register: boolean
 }
 
+export interface SystemSettings {
+  allow_register: boolean
+}
+
 export interface UserPreferences {
   language: 'zh-CN' | 'en'
-  theme: 'paper' | 'blue' | 'green' | 'dark' | 'mono' | 'system'
+  theme: 'paper' | 'blue' | 'green' | 'retro' | 'ibm' | 'nokia' | 'gameboy' | 'blackberry' | 'nintendo' | 'dark' | 'mono' | 'system'
   font_mode: 'sans' | 'serif' | 'mono' | 'custom'
   display_name: string
   avatar_url?: string

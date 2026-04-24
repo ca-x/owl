@@ -13,6 +13,8 @@ import (
 	"owl/backend/internal/api"
 	"owl/backend/internal/config"
 	"owl/backend/internal/dictionary"
+	"owl/backend/internal/models"
+	"owl/backend/internal/settings"
 	"owl/backend/internal/user"
 
 	_ "github.com/lib-x/entsqlite"
@@ -58,6 +60,10 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	settingsSvc, err := settings.NewService(cfg.DataDir, models.SystemSettings{AllowRegister: cfg.AllowRegister})
+	if err != nil {
+		log.Fatal(err)
+	}
 	dictSvc := dictionary.NewService(
 		client,
 		cfg.UploadsDir,
@@ -70,7 +76,7 @@ func main() {
 		cfg.AudioCacheDir,
 		cfg.FFmpegBin,
 	)
-	server := api.New(client, userSvc, dictSvc, cfg.FrontendOrigin, cfg.AllowRegister)
+	server := api.New(client, userSvc, dictSvc, settingsSvc, cfg.FrontendOrigin)
 
 	go func() {
 		if err := dictSvc.WarmEnabledDictionaries(context.Background()); err != nil {

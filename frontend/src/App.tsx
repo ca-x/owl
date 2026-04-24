@@ -7,7 +7,7 @@ import { I18nContext, messages } from './i18n'
 import { DictionaryManagerPage } from './pages/DictionaryManagerPage'
 import { SearchPage } from './pages/SearchPage'
 import { api, ApiError } from './services/api'
-import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, UserPreferences, UserSummary } from './types'
+import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SystemSettings, UserPreferences, UserSummary } from './types'
 import './App.css'
 
 type Page = 'search' | 'manage'
@@ -34,11 +34,34 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   custom_font_family: '',
 }
 
+
+function normalizeThemePreference(theme: string): UserPreferences['theme'] {
+  if (theme === 'paper' || theme === 'blue' || theme === 'green' || theme === 'retro' || theme === 'ibm' || theme === 'nokia' || theme === 'gameboy' || theme === 'blackberry' || theme === 'nintendo' || theme === 'dark' || theme === 'mono' || theme === 'system') {
+    return theme
+  }
+  if (theme === 'light' || theme === 'sepia') {
+    return 'paper'
+  }
+  return DEFAULT_PREFERENCES.theme
+}
+
+function normalizePreferences(preferences: Partial<UserPreferences>): UserPreferences {
+  return {
+    ...DEFAULT_PREFERENCES,
+    ...preferences,
+    theme: normalizeThemePreference(preferences.theme ?? DEFAULT_PREFERENCES.theme),
+    language: preferences.language === 'en' ? 'en' : 'zh-CN',
+    font_mode:
+      preferences.font_mode === 'serif' || preferences.font_mode === 'mono' || preferences.font_mode === 'custom'
+        ? preferences.font_mode
+        : 'sans',
+  }
+}
 function readStoredPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(PREFERENCES_KEY)
     if (!raw) return { ...DEFAULT_PREFERENCES }
-    return { ...DEFAULT_PREFERENCES, ...(JSON.parse(raw) as Partial<UserPreferences>) }
+    return normalizePreferences(JSON.parse(raw) as Partial<UserPreferences>)
   } catch {
     return { ...DEFAULT_PREFERENCES }
   }
@@ -82,6 +105,7 @@ export default function App() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [maintenanceReport, setMaintenanceReport] = useState<MaintenanceReport | null>(null)
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null)
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [preferences, setPreferences] = useState<UserPreferences>(() => readStoredPreferences())
@@ -106,7 +130,7 @@ export default function App() {
 
   useEffect(() => {
     const resolvedTheme = preferences.theme === 'system'
-      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'paper')
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'retro')
       : preferences.theme
     document.documentElement.dataset.theme = resolvedTheme
   }, [preferences.theme])
@@ -162,6 +186,7 @@ export default function App() {
     setUser(null)
     setDictionaries([])
     setResults([])
+    setSystemSettings(null)
     setAuthError(getErrorMessage(error))
   }
 
@@ -197,7 +222,7 @@ export default function App() {
         if (!active) return
         setUser(me)
         setDictionaries(dicts)
-        setPreferences(prefs)
+        setPreferences(normalizePreferences(prefs))
         setDictionaryError('')
       } catch (error) {
         if (!active) return
@@ -209,6 +234,27 @@ export default function App() {
       active = false
     }
   }, [token])
+
+  useEffect(() => {
+    if (!token || !user?.is_admin) {
+      return
+    }
+    let active = true
+    async function loadSystemSettings() {
+      try {
+        const next = await api.getSystemSettings(token as string)
+        if (!active) return
+        setSystemSettings(next)
+      } catch {
+        if (!active) return
+        setSystemSettings(null)
+      }
+    }
+    void loadSystemSettings()
+    return () => {
+      active = false
+    }
+  }, [token, user?.is_admin])
 
   async function handleLogin(username: string, password: string) {
     setAuthLoading(true)
@@ -337,6 +383,7 @@ export default function App() {
     setDictionaries([])
     setResults([])
     setMaintenanceReport(null)
+    setSystemSettings(null)
   }
 
   async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>>) {
@@ -354,26 +401,33 @@ export default function App() {
       display_name: patch.display_name ?? preferences.display_name,
       custom_font_name: patch.custom_font_name ?? preferences.custom_font_name,
     })
-    setPreferences(next)
+    setPreferences(normalizePreferences(next))
   }
 
   async function handleFontUpload(file: File) {
     if (!token) return
     const next = await api.uploadFont(token, file)
-    setPreferences(next)
+    setPreferences(normalizePreferences(next))
   }
 
   async function handleAvatarUpload(file: File) {
     if (!token) return
     const next = await api.uploadAvatar(token, file)
-    setPreferences(next)
+    setPreferences(normalizePreferences(next))
     setUser((current) => (current ? { ...current, avatar_url: next.avatar_url } : current))
   }
 
   async function handleDeleteFont(name: string) {
     if (!token) return
     const next = await api.deleteFont(token, name)
-    setPreferences(next)
+    setPreferences(normalizePreferences(next))
+  }
+
+  async function handleSystemSettingsChange(next: SystemSettings) {
+    if (!token || !user?.is_admin) return
+    const updated = await api.updateSystemSettings(token, next)
+    setSystemSettings(updated)
+    setHealthInfo((current) => (current ? { ...current, allow_register: updated.allow_register } : current))
   }
 
 
@@ -504,6 +558,9 @@ export default function App() {
               error={dictionaryError}
               maintenanceReport={maintenanceReport}
               preferences={preferences}
+              isAdmin={user.is_admin}
+              systemSettings={systemSettings ?? (healthInfo ? { allow_register: healthInfo.allow_register } : null)}
+              onSystemSettingsChange={handleSystemSettingsChange}
               onRefresh={refreshDictionaries}
               onRefreshLibrary={handleRefreshLibrary}
               onUpload={handleUpload}

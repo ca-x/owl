@@ -116,7 +116,7 @@ export function SettingsPanel({
       <div className="settings-section">
         <span className="settings-label">{t.theme}</span>
         <div className="settings-chip-row">
-          {(['system', 'paper', 'blue', 'green', 'dark', 'mono'] as const).map((theme) => (
+          {(['system', 'paper', 'blue', 'green', 'retro', 'ibm', 'nokia', 'gameboy', 'blackberry', 'nintendo', 'dark', 'mono'] as const).map((theme) => (
             <button
               key={theme}
               className={preferences.theme === theme ? 'filter-chip active' : 'filter-chip'}

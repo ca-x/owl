@@ -108,6 +108,12 @@ type MessageCatalog = {
   paper: string
   blue: string
   green: string
+  retro: string
+  ibm: string
+  nokia: string
+  gameboy: string
+  blackberry: string
+  nintendo: string
   dark: string
   mono_theme: string
   sans: string
@@ -137,6 +143,11 @@ type MessageCatalog = {
   hideProfileEditor: string
   saveProfile: string
   selectedAvatar: string
+  systemAccess: string
+  registrationGate: string
+  registrationGateDescription: string
+  registrationOpen: string
+  registrationClosed: string
 }
 
 export const messages: Record<AppLanguage, MessageCatalog> = {
@@ -246,6 +257,12 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     paper: '纸书米白',
     blue: '蓝调',
     green: '绿调',
+    retro: '复古终端',
+    ibm: 'IBM 蓝白',
+    nokia: 'Nokia 琥珀',
+    gameboy: 'Game Boy',
+    blackberry: '黑莓',
+    nintendo: '任天堂',
     dark: '深色',
     mono_theme: '黑白',
     sans: '无衬线',
@@ -275,6 +292,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     hideProfileEditor: '收起资料设置',
     saveProfile: '保存资料',
     selectedAvatar: '已选择头像',
+    systemAccess: '系统访问',
+    registrationGate: '用户注册开关',
+    registrationGateDescription: '控制访客登录弹窗中是否允许创建新账户，仅管理员可见。',
+    registrationOpen: '允许注册',
+    registrationClosed: '关闭注册',
   },
   en: {
     appTagline: 'Dictionary app for MDX / MDD',
@@ -382,6 +404,12 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     paper: 'paper',
     blue: 'blue',
     green: 'green',
+    retro: 'retro console',
+    ibm: 'IBM blue',
+    nokia: 'Nokia amber',
+    gameboy: 'Game Boy',
+    blackberry: 'BlackBerry',
+    nintendo: 'Nintendo',
     dark: 'dark',
     mono_theme: 'mono',
     sans: 'sans',
@@ -411,6 +439,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     hideProfileEditor: 'Hide profile editor',
     saveProfile: 'Save profile',
     selectedAvatar: 'Avatar selected',
+    systemAccess: 'System access',
+    registrationGate: 'User registration',
+    registrationGateDescription: 'Controls whether guests can create accounts from the auth dialog. Visible to admins only.',
+    registrationOpen: 'Registration open',
+    registrationClosed: 'Registration closed',
   },
 }
 
