@@ -1,5 +1,5 @@
 import { ArrowUp, MagnifyingGlass, SignOut, SlidersHorizontal, StackSimple, UserCircle, X } from '@phosphor-icons/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { AuthPanel } from './components/AuthPanel'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -81,13 +81,13 @@ function fontFormatFromURL(url: string) {
   if (cleanURL.endsWith('.otf')) return 'opentype'
   return 'truetype'
 }
-function SiteFooter({ settings }: { settings: Pick<SystemSettings, 'footer_extra' | 'copyright'> | null }) {
+function SiteFooter({ settings, label }: { settings: Pick<SystemSettings, 'footer_extra' | 'copyright'> | null; label: string }) {
   const footerExtra = settings?.footer_extra?.trim() ?? ''
   const copyright = settings?.copyright?.trim() ?? ''
   if (!footerExtra && !copyright) return null
 
   return (
-    <footer className="site-footer" aria-label="Site footer">
+    <footer className="site-footer" aria-label={label}>
       {footerExtra ? <p>{footerExtra}</p> : null}
       {copyright ? <p>{copyright}</p> : null}
     </footer>
@@ -230,15 +230,15 @@ export default function App() {
     }
   }, [])
 
-  function handleAuthFailure(error: unknown) {
+  const handleAuthFailure = useCallback((error: unknown) => {
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)
     setDictionaries([])
     setResults([])
     setSystemSettings(null)
-    setAuthError(getErrorMessage(error))
-  }
+    setAuthError(getErrorMessage(error, t.genericError))
+  }, [t.genericError])
 
   useEffect(() => {
     if (!token) {
@@ -252,7 +252,7 @@ export default function App() {
           setDictionaryError('')
         } catch (error) {
           if (!active) return
-          setDictionaryError(getErrorMessage(error))
+          setDictionaryError(getErrorMessage(error, t.genericError))
         }
       }
       void loadGuestDictionaries()
@@ -284,7 +284,7 @@ export default function App() {
     return () => {
       active = false
     }
-  }, [token])
+  }, [handleAuthFailure, t.genericError, token])
 
   useEffect(() => {
     if (!token || !user?.is_admin) {
@@ -317,7 +317,7 @@ export default function App() {
       setUser(response.user)
       setAuthOpen(false)
     } catch (error) {
-      setAuthError(getErrorMessage(error))
+      setAuthError(getErrorMessage(error, t.genericError))
     } finally {
       setAuthLoading(false)
     }
@@ -333,7 +333,7 @@ export default function App() {
       setUser(response.user)
       setAuthOpen(false)
     } catch (error) {
-      setAuthError(getErrorMessage(error))
+      setAuthError(getErrorMessage(error, t.genericError))
     } finally {
       setAuthLoading(false)
     }
@@ -346,7 +346,7 @@ export default function App() {
       const dicts = token ? await api.listDictionaries(token) : await api.listPublicDictionaries()
       setDictionaries(dicts)
     } catch (error) {
-      setDictionaryError(getErrorMessage(error))
+      setDictionaryError(getErrorMessage(error, t.genericError))
     } finally {
       setDictionaryLoading(false)
     }
@@ -374,7 +374,7 @@ export default function App() {
       })
     } catch (error) {
       setResults([])
-      setSearchError(getErrorMessage(error))
+      setSearchError(getErrorMessage(error, t.genericError))
     } finally {
       setSearching(false)
     }
@@ -416,14 +416,15 @@ export default function App() {
   }
 
   async function handleDelete(dictionary: DictionarySummary) {
-    if (!token) return
+    if (!token) return false
     if (!window.confirm(t.deleteDictionaryConfirm(dictionary.title || dictionary.name))) {
-      return
+      return false
     }
     await api.deleteDictionary(token, dictionary.id)
     setMaintenanceReport(null)
     await refreshDictionaries()
     setResults((current) => current.filter((item) => item.dictionary_id !== dictionary.id))
+    return true
   }
 
   function handleLogout() {
@@ -499,11 +500,11 @@ export default function App() {
           <header className="topbar recorder-topbar minimal-topbar">
             <div className="brand-block recorder-brand recorder-brand-minimal">
               <div className="brand-icon recorder-brand-icon">
-                <img src={LOGO_SRC} alt="Owl logo" className="brand-logo-image" />
+                <img src={LOGO_SRC} alt={t.owlLogoAlt} className="brand-logo-image" />
               </div>
             </div>
             <div className="control-deck guest-control-deck compact-deck">
-              <div className="mode-rail mode-rail-bare" aria-label="dictionary modes">
+              <div className="mode-rail mode-rail-bare" aria-label={t.dictionaryModesLabel}>
                 <ControlButton active icon={<MagnifyingGlass size={20} weight="fill" />} label={t.search} onClick={() => undefined} />
               </div>
               <div className="transport-cluster">{settingsButton}</div>
@@ -526,7 +527,7 @@ export default function App() {
             </section>
           </main>
 
-          <SiteFooter settings={publicSystemSettings} />
+          <SiteFooter settings={publicSystemSettings} label={t.siteFooter} />
 
           {authOpen ? (
             <div className="settings-overlay" role="presentation" onClick={() => setAuthOpen(false)}>
@@ -556,7 +557,7 @@ export default function App() {
                 <div className="drawer-user-card guest-drawer-card compact-user-card">
                   <UserCircle size={28} weight="duotone" />
                   <div className="drawer-user-meta">
-                    <strong>Guest</strong>
+                    <strong>{t.guest}</strong>
                     <span className="muted">{t.scopeAllPublic}</span>
                   </div>
                 </div>
@@ -580,7 +581,7 @@ export default function App() {
           ) : null}
 
           {showBackToTop ? (
-            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop}>
+            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.scrollToTopLabel}>
               <ArrowUp size={22} weight="bold" aria-hidden="true" />
             </button>
           ) : null}
@@ -594,7 +595,7 @@ export default function App() {
       <div className="app-shell">
         <header className="topbar recorder-topbar compact-topbar">
           <div className="control-deck compact-deck main-control-deck">
-            <div className="mode-rail mode-rail-bare" aria-label="dictionary modes">
+            <div className="mode-rail mode-rail-bare" aria-label={t.dictionaryModesLabel}>
               <ControlButton active={page === 'search'} icon={<MagnifyingGlass size={20} weight={page === 'search' ? 'fill' : 'regular'} />} label={t.search} onClick={() => setPage('search')} />
               <ControlButton active={page === 'manage'} icon={<StackSimple size={20} weight={page === 'manage' ? 'fill' : 'regular'} />} label={t.manage} onClick={() => setPage('manage')} />
             </div>
@@ -642,7 +643,7 @@ export default function App() {
           )}
         </main>
 
-        <SiteFooter settings={publicSystemSettings} />
+        <SiteFooter settings={publicSystemSettings} label={t.siteFooter} />
 
         {settingsOpen ? (
           <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>
@@ -679,7 +680,7 @@ export default function App() {
         ) : null}
 
         {showBackToTop ? (
-          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop}>
+          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.scrollToTopLabel}>
             <ArrowUp size={22} weight="bold" aria-hidden="true" />
           </button>
         ) : null}
@@ -688,12 +689,12 @@ export default function App() {
   )
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     return error.message
   }
   if (error instanceof Error) {
     return error.message
   }
-  return 'Something went wrong'
+  return fallback
 }

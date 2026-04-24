@@ -3089,3 +3089,31 @@ textarea:focus-visible,
 [data-theme='dark'] .footer-settings-field textarea::placeholder {
   color: color-mix(in srgb, currentColor 76%, transparent);
 }
+
+.manager-feedback-toast {
+  position: sticky;
+  top: 5.2rem;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: min(100%, 42rem);
+  margin: -0.2rem 0 0.2rem;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 60%, transparent);
+  background: color-mix(in srgb, var(--panel-elevated) 92%, transparent);
+  color: var(--text);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--retro-shadow) 28%, transparent);
+  font-weight: 700;
+}
+
+.manager-feedback-toast.success {
+  border-color: color-mix(in srgb, #10b981 42%, var(--border-strong));
+  color: color-mix(in srgb, #10b981 74%, var(--text));
+}
+
+.manager-feedback-toast.error {
+  border-color: color-mix(in srgb, #ef4444 48%, var(--border-strong));
+  color: color-mix(in srgb, #ef4444 78%, var(--text));
+}

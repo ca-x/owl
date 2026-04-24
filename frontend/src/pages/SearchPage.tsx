@@ -188,7 +188,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
 
         <form className="lookup-form" onSubmit={handleSubmit}>
           <label className="lookup-input">
-            <span className="sr-only">Search query</span>
+            <span className="sr-only">{t.searchQueryLabel}</span>
             <input
               autoFocus
               value={query}

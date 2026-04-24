@@ -11,6 +11,15 @@ type MessageCatalog = {
   settings: string
   preferences: string
   close: string
+  genericError: string
+  updateFailed: string
+  uploadFailed: string
+  guest: string
+  owlLogoAlt: string
+  dictionaryModesLabel: string
+  searchQueryLabel: string
+  scrollToTopLabel: string
+  selectedFileCount: (count: number) => string
   dictionaryLookup: string
   lookupTitle: string
   searchPlaceholder: string
@@ -127,7 +136,6 @@ type MessageCatalog = {
   audioPlaybackIssue: string
   audioMissingIssue: string
   dismissMessage: string
-  backToTop: string
   profileLabel: string
   displayName: string
   displayNamePlaceholder: string
@@ -159,6 +167,17 @@ type MessageCatalog = {
   saveFooterSettings: string
   fontPreview: string
   fontPreviewSample: string
+  actionSucceeded: string
+  settingsSaved: string
+  footerSettingsSaved: string
+  dictionaryUploaded: string
+  dictionaryRefreshed: string
+  libraryRefreshed: string
+  dictionaryStatusUpdated: string
+  dictionaryVisibilityUpdated: string
+  dictionaryDeleted: string
+  fontUploaded: string
+  fontDeleted: string
 }
 
 export const messages: Record<AppLanguage, MessageCatalog> = {
@@ -171,6 +190,15 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     settings: '设置',
     preferences: '偏好',
     close: '关闭',
+    genericError: '操作失败，请稍后再试。',
+    updateFailed: '更新失败',
+    uploadFailed: '上传失败',
+    guest: '访客',
+    owlLogoAlt: 'Owl 标志',
+    dictionaryModesLabel: '词典模式',
+    searchQueryLabel: '搜索关键词',
+    scrollToTopLabel: '返回页面顶部',
+    selectedFileCount: (count) => `已选择 ${count} 个文件`,
     dictionaryLookup: '词典查询',
     lookupTitle: '快速查单词、词组或字符。',
     searchPlaceholder: '输入 hello、ability、能力 等词汇…',
@@ -287,7 +315,6 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     audioPlaybackIssue: '当前环境暂时无法播放该音频。',
     audioMissingIssue: '当前词典资源包中不存在这条音频。',
     dismissMessage: '关闭提示',
-    backToTop: '回到顶部',
     profileLabel: '个人资料',
     displayName: '昵称',
     displayNamePlaceholder: '输入昵称',
@@ -319,6 +346,17 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     saveFooterSettings: '保存页脚设置',
     fontPreview: '字体预览',
     fontPreviewSample: '快速的棕色狐狸跳过懒狗。Owl Dictionary 12345',
+    actionSucceeded: '操作已完成',
+    settingsSaved: '设置已保存',
+    footerSettingsSaved: '页脚设置已保存',
+    dictionaryUploaded: '词典已上传',
+    dictionaryRefreshed: '词典已刷新',
+    libraryRefreshed: '词典库已刷新',
+    dictionaryStatusUpdated: '词典状态已更新',
+    dictionaryVisibilityUpdated: '公开状态已更新',
+    dictionaryDeleted: '词典已删除',
+    fontUploaded: '字体已上传',
+    fontDeleted: '字体已删除',
   },
   en: {
     appTagline: 'Dictionary app for MDX / MDD',
@@ -329,6 +367,15 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     settings: 'Settings',
     preferences: 'Preferences',
     close: 'Close',
+    genericError: 'Something went wrong. Please try again.',
+    updateFailed: 'Update failed',
+    uploadFailed: 'Upload failed',
+    guest: 'Guest',
+    owlLogoAlt: 'Owl logo',
+    dictionaryModesLabel: 'Dictionary modes',
+    searchQueryLabel: 'Search query',
+    scrollToTopLabel: 'Scroll to page top',
+    selectedFileCount: (count) => `${count} file${count === 1 ? '' : 's'} selected`,
     dictionaryLookup: 'Dictionary Lookup',
     lookupTitle: 'Look up a word, phrase, or character instantly.',
     searchPlaceholder: 'Search words like hello, ability, 能力…',
@@ -445,7 +492,6 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     audioPlaybackIssue: 'This audio cannot be played in the current environment.',
     audioMissingIssue: 'This audio resource is missing from the current dictionary package.',
     dismissMessage: 'Dismiss',
-    backToTop: 'Back to top',
     profileLabel: 'Profile',
     displayName: 'Display name',
     displayNamePlaceholder: 'Enter display name',
@@ -477,6 +523,17 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     saveFooterSettings: 'Save footer settings',
     fontPreview: 'Font preview',
     fontPreviewSample: 'The quick brown fox jumps over the lazy dog. Owl Dictionary 12345',
+    actionSucceeded: 'Action completed',
+    settingsSaved: 'Settings saved',
+    footerSettingsSaved: 'Footer settings saved',
+    dictionaryUploaded: 'Dictionary uploaded',
+    dictionaryRefreshed: 'Dictionary refreshed',
+    libraryRefreshed: 'Library refreshed',
+    dictionaryStatusUpdated: 'Dictionary status updated',
+    dictionaryVisibilityUpdated: 'Visibility updated',
+    dictionaryDeleted: 'Dictionary deleted',
+    fontUploaded: 'Font uploaded',
+    fontDeleted: 'Font deleted',
   },
 }
 

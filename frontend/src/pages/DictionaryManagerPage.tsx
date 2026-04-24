@@ -20,7 +20,7 @@ interface DictionaryManagerPageProps {
   onToggle: (dictionary: DictionarySummary) => Promise<void>
   onTogglePublic: (dictionary: DictionarySummary) => Promise<void>
   onRefreshItem: (dictionary: DictionarySummary) => Promise<void>
-  onDelete: (dictionary: DictionarySummary) => Promise<void>
+  onDelete: (dictionary: DictionarySummary) => Promise<boolean>
   onLanguageChange: (language: UserPreferences['language']) => Promise<void>
   onThemeChange: (theme: UserPreferences['theme']) => Promise<void>
   onDisplayNameChange: (displayName: string) => Promise<void>
@@ -59,7 +59,20 @@ export function DictionaryManagerPage({
   const [uploadError, setUploadError] = useState('')
   const [systemSettingsSaving, setSystemSettingsSaving] = useState(false)
   const [systemSettingsError, setSystemSettingsError] = useState('')
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const enabledCount = useMemo(() => dictionaries.filter((item) => item.enabled).length, [dictionaries])
+
+
+  async function runManagerAction(action: () => Promise<void | boolean>, successMessage: string) {
+    setActionNotice(null)
+    try {
+      const completed = await action()
+      if (completed === false) return
+      setActionNotice({ type: 'success', message: successMessage })
+    } catch (error) {
+      setActionNotice({ type: 'error', message: error instanceof Error ? error.message : t.genericError })
+    }
+  }
 
   async function handleFooterSettingsSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -73,8 +86,9 @@ export function DictionaryManagerPage({
         footer_extra: String(formData.get('footer_extra') ?? ''),
         copyright: String(formData.get('copyright') ?? ''),
       })
+      setActionNotice({ type: 'success', message: t.footerSettingsSaved })
     } catch (settingsErr) {
-      setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : 'Update failed')
+      setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : t.updateFailed)
     } finally {
       setSystemSettingsSaving(false)
     }
@@ -86,8 +100,9 @@ export function DictionaryManagerPage({
     setSystemSettingsError('')
     try {
       await onSystemSettingsChange({ ...systemSettings, allow_register: !systemSettings.allow_register })
+      setActionNotice({ type: 'success', message: t.settingsSaved })
     } catch (settingsErr) {
-      setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : 'Update failed')
+      setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : t.updateFailed)
     } finally {
       setSystemSettingsSaving(false)
     }
@@ -103,11 +118,12 @@ export function DictionaryManagerPage({
     setUploadError('')
     try {
       await onUpload(mdxFile, mddFiles)
+      setActionNotice({ type: 'success', message: t.dictionaryUploaded })
       setMdxFile(null)
       setMddFiles([])
       await onRefresh()
     } catch (uploadErr) {
-      setUploadError(uploadErr instanceof Error ? uploadErr.message : 'Upload failed')
+      setUploadError(uploadErr instanceof Error ? uploadErr.message : t.uploadFailed)
     } finally {
       setUploading(false)
     }
@@ -123,14 +139,20 @@ export function DictionaryManagerPage({
           <p className="muted">{t.maintenanceTip}</p>
         </div>
         <div className="actions-row wrap">
-          <button className="secondary-button" type="button" onClick={() => void onRefresh()} disabled={loading}>
+          <button className="secondary-button" type="button" onClick={() => void runManagerAction(onRefresh, t.dictionaryRefreshed)} disabled={loading}>
             {t.refresh}
           </button>
-          <button className="secondary-button" type="button" onClick={() => void onRefreshLibrary()} disabled={loading}>
+          <button className="secondary-button" type="button" onClick={() => void runManagerAction(onRefreshLibrary, t.libraryRefreshed)} disabled={loading}>
             {t.refreshLibrary}
           </button>
         </div>
       </div>
+
+      {actionNotice ? (
+        <div className={actionNotice.type === 'success' ? 'manager-feedback-toast success' : 'manager-feedback-toast error'} role="status" aria-live="polite">
+          {actionNotice.message}
+        </div>
+      ) : null}
 
       <section className="card manager-utility-card">
         <div className="utility-card-head">
@@ -223,7 +245,7 @@ export function DictionaryManagerPage({
               <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(event) => {
                 const file = event.target.files?.[0]
                 if (!file) return
-                void onFontUpload(file)
+                void runManagerAction(() => onFontUpload(file), t.fontUploaded)
                 event.target.value = ''
               }} />
             </label>
@@ -235,7 +257,7 @@ export function DictionaryManagerPage({
                       <strong>{font.family}</strong>
                       <span className="muted">{font.name}</span>
                     </div>
-                    <button className="secondary-button icon-action-button" type="button" title={t.deleteFont} aria-label={t.deleteFont} onClick={() => void onDeleteFont(font.name)}>
+                    <button className="secondary-button icon-action-button" type="button" title={t.deleteFont} aria-label={t.deleteFont} onClick={() => void runManagerAction(() => onDeleteFont(font.name), t.fontDeleted)}>
                       <Trash size={16} weight="bold" />
                     </button>
                   </div>
@@ -259,7 +281,7 @@ export function DictionaryManagerPage({
             <span className="dropzone-title">{t.mddResources}</span>
             <span className="muted">{t.mddHint}</span>
             <input type="file" accept=".mdd" multiple onChange={(event) => setMddFiles(Array.from(event.target.files ?? []))} />
-            <strong>{mddFiles.length > 0 ? `${mddFiles.length} file(s) selected` : t.chooseMdd}</strong>
+            <strong>{mddFiles.length > 0 ? t.selectedFileCount(mddFiles.length) : t.chooseMdd}</strong>
           </label>
         </div>
 
@@ -321,12 +343,12 @@ export function DictionaryManagerPage({
 
               <div className="dictionary-status-row device-status-row">
                 <label className={item.enabled ? 'toggle-chip active' : 'toggle-chip'}>
-                  <input type="checkbox" checked={item.enabled} onChange={() => void onToggle(item)} />
+                  <input type="checkbox" checked={item.enabled} onChange={() => void runManagerAction(() => onToggle(item), t.dictionaryStatusUpdated)} />
                   <span className="toggle-mark"><CheckCircle size={16} weight="fill" /></span>
                   <span>{item.enabled ? t.enabled : t.disabled}</span>
                 </label>
                 <label className={item.public ? 'toggle-chip info' : 'toggle-chip'}>
-                  <input type="checkbox" checked={item.public} onChange={() => void onTogglePublic(item)} />
+                  <input type="checkbox" checked={item.public} onChange={() => void runManagerAction(() => onTogglePublic(item), t.dictionaryVisibilityUpdated)} />
                   <span className="toggle-mark">{item.public ? <Eye size={16} weight="fill" /> : <EyeSlash size={16} weight="fill" />}</span>
                   <span>{item.public ? t.public : t.private}</span>
                 </label>
@@ -364,13 +386,13 @@ export function DictionaryManagerPage({
               </dl>
 
               <div className="actions-row wrap icon-action-row">
-                <button className="secondary-button icon-action-button" type="button" title={t.refreshItem} aria-label={t.refreshItem} onClick={() => void onRefreshItem(item)}>
+                <button className="secondary-button icon-action-button" type="button" title={t.refreshItem} aria-label={t.refreshItem} onClick={() => void runManagerAction(() => onRefreshItem(item), t.dictionaryRefreshed)}>
                   <PencilSimple size={18} weight="bold" />
                 </button>
                 <button className="secondary-button icon-action-button" type="button" title={t.uploadDictionary} aria-label={t.uploadDictionary} onClick={() => document.querySelector('form.upload-card input[type=file]')?.dispatchEvent(new MouseEvent('click'))}>
                   <UploadSimple size={18} weight="bold" />
                 </button>
-                <button className="danger-button icon-action-button" type="button" title={t.delete} aria-label={t.delete} onClick={() => void onDelete(item)}>
+                <button className="danger-button icon-action-button" type="button" title={t.delete} aria-label={t.delete} onClick={() => void runManagerAction(() => onDelete(item), t.dictionaryDeleted)}>
                   <Trash size={18} weight="bold" />
                 </button>
               </div>
