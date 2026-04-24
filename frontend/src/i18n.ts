@@ -127,6 +127,7 @@ type MessageCatalog = {
   audioPlaybackIssue: string
   audioMissingIssue: string
   dismissMessage: string
+  backToTop: string
   profileLabel: string
   displayName: string
   displayNamePlaceholder: string
@@ -276,6 +277,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     audioPlaybackIssue: '当前环境暂时无法播放该音频。',
     audioMissingIssue: '当前词典资源包中不存在这条音频。',
     dismissMessage: '关闭提示',
+    backToTop: '回到顶部',
     profileLabel: '个人资料',
     displayName: '昵称',
     displayNamePlaceholder: '输入昵称',
@@ -423,6 +425,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     audioPlaybackIssue: 'This audio cannot be played in the current environment.',
     audioMissingIssue: 'This audio resource is missing from the current dictionary package.',
     dismissMessage: 'Dismiss',
+    backToTop: 'Back to top',
     profileLabel: 'Profile',
     displayName: 'Display name',
     displayNamePlaceholder: 'Enter display name',

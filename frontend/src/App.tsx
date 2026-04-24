@@ -1,4 +1,4 @@
-import { MagnifyingGlass, SignOut, SlidersHorizontal, StackSimple, UserCircle, X } from '@phosphor-icons/react'
+import { ArrowUp, MagnifyingGlass, SignOut, SlidersHorizontal, StackSimple, UserCircle, X } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 
 import { AuthPanel } from './components/AuthPanel'
@@ -108,6 +108,7 @@ export default function App() {
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
   const [preferences, setPreferences] = useState<UserPreferences>(() => readStoredPreferences())
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -134,6 +135,18 @@ export default function App() {
       : preferences.theme
     document.documentElement.dataset.theme = resolvedTheme
   }, [preferences.theme])
+
+  useEffect(() => {
+    const updateBackToTopVisibility = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0
+      const shouldShow = scrollTop > 420
+      setShowBackToTop((current) => (current === shouldShow ? current : shouldShow))
+    }
+
+    updateBackToTopVisibility()
+    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true })
+    return () => window.removeEventListener('scroll', updateBackToTopVisibility)
+  }, [])
 
   useEffect(() => {
     const fontMode = preferences.font_mode
@@ -386,6 +399,13 @@ export default function App() {
     setSystemSettings(null)
   }
 
+  function handleBackToTop() {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const scrollOptions: ScrollToOptions = { top: 0, left: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' }
+    window.scrollTo(scrollOptions)
+    document.scrollingElement?.scrollTo(scrollOptions)
+  }
+
   async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>>) {
     if (!token) {
       setPreferences((current) => ({
@@ -520,6 +540,12 @@ export default function App() {
               </div>
             </div>
           ) : null}
+
+          {showBackToTop ? (
+            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop} title={t.backToTop}>
+              <ArrowUp size={22} weight="bold" aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
       </I18nContext.Provider>
     )
@@ -610,6 +636,12 @@ export default function App() {
               />
             </div>
           </div>
+        ) : null}
+
+        {showBackToTop ? (
+          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop} title={t.backToTop}>
+            <ArrowUp size={22} weight="bold" aria-hidden="true" />
+          </button>
         ) : null}
       </div>
     </I18nContext.Provider>
