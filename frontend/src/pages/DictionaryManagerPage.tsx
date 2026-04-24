@@ -1,4 +1,4 @@
-import { CheckCircle, Eye, EyeSlash, GearSix, PencilSimple, Trash, UploadSimple } from '@phosphor-icons/react'
+import { CheckCircle, Eye, EyeSlash, GearSix, PencilSimple, TextAlignLeft, Trash, UploadSimple } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 
 import { SettingsPanel } from '../components/SettingsPanel'
@@ -59,16 +59,33 @@ export function DictionaryManagerPage({
   const [uploadError, setUploadError] = useState('')
   const [systemSettingsSaving, setSystemSettingsSaving] = useState(false)
   const [systemSettingsError, setSystemSettingsError] = useState('')
-
   const enabledCount = useMemo(() => dictionaries.filter((item) => item.enabled).length, [dictionaries])
 
+  async function handleFooterSettingsSave(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!systemSettings) return
+    const formData = new FormData(event.currentTarget)
+    setSystemSettingsSaving(true)
+    setSystemSettingsError('')
+    try {
+      await onSystemSettingsChange({
+        ...systemSettings,
+        footer_extra: String(formData.get('footer_extra') ?? ''),
+        copyright: String(formData.get('copyright') ?? ''),
+      })
+    } catch (settingsErr) {
+      setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : 'Update failed')
+    } finally {
+      setSystemSettingsSaving(false)
+    }
+  }
 
   async function handleRegistrationToggle() {
     if (!systemSettings) return
     setSystemSettingsSaving(true)
     setSystemSettingsError('')
     try {
-      await onSystemSettingsChange({ allow_register: !systemSettings.allow_register })
+      await onSystemSettingsChange({ ...systemSettings, allow_register: !systemSettings.allow_register })
     } catch (settingsErr) {
       setSystemSettingsError(settingsErr instanceof Error ? settingsErr.message : 'Update failed')
     } finally {
@@ -138,6 +155,7 @@ export function DictionaryManagerPage({
 
 
       {isAdmin && systemSettings ? (
+        <>
         <section className="card manager-utility-card system-access-card">
           <div className="utility-card-head">
             <div>
@@ -161,6 +179,31 @@ export function DictionaryManagerPage({
           </button>
           {systemSettingsError ? <div className="error-banner">{systemSettingsError}</div> : null}
         </section>
+
+        <form key={`${systemSettings.footer_extra}:${systemSettings.copyright}`} className="card manager-utility-card system-footer-card" onSubmit={handleFooterSettingsSave}>
+          <div className="utility-card-head">
+            <div>
+              <div className="eyebrow">{t.siteFooter}</div>
+              <h3>{t.footerContent}</h3>
+              <p className="muted">{t.footerContentDescription}</p>
+            </div>
+            <span className="utility-card-icon"><TextAlignLeft size={22} weight="duotone" /></span>
+          </div>
+          <div className="settings-section footer-settings-grid">
+            <label className="field footer-settings-field">
+              <span>{t.footerExtraInfo}</span>
+              <textarea name="footer_extra" defaultValue={systemSettings.footer_extra} placeholder={t.footerExtraPlaceholder} rows={3} />
+            </label>
+            <label className="field footer-settings-field">
+              <span>{t.footerCopyright}</span>
+              <input name="copyright" defaultValue={systemSettings.copyright} placeholder={t.footerCopyrightPlaceholder} />
+            </label>
+          </div>
+          <div className="actions-row footer-settings-actions">
+            <button className="primary-button" type="submit" disabled={systemSettingsSaving}>{t.saveFooterSettings}</button>
+          </div>
+        </form>
+        </>
       ) : null}
 
       <section className="card manager-utility-card font-management-card">

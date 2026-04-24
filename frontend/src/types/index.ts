@@ -54,6 +54,7 @@ export interface SearchSuggestion {
 export interface SharedFont {
   name: string
   family: string
+  url: string
 }
 
 export interface HealthInfo {
@@ -66,10 +67,14 @@ export interface HealthInfo {
   os: string
   arch: string
   allow_register: boolean
+  footer_extra: string
+  copyright: string
 }
 
 export interface SystemSettings {
   allow_register: boolean
+  footer_extra: string
+  copyright: string
 }
 
 export interface UserPreferences {

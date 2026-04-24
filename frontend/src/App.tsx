@@ -7,7 +7,7 @@ import { I18nContext, messages } from './i18n'
 import { DictionaryManagerPage } from './pages/DictionaryManagerPage'
 import { SearchPage } from './pages/SearchPage'
 import { api, ApiError } from './services/api'
-import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SystemSettings, UserPreferences, UserSummary } from './types'
+import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SharedFont, SystemSettings, UserPreferences, UserSummary } from './types'
 import './App.css'
 
 type Page = 'search' | 'manage'
@@ -46,7 +46,7 @@ function normalizeThemePreference(theme: string): UserPreferences['theme'] {
 }
 
 function normalizePreferences(preferences: Partial<UserPreferences>): UserPreferences {
-  return {
+  const normalized: UserPreferences = {
     ...DEFAULT_PREFERENCES,
     ...preferences,
     theme: normalizeThemePreference(preferences.theme ?? DEFAULT_PREFERENCES.theme),
@@ -56,7 +56,44 @@ function normalizePreferences(preferences: Partial<UserPreferences>): UserPrefer
         ? preferences.font_mode
         : 'sans',
   }
+  if (normalized.font_mode === 'custom' && normalized.custom_font_name) {
+    const selectedFont = normalized.available_fonts?.find((font) => font.name === normalized.custom_font_name)
+    if (selectedFont) {
+      normalized.custom_font_family = selectedFont.family
+      normalized.custom_font_url = selectedFont.url
+    }
+  }
+  return normalized
 }
+
+function mergeAvailableFonts(preferences: UserPreferences, availableFonts: SharedFont[]): UserPreferences {
+  return normalizePreferences({ ...preferences, available_fonts: availableFonts })
+}
+
+function cssString(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
+function fontFormatFromURL(url: string) {
+  const cleanURL = url.split('?', 1)[0]?.toLowerCase() ?? ''
+  if (cleanURL.endsWith('.woff2')) return 'woff2'
+  if (cleanURL.endsWith('.woff')) return 'woff'
+  if (cleanURL.endsWith('.otf')) return 'opentype'
+  return 'truetype'
+}
+function SiteFooter({ settings }: { settings: Pick<SystemSettings, 'footer_extra' | 'copyright'> | null }) {
+  const footerExtra = settings?.footer_extra?.trim() ?? ''
+  const copyright = settings?.copyright?.trim() ?? ''
+  if (!footerExtra && !copyright) return null
+
+  return (
+    <footer className="site-footer" aria-label="Site footer">
+      {footerExtra ? <p>{footerExtra}</p> : null}
+      {copyright ? <p>{copyright}</p> : null}
+    </footer>
+  )
+}
+
 function readStoredPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(PREFERENCES_KEY)
@@ -126,8 +163,9 @@ export default function App() {
       language: preferences.language,
       theme: preferences.theme,
       font_mode: preferences.font_mode,
+      custom_font_name: preferences.custom_font_name,
     }))
-  }, [preferences.language, preferences.theme, preferences.font_mode])
+  }, [preferences.language, preferences.theme, preferences.font_mode, preferences.custom_font_name])
 
   useEffect(() => {
     const resolvedTheme = preferences.theme === 'system'
@@ -158,11 +196,10 @@ export default function App() {
       document.head.appendChild(styleElement)
     }
 
-    if (fontMode === 'custom' && preferences.custom_font_url && preferences.custom_font_family) {
-      styleElement.textContent = `@font-face { font-family: '${preferences.custom_font_family}'; src: url('${preferences.custom_font_url}') format('woff2'); font-display: swap; }`
-    } else {
-      styleElement.textContent = ''
-    }
+    styleElement.textContent = (preferences.available_fonts ?? [])
+      .filter((font) => font.url && font.family)
+      .map((font) => `@font-face { font-family: '${cssString(font.family)}'; src: url('${cssString(font.url)}') format('${fontFormatFromURL(font.url)}'); font-display: swap; }`)
+      .join('\n')
 
     root.dataset.fontMode = fontMode
     root.style.setProperty('--reader-font-family',
@@ -173,7 +210,7 @@ export default function App() {
           : fontMode === 'custom' && preferences.custom_font_family
             ? `'${preferences.custom_font_family}', system-ui, sans-serif`
             : "Inter, 'Noto Sans', 'Source Han Sans SC', system-ui, sans-serif")
-  }, [preferences])
+  }, [preferences.font_mode, preferences.custom_font_family, preferences.available_fonts])
 
   useEffect(() => {
     let active = true
@@ -208,9 +245,10 @@ export default function App() {
       let active = true
       async function loadGuestDictionaries() {
         try {
-          const dicts = await api.listPublicDictionaries()
+          const [dicts, fonts] = await Promise.all([api.listPublicDictionaries(), api.listPublicFonts()])
           if (!active) return
           setDictionaries(dicts)
+          setPreferences((current) => mergeAvailableFonts(current, fonts))
           setDictionaryError('')
         } catch (error) {
           if (!active) return
@@ -407,19 +445,17 @@ export default function App() {
   }
 
   async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>>) {
+    const optimistic = normalizePreferences({ ...preferences, ...patch })
+    setPreferences(optimistic)
     if (!token) {
-      setPreferences((current) => ({
-        ...current,
-        ...patch,
-      }))
       return
     }
     const next = await api.updatePreferences(token, {
-      language: patch.language ?? preferences.language,
-      theme: patch.theme ?? preferences.theme,
-      font_mode: patch.font_mode ?? preferences.font_mode,
-      display_name: patch.display_name ?? preferences.display_name,
-      custom_font_name: patch.custom_font_name ?? preferences.custom_font_name,
+      language: optimistic.language,
+      theme: optimistic.theme,
+      font_mode: optimistic.font_mode,
+      display_name: optimistic.display_name,
+      custom_font_name: optimistic.custom_font_name,
     })
     setPreferences(normalizePreferences(next))
   }
@@ -447,11 +483,12 @@ export default function App() {
     if (!token || !user?.is_admin) return
     const updated = await api.updateSystemSettings(token, next)
     setSystemSettings(updated)
-    setHealthInfo((current) => (current ? { ...current, allow_register: updated.allow_register } : current))
+    setHealthInfo((current) => (current ? { ...current, allow_register: updated.allow_register, footer_extra: updated.footer_extra, copyright: updated.copyright } : current))
   }
 
 
   const userSubtitle = user?.display_name ? t.workspaceSubtitle(user.display_name) : t.genericWorkspaceSubtitle
+  const publicSystemSettings = systemSettings ?? (healthInfo ? { allow_register: healthInfo.allow_register, footer_extra: healthInfo.footer_extra ?? '', copyright: healthInfo.copyright ?? '' } : null)
 
   const settingsButton = <IconControlButton icon={<SlidersHorizontal size={18} weight="bold" />} label={t.settings} onClick={() => setSettingsOpen(true)} />
 
@@ -489,14 +526,14 @@ export default function App() {
             </section>
           </main>
 
+          <SiteFooter settings={publicSystemSettings} />
+
           {authOpen ? (
             <div className="settings-overlay" role="presentation" onClick={() => setAuthOpen(false)}>
               <div className="auth-modal-shell recorder-modal-shell" role="dialog" aria-modal="true" aria-label={t.login} onClick={(event) => event.stopPropagation()}>
                 <div className="settings-drawer-head recorder-drawer-head">
                   <div>
                     <div className="eyebrow">Owl</div>
-                    <h3>{healthInfo?.allow_register === false ? t.login : `${t.login} / ${t.register}`}</h3>
-                    <p className="muted drawer-subcopy">{t.authDescription}</p>
                   </div>
                   <IconControlButton icon={<X size={18} weight="bold" />} label={t.close} onClick={() => setAuthOpen(false)} />
                 </div>
@@ -533,6 +570,7 @@ export default function App() {
                   onLanguageChange={async (language) => updatePreferences({ language })}
                   onThemeChange={async (theme) => updatePreferences({ theme })}
                   onFontModeChange={async (font_mode) => updatePreferences({ font_mode })}
+                  onCustomFontSelect={async (custom_font_name) => updatePreferences({ font_mode: 'custom', custom_font_name })}
                   onDisplayNameChange={async () => Promise.resolve()}
                   onAvatarUpload={async () => Promise.resolve()}
                   showProfileEditor={false}
@@ -585,7 +623,7 @@ export default function App() {
               maintenanceReport={maintenanceReport}
               preferences={preferences}
               isAdmin={user.is_admin}
-              systemSettings={systemSettings ?? (healthInfo ? { allow_register: healthInfo.allow_register } : null)}
+              systemSettings={publicSystemSettings}
               onSystemSettingsChange={handleSystemSettingsChange}
               onRefresh={refreshDictionaries}
               onRefreshLibrary={handleRefreshLibrary}
@@ -603,6 +641,8 @@ export default function App() {
             />
           )}
         </main>
+
+        <SiteFooter settings={publicSystemSettings} />
 
         {settingsOpen ? (
           <div className="settings-overlay" role="presentation" onClick={() => setSettingsOpen(false)}>

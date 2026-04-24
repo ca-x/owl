@@ -1,4 +1,4 @@
-import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, SystemSettings, UserPreferences, UserSummary } from '../types'
+import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, SharedFont, SystemSettings, UserPreferences, UserSummary } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
@@ -54,6 +54,10 @@ export const api = {
 
   listPublicDictionaries() {
     return request<DictionarySummary[]>('/public/dictionaries', { method: 'GET' })
+  },
+
+  listPublicFonts() {
+    return request<SharedFont[]>('/public/fonts', { method: 'GET' })
   },
 
   publicSearch(query: string, dictionaryId?: number) {

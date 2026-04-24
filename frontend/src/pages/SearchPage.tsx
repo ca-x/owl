@@ -50,6 +50,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   const { t } = useI18n()
   const initialURLState = useMemo(() => readSearchURLState(), [])
   const hydratedFromURL = useRef(false)
+  const pageTopRef = useRef<HTMLElement | null>(null)
   const [query, setQuery] = useState(initialURLState.query)
   const [dictionaryId, setDictionaryId] = useState<number | undefined>(initialURLState.dictionaryId)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
@@ -86,6 +87,11 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
     setDictionaryId(resolvedDictionaryId)
     updateSearchURL(normalizedQuery, resolvedDictionaryId, 'push')
     await onSearch(normalizedQuery, resolvedDictionaryId)
+    window.requestAnimationFrame(() => {
+      const targetTop = pageTopRef.current?.getBoundingClientRect().top ?? 0
+      const top = Math.max(0, window.scrollY + targetTop - 12)
+      window.scrollTo({ top, behavior: 'smooth' })
+    })
   }
 
   useEffect(() => {
@@ -173,7 +179,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   }
 
   return (
-    <section className="page-section">
+    <section className="page-section" ref={pageTopRef}>
       <section className="lookup-hero card">
         <div className="lookup-hero-copy">
           <div className="eyebrow">{t.dictionaryLookup}</div>

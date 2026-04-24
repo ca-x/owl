@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"owl/backend/internal/models"
@@ -39,7 +40,7 @@ func (s *Service) Get(context.Context) models.SystemSettings {
 func (s *Service) Update(ctx context.Context, next models.SystemSettings) (models.SystemSettings, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data = next
+	s.data = normalize(next)
 	if err := s.save(ctx); err != nil {
 		return models.SystemSettings{}, err
 	}
@@ -54,11 +55,11 @@ func (s *Service) load() error {
 		}
 		return fmt.Errorf("read settings: %w", err)
 	}
-	var stored models.SystemSettings
+	stored := s.data
 	if err := json.Unmarshal(data, &stored); err != nil {
 		return fmt.Errorf("decode settings: %w", err)
 	}
-	s.data = stored
+	s.data = normalize(stored)
 	return nil
 }
 
@@ -82,4 +83,10 @@ func (s *Service) save(ctx context.Context) error {
 		return fmt.Errorf("replace settings file: %w", err)
 	}
 	return nil
+}
+
+func normalize(settings models.SystemSettings) models.SystemSettings {
+	settings.FooterExtra = strings.TrimSpace(settings.FooterExtra)
+	settings.Copyright = strings.TrimSpace(settings.Copyright)
+	return settings
 }

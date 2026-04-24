@@ -149,6 +149,16 @@ type MessageCatalog = {
   registrationGateDescription: string
   registrationOpen: string
   registrationClosed: string
+  siteFooter: string
+  footerContent: string
+  footerContentDescription: string
+  footerExtraInfo: string
+  footerExtraPlaceholder: string
+  footerCopyright: string
+  footerCopyrightPlaceholder: string
+  saveFooterSettings: string
+  fontPreview: string
+  fontPreviewSample: string
 }
 
 export const messages: Record<AppLanguage, MessageCatalog> = {
@@ -299,6 +309,16 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     registrationGateDescription: '控制访客登录弹窗中是否允许创建新账户，仅管理员可见。',
     registrationOpen: '允许注册',
     registrationClosed: '关闭注册',
+    siteFooter: '网站页脚',
+    footerContent: '页脚额外信息',
+    footerContentDescription: '为空时不显示页脚；填写后访客和登录用户页面底部都会展示。',
+    footerExtraInfo: '额外信息',
+    footerExtraPlaceholder: '例如：本服务仅用于个人学习与词典检索',
+    footerCopyright: '版权信息',
+    footerCopyrightPlaceholder: '例如：© 2026 Owl Dictionary',
+    saveFooterSettings: '保存页脚设置',
+    fontPreview: '字体预览',
+    fontPreviewSample: '快速的棕色狐狸跳过懒狗。Owl Dictionary 12345',
   },
   en: {
     appTagline: 'Dictionary app for MDX / MDD',
@@ -447,6 +467,16 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     registrationGateDescription: 'Controls whether guests can create accounts from the auth dialog. Visible to admins only.',
     registrationOpen: 'Registration open',
     registrationClosed: 'Registration closed',
+    siteFooter: 'Site footer',
+    footerContent: 'Footer content',
+    footerContentDescription: 'The footer stays hidden when both fields are empty; once saved, it appears for guests and signed-in users.',
+    footerExtraInfo: 'Extra information',
+    footerExtraPlaceholder: 'Example: This service is for personal study and dictionary lookup.',
+    footerCopyright: 'Copyright',
+    footerCopyrightPlaceholder: 'Example: © 2026 Owl Dictionary',
+    saveFooterSettings: 'Save footer settings',
+    fontPreview: 'Font preview',
+    fontPreviewSample: 'The quick brown fox jumps over the lazy dog. Owl Dictionary 12345',
   },
 }
 

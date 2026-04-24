@@ -1,5 +1,5 @@
 import { PencilSimple, X } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { useI18n } from '../i18n'
 import type { UserPreferences } from '../types'
@@ -32,6 +32,23 @@ export function SettingsPanel({
   const [displayName, setDisplayName] = useState(preferences.display_name || '')
   const [selectedAvatar, setSelectedAvatar] = useState<File | null>(null)
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
+  const availableFonts = useMemo(() => preferences.available_fonts ?? [], [preferences.available_fonts])
+  const selectedFont = useMemo(() => availableFonts.find((font) => font.name === preferences.custom_font_name), [availableFonts, preferences.custom_font_name])
+  const previewFontFamily = preferences.font_mode === 'serif'
+    ? "Georgia, 'Times New Roman', serif"
+    : preferences.font_mode === 'mono'
+      ? "'SFMono-Regular', Consolas, 'Liberation Mono', monospace"
+      : preferences.font_mode === 'custom' && selectedFont
+        ? `'${selectedFont.family}', var(--reader-font-family)`
+        : "Inter, 'Noto Sans', system-ui, sans-serif"
+
+  async function handleCustomFontMode() {
+    if (preferences.custom_font_name || availableFonts.length === 0) {
+      await onFontModeChange?.('custom')
+      return
+    }
+    await onCustomFontSelect?.(availableFonts[0].name)
+  }
 
   async function handleAvatarSelection(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -143,23 +160,26 @@ export function SettingsPanel({
                 {t[fontMode]}
               </button>
             ))}
-            {preferences.available_fonts && preferences.available_fonts.length > 0 ? (
+            {availableFonts.length > 0 ? (
               <button
                 className={preferences.font_mode === 'custom' ? 'filter-chip active' : 'filter-chip'}
                 type="button"
-                onClick={() => void onFontModeChange?.('custom')}
+                onClick={() => void handleCustomFontMode()}
               >
-                {preferences.custom_font_name ? `${t.custom} · ${preferences.custom_font_name}` : t.custom}
+                {selectedFont ? `${t.custom} · ${selectedFont.family}` : t.custom}
               </button>
             ) : null}
           </div>
-          {preferences.font_mode === 'custom' && preferences.available_fonts && preferences.available_fonts.length > 0 ? (
+          {preferences.font_mode === 'custom' && availableFonts.length > 0 ? (
             <div className="font-picker-list" role="listbox" aria-label={t.fontManagement}>
-              {preferences.available_fonts.map((font) => (
+              {availableFonts.map((font) => (
                 <button
                   key={font.name}
                   className={preferences.custom_font_name === font.name ? 'font-picker-item active' : 'font-picker-item'}
                   type="button"
+                  role="option"
+                  aria-selected={preferences.custom_font_name === font.name}
+                  style={{ fontFamily: `'${font.family}', var(--reader-font-family)` }}
                   onClick={() => void onCustomFontSelect?.(font.name)}
                   onMouseDown={(event) => {
                     event.preventDefault()
@@ -170,6 +190,10 @@ export function SettingsPanel({
               ))}
             </div>
           ) : null}
+          <div className="font-preview-card" aria-live="polite">
+            <span className="settings-label">{t.fontPreview}</span>
+            <p style={{ fontFamily: previewFontFamily }}>{t.fontPreviewSample}</p>
+          </div>
         </div>
       ) : null}
     </div>

@@ -16,10 +16,13 @@ type UserSummary struct {
 type SharedFont struct {
 	Name   string `json:"name"`
 	Family string `json:"family"`
+	URL    string `json:"url"`
 }
 
 type SystemSettings struct {
-	AllowRegister bool `json:"allow_register"`
+	AllowRegister bool   `json:"allow_register"`
+	FooterExtra   string `json:"footer_extra"`
+	Copyright     string `json:"copyright"`
 }
 
 type UserPreferences struct {

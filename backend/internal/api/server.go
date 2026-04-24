@@ -58,7 +58,9 @@ type preferencesRequest struct {
 }
 
 type systemSettingsRequest struct {
-	AllowRegister bool `json:"allow_register"`
+	AllowRegister bool   `json:"allow_register"`
+	FooterExtra   string `json:"footer_extra"`
+	Copyright     string `json:"copyright"`
 }
 
 type authedUser struct {
@@ -80,6 +82,8 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	e.GET("/api/public/suggest", s.handlePublicSuggest)
 	e.GET("/api/public/search-backends", s.handlePublicSearchBackends)
 	e.GET("/api/public/dictionaries/:id/resource/*", s.handlePublicDictionaryResource)
+	e.GET("/api/public/fonts", s.handlePublicFonts)
+	e.GET("/api/public/fonts/:name", s.handlePublicFont)
 	e.POST("/api/auth/register", s.handleRegister)
 	e.POST("/api/auth/login", s.handleLogin)
 	e.POST("/api/auth/logout", s.handleLogout)
@@ -129,6 +133,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func (s *Server) handleHealth(c *echo.Context) error {
+	settings := s.systemSettings(c.Request().Context())
 	return c.JSON(http.StatusOK, map[string]any{
 		"status":         "ok",
 		"version":        version.GetVersion(),
@@ -138,7 +143,9 @@ func (s *Server) handleHealth(c *echo.Context) error {
 		"go_version":     runtime.Version(),
 		"os":             runtime.GOOS,
 		"arch":           runtime.GOARCH,
-		"allow_register": s.systemSettings(c.Request().Context()).AllowRegister,
+		"allow_register": settings.AllowRegister,
+		"footer_extra":   settings.FooterExtra,
+		"copyright":      settings.Copyright,
 	})
 }
 
@@ -204,6 +211,18 @@ func (s *Server) handlePublicSearchBackends(c *echo.Context) error {
 		return mapEntError(err)
 	}
 	return c.JSON(http.StatusOK, info)
+}
+
+func (s *Server) handlePublicFonts(c *echo.Context) error {
+	return c.JSON(http.StatusOK, s.users.ListSharedFonts(c.Request().Context()))
+}
+
+func (s *Server) handlePublicFont(c *echo.Context) error {
+	data, contentType, err := s.users.LoadSharedFont(c.Request().Context(), c.Param("name"))
+	if err != nil {
+		return mapEntError(err)
+	}
+	return c.Blob(http.StatusOK, contentType, data)
 }
 
 func (s *Server) handlePublicDictionaryResource(c *echo.Context) error {
@@ -317,7 +336,7 @@ func (s *Server) handleUpdateSystemSettings(c *echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
-	next, err := s.settings.Update(c.Request().Context(), models.SystemSettings{AllowRegister: req.AllowRegister})
+	next, err := s.settings.Update(c.Request().Context(), models.SystemSettings{AllowRegister: req.AllowRegister, FooterExtra: req.FooterExtra, Copyright: req.Copyright})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

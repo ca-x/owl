@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -433,30 +434,40 @@ func (s *Service) sharedFontDir() string {
 	return filepath.Join(s.dataDir, "shared-fonts")
 }
 
-func (s *Service) listSharedFonts() []models.SharedFont {
-	dir := s.sharedFontDir()
-	entries, err := os.ReadDir(dir)
+func (s *Service) ListSharedFonts(ctx context.Context) []models.SharedFont {
+	fonts, err := s.client.Font.Query().Order(entfont.ByName()).All(ctx)
 	if err != nil {
 		return []models.SharedFont{}
 	}
-	fonts := make([]models.SharedFont, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		ext := strings.ToLower(filepath.Ext(name))
-		switch ext {
-		case ".ttf", ".otf", ".woff", ".woff2":
-		default:
-			continue
-		}
-		fonts = append(fonts, models.SharedFont{
-			Name:   name,
-			Family: sanitizeFontFamily(strings.TrimSuffix(name, ext)),
-		})
+	out := make([]models.SharedFont, 0, len(fonts))
+	for _, font := range fonts {
+		out = append(out, sharedFontModel(font))
 	}
-	return fonts
+	return out
+}
+
+func (s *Service) LoadSharedFont(ctx context.Context, fontName string) ([]byte, string, error) {
+	target := filepath.Base(strings.TrimSpace(fontName))
+	if target == "" {
+		return nil, "", fmt.Errorf("font name is required")
+	}
+	fontEntity, err := s.client.Font.Query().Where(entfont.NameEQ(target)).Only(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+	data, err := os.ReadFile(fontEntity.Path)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, firstNonEmpty(strings.TrimSpace(fontEntity.Mime), detectFontContentType(fontEntity.Path)), nil
+}
+
+func sharedFontModel(font *ent.Font) models.SharedFont {
+	return models.SharedFont{
+		Name:   font.Name,
+		Family: font.Family,
+		URL:    "/api/public/fonts/" + url.PathEscape(font.Name),
+	}
 }
 
 func (s *Service) buildPreferences(ctx context.Context, u *ent.User) *models.UserPreferences {
@@ -465,12 +476,12 @@ func (s *Service) buildPreferences(ctx context.Context, u *ent.User) *models.Use
 		Theme:          normalizeTheme(u.Theme),
 		FontMode:       normalizeFontMode(u.FontMode),
 		DisplayName:    firstNonEmpty(strings.TrimSpace(u.DisplayName), u.Username),
-		AvailableFonts: s.listSharedFonts(),
+		AvailableFonts: s.ListSharedFonts(ctx),
 	}
 	if selected, err := s.selectedFont(ctx, u); err == nil && selected != nil {
 		prefs.CustomFontName = selected.Name
 		prefs.CustomFontFamily = selected.Family
-		prefs.CustomFontURL = "/api/preferences/font"
+		prefs.CustomFontURL = sharedFontModel(selected).URL
 	}
 	if strings.TrimSpace(u.AvatarPath) != "" {
 		prefs.AvatarURL = "/api/preferences/avatar"

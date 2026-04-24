@@ -3011,3 +3011,81 @@ textarea:focus-visible,
   background: #002D9C;
   color: #FFFFFF;
 }
+
+.site-footer {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.footer-settings-grid {
+  gap: 0.85rem;
+}
+
+.footer-settings-field textarea,
+.footer-settings-field input {
+  width: 100%;
+}
+
+.footer-settings-field textarea {
+  min-height: 6rem;
+  resize: vertical;
+  border: 2px solid color-mix(in srgb, var(--border-strong) 58%, transparent);
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem;
+  background:
+    linear-gradient(180deg, rgba(38, 51, 36, 0.08), transparent 52%),
+    var(--retro-lcd);
+  color: var(--retro-lcd-ink);
+  caret-color: var(--accent);
+  box-shadow:
+    inset 0 3px 8px rgba(38, 51, 36, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.footer-settings-actions {
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.font-preview-card {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 55%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--panel-elevated) 82%, transparent);
+}
+
+.font-preview-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.7;
+}
+
+[data-theme='dark'] .footer-settings-field textarea {
+  background:
+    linear-gradient(180deg, rgba(12, 16, 12, 0.18), transparent 52%),
+    #c9d6b3;
+  color: #1f2a1d;
+}
+
+.footer-settings-field textarea::placeholder {
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  opacity: 1;
+}
+
+[data-theme='dark'] .footer-settings-field textarea::placeholder {
+  color: color-mix(in srgb, currentColor 76%, transparent);
+}
