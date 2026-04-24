@@ -407,7 +407,7 @@ func resolveEntryHTML(loaded *LoadedDictionary, entry mdx.IndexEntry, depth int,
 	}
 	seen[key] = struct{}{}
 
-	targetContent, lookupErr := loaded.MDX.Lookup(target)
+	targetContent, lookupErr := lookupEntryContent(loaded, target)
 	if lookupErr != nil {
 		return fmt.Sprintf("<p>%s</p>", html.EscapeString(target)), nil
 	}
@@ -418,6 +418,24 @@ func resolveEntryHTML(loaded *LoadedDictionary, entry mdx.IndexEntry, depth int,
 		return resolveEntryHTML(loaded, nextEntry, depth+1, seen)
 	}
 	return targetText, nil
+}
+
+func lookupEntryContent(loaded *LoadedDictionary, word string) ([]byte, error) {
+	if loaded == nil || loaded.MDX == nil {
+		return nil, fmt.Errorf("dictionary not loaded")
+	}
+	content, err := loaded.MDX.Lookup(word)
+	if err == nil {
+		return content, nil
+	}
+	if loaded.PrefixStore == nil {
+		return nil, err
+	}
+	entry, indexErr := loaded.PrefixStore.GetExact(loaded.Info.Name, strings.TrimSpace(word))
+	if indexErr != nil {
+		return nil, err
+	}
+	return loaded.MDX.Resolve(entry)
 }
 
 func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) ([]models.SearchSuggestion, error) {
@@ -774,24 +792,17 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 	if err != nil {
 		return nil, dictionaryMeta{}, err
 	}
-	if err := mdxDict.BuildIndex(); err != nil {
+	if err := mdxDict.PrepareForExternalIndex(); err != nil {
 		return nil, dictionaryMeta{}, err
 	}
-	entries, err := mdxDict.ExportEntries()
-	if err != nil {
-		return nil, dictionaryMeta{}, err
-	}
-	fallbackFuzzyStore := mdx.NewMemoryFuzzyIndexStore()
 	info := mdxDict.DictionaryInfo()
 	slug := sanitizeSlug(firstNonEmpty(info.Name, mdxDict.Name(), strings.TrimSuffix(filepath.Base(mdxPath), filepath.Ext(mdxPath))))
 	info.Name = slug
-	if err := fallbackFuzzyStore.Put(info, entries); err != nil {
-		return nil, dictionaryMeta{}, err
-	}
 
+	var entries []mdx.IndexEntry
 	var prefixStore mdx.IndexStore
 	var managedStore mdx.ManagedIndexStore
-	fuzzyStore := mdx.FuzzyIndexStore(fallbackFuzzyStore)
+	var fuzzyStore mdx.FuzzyIndexStore
 	rediSearchEnabled := false
 	if s.redisClient != nil {
 		redisPrefixStore := mdx.NewRedisIndexStore(s.redisClient,
@@ -811,16 +822,26 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 		log.Printf("dictionary index sync name=%s reused=%t rebuilt=%t schema=%s source=%s", ensureResult.DictionaryName, ensureResult.Reused, ensureResult.Rebuilt, ensureResult.Manifest.SchemaVersion, ensureResult.Manifest.SourcePath)
 		prefixStore = redisPrefixStore
 		managedStore = managed
-		fuzzyStore = fallbackFuzzyStore
 		if searchStore != nil {
 			fuzzyStore = searchStore
 			rediSearchEnabled = true
+		} else {
+			fuzzyStore = redisPrefixFuzzyStore{store: redisPrefixStore}
 		}
 	} else {
+		entries, err = mdxDict.ExportIndex()
+		if err != nil {
+			return nil, dictionaryMeta{}, err
+		}
 		prefixStore = mdx.NewMemoryIndexStore()
 		if err := prefixStore.Put(info, entries); err != nil {
 			return nil, dictionaryMeta{}, err
 		}
+		fallbackFuzzyStore := mdx.NewMemoryFuzzyIndexStore()
+		if err := fallbackFuzzyStore.Put(info, entries); err != nil {
+			return nil, dictionaryMeta{}, err
+		}
+		fuzzyStore = fallbackFuzzyStore
 	}
 
 	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, ManagedIndexStore: managedStore, Entries: entries, Info: info, RediSearchEnabled: rediSearchEnabled}
@@ -960,6 +981,9 @@ func fuzzyBackendName(loaded *LoadedDictionary) string {
 	}
 	if loaded.RediSearchEnabled {
 		return "redisearch"
+	}
+	if _, ok := loaded.FuzzyStore.(redisPrefixFuzzyStore); ok {
+		return "redis-prefix"
 	}
 	return "memory-fuzzy"
 }
