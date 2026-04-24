@@ -7,7 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/lib-x/entsqlite v0.1.13
-	github.com/lib-x/mdx v0.1.13
+	github.com/lib-x/mdx v0.1.15
 	github.com/redis/go-redis/v9 v9.18.0
 	golang.org/x/crypto v0.50.0
 )
