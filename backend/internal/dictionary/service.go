@@ -38,6 +38,7 @@ type Service struct {
 	redisSearchKeyPrefix string
 	redisSearchEnabled   bool
 	audioTranscoder      *audioTranscoder
+	libraryRefreshMu     sync.Mutex
 	mu                   sync.RWMutex
 	loaded               map[int]*LoadedDictionary
 }
@@ -764,46 +765,54 @@ func (s *Service) Refresh(ctx context.Context, id int, userID int, isAdmin bool)
 }
 
 func (s *Service) RefreshLibrary(ctx context.Context, userID int, isAdmin bool) (*models.MaintenanceReport, error) {
-	root := s.libraryDir
-	if strings.TrimSpace(root) == "" {
-		root = s.uploadsDir
-	}
-	pairs, err := scanDictionaryPairs(root)
-	if err != nil {
-		return nil, err
-	}
-	report := &models.MaintenanceReport{Items: make([]models.MaintenanceItemReport, 0, len(pairs))}
-	for _, pair := range pairs {
-		item, action, err := s.upsertDictionaryFromPair(ctx, pair, userID, isAdmin)
+	return s.withLibraryRefreshLock(func() (*models.MaintenanceReport, error) {
+		root := s.libraryDir
+		if strings.TrimSpace(root) == "" {
+			root = s.uploadsDir
+		}
+		pairs, err := scanDictionaryPairs(root)
 		if err != nil {
-			report.Failed++
+			return nil, err
+		}
+		report := &models.MaintenanceReport{Items: make([]models.MaintenanceItemReport, 0, len(pairs))}
+		for _, pair := range pairs {
+			item, action, err := s.upsertDictionaryFromPair(ctx, pair, userID, isAdmin)
+			if err != nil {
+				report.Failed++
+				report.Items = append(report.Items, models.MaintenanceItemReport{
+					Name:    filepath.Base(pair.MDXPath),
+					Action:  "scan",
+					Status:  "failed",
+					Message: err.Error(),
+				})
+				continue
+			}
+			switch action {
+			case "discovered":
+				report.Discovered++
+			case "updated":
+				report.Updated++
+			default:
+				report.Skipped++
+			}
 			report.Items = append(report.Items, models.MaintenanceItemReport{
-				Name:    filepath.Base(pair.MDXPath),
-				Action:  "scan",
-				Status:  "failed",
-				Message: err.Error(),
+				DictionaryID: item.ID,
+				Name:         item.Title,
+				Action:       "scan",
+				Status:       action,
+				Message:      maintenanceMessage(action),
+				Dictionary:   item,
 			})
-			continue
 		}
-		switch action {
-		case "discovered":
-			report.Discovered++
-		case "updated":
-			report.Updated++
-		default:
-			report.Skipped++
-		}
-		report.Items = append(report.Items, models.MaintenanceItemReport{
-			DictionaryID: item.ID,
-			Name:         item.Title,
-			Action:       "scan",
-			Status:       action,
-			Message:      maintenanceMessage(action),
-			Dictionary:   item,
-		})
-	}
-	report.Summary = fmt.Sprintf("discovered %d, updated %d, skipped %d, failed %d", report.Discovered, report.Updated, report.Skipped, report.Failed)
-	return report, nil
+		report.Summary = fmt.Sprintf("discovered %d, updated %d, skipped %d, failed %d", report.Discovered, report.Updated, report.Skipped, report.Failed)
+		return report, nil
+	})
+}
+
+func (s *Service) withLibraryRefreshLock(fn func() (*models.MaintenanceReport, error)) (*models.MaintenanceReport, error) {
+	s.libraryRefreshMu.Lock()
+	defer s.libraryRefreshMu.Unlock()
+	return fn()
 }
 
 type dictionaryMeta struct {
