@@ -1018,13 +1018,13 @@ img {
   --bg: #1A1C1E;
   --panel: rgba(36, 38, 40, 0.92);
   --panel-elevated: rgba(46, 50, 56, 0.96);
-  --text: #C8C4BC;
-  --muted: #8A8680;
-  --border: rgba(46, 50, 56, 0.82);
-  --border-strong: rgba(83, 74, 183, 0.48);
-  --accent: #857dd9;
-  --accent-strong: #c2bdd3;
-  --accent-soft: rgba(83, 74, 183, 0.18);
+  --text: #ECE7DE;
+  --muted: #C9C2B8;
+  --border: rgba(82, 86, 94, 0.82);
+  --border-strong: rgba(139, 132, 218, 0.58);
+  --accent: #9289ef;
+  --accent-strong: #eeeaff;
+  --accent-soft: rgba(146, 137, 239, 0.22);
 }
 
 [data-theme='dark'] .eyebrow {
@@ -2482,8 +2482,14 @@ textarea:focus-visible,
 }
 
 .lookup-input input::placeholder,
-.field input::placeholder {
-  color: rgba(38, 51, 36, 0.62);
+.field input::placeholder,
+.compact-profile-field input::placeholder {
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  opacity: 1;
+}
+
+[data-theme='dark'] :is(.lookup-input input, .field input, .compact-profile-field input)::placeholder {
+  color: color-mix(in srgb, currentColor 76%, transparent);
 }
 
 .primary-button {

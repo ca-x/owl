@@ -287,33 +287,7 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 			continue
 		}
 
-		if exactEntry, ok := loaded.MDX.FindExactEntry(params.Query); ok && exactEntry != nil {
-			result, buildErr := buildSearchResult(item, loaded, mdx.IndexEntry{
-				Keyword:           exactEntry.KeyWord,
-				RecordStartOffset: exactEntry.RecordStartOffset,
-				RecordEndOffset:   exactEntry.RecordEndOffset,
-				KeyBlockIdx:       exactEntry.KeyBlockIdx,
-			}, 1.0, "exact")
-			if buildErr == nil {
-				key := fmt.Sprintf("%d:%s", item.ID, strings.ToLower(result.Word))
-				seen[key] = struct{}{}
-				results = append(results, result)
-			}
-		} else if comparableEntry, ok := loaded.MDX.FindComparableEntry(params.Query); ok && comparableEntry != nil {
-			result, buildErr := buildSearchResult(item, loaded, mdx.IndexEntry{
-				Keyword:           comparableEntry.KeyWord,
-				RecordStartOffset: comparableEntry.RecordStartOffset,
-				RecordEndOffset:   comparableEntry.RecordEndOffset,
-				KeyBlockIdx:       comparableEntry.KeyBlockIdx,
-			}, 0.99, "comparable")
-			if buildErr == nil {
-				key := fmt.Sprintf("%d:%s", item.ID, strings.ToLower(result.Word))
-				seen[key] = struct{}{}
-				results = append(results, result)
-			}
-		}
-
-		hits, err := loaded.FuzzyStore.Search(item.Slug, params.Query, 10)
+		hits, err := searchIndexHits(loaded, item.Slug, params.Query, 10)
 		if err != nil {
 			continue
 		}
@@ -351,6 +325,59 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 		return results[i].DictionaryName < results[j].DictionaryName
 	})
 	return results, nil
+}
+
+func searchIndexHits(loaded *LoadedDictionary, dictionaryName string, query string, limit int) ([]mdx.SearchHit, error) {
+	if loaded == nil {
+		return nil, fmt.Errorf("dictionary not loaded")
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	hits := make([]mdx.SearchHit, 0, limit)
+	if loaded.MDX != nil {
+		if exactEntry, ok := loaded.MDX.FindExactEntry(query); ok && exactEntry != nil {
+			hits = append(hits, mdx.SearchHit{Entry: keywordEntryToIndexEntry(exactEntry), Score: 1.0, Source: "exact"})
+		} else if comparableEntry, ok := loaded.MDX.FindComparableEntry(query); ok && comparableEntry != nil {
+			hits = append(hits, mdx.SearchHit{Entry: keywordEntryToIndexEntry(comparableEntry), Score: 0.99, Source: "comparable"})
+		}
+	}
+
+	if loaded.FuzzyStore != nil {
+		searchHits, searchErr := loaded.FuzzyStore.Search(dictionaryName, query, limit)
+		if searchErr == nil {
+			hits = append(hits, searchHits...)
+		} else if !errors.Is(searchErr, mdx.ErrIndexMiss) && !isRediSearchUnavailable(searchErr) && loaded.PrefixStore == nil {
+			return nil, searchErr
+		}
+	}
+
+	if len(hits) == 0 && loaded.PrefixStore != nil {
+		entries, prefixErr := loaded.PrefixStore.PrefixSearch(dictionaryName, query, limit)
+		if prefixErr != nil {
+			return nil, prefixErr
+		}
+		for _, entry := range entries {
+			hits = append(hits, mdx.SearchHit{Entry: entry, Score: prefixScore(query, entry.Keyword), Source: "redis-prefix"})
+		}
+	}
+	if len(hits) == 0 {
+		return nil, mdx.ErrIndexMiss
+	}
+	if len(hits) > limit {
+		hits = hits[:limit]
+	}
+	return hits, nil
+}
+
+func keywordEntryToIndexEntry(entry *mdx.MDictKeywordEntry) mdx.IndexEntry {
+	return mdx.IndexEntry{
+		Keyword:           entry.KeyWord,
+		RecordStartOffset: entry.RecordStartOffset,
+		RecordEndOffset:   entry.RecordEndOffset,
+		KeyBlockIdx:       entry.KeyBlockIdx,
+	}
 }
 
 func buildSearchResult(item *ent.Dictionary, loaded *LoadedDictionary, entry mdx.IndexEntry, score float64, source string) (models.SearchResult, error) {

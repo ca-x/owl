@@ -108,3 +108,35 @@ func TestFuzzyBackendNameReportsRedisPrefixFallback(t *testing.T) {
 		t.Fatalf("expected redis-prefix backend, got %q", got)
 	}
 }
+
+type missingFuzzyStore struct{}
+
+func (missingFuzzyStore) Put(mdx.DictionaryInfo, []mdx.IndexEntry) error { return nil }
+func (missingFuzzyStore) Search(string, string, int) ([]mdx.SearchHit, error) {
+	return nil, mdx.ErrIndexMiss
+}
+
+func TestSearchIndexHitsFallsBackToPrefixWhenFuzzyMisses(t *testing.T) {
+	prefix := mdx.NewMemoryIndexStore()
+	info := mdx.DictionaryInfo{Name: "demo"}
+	entry := mdx.IndexEntry{Keyword: "apple", RecordStartOffset: 10, RecordEndOffset: 20}
+	if err := prefix.Put(info, []mdx.IndexEntry{entry}); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+	loaded := &LoadedDictionary{
+		FuzzyStore:  missingFuzzyStore{},
+		PrefixStore: prefix,
+		Info:        info,
+	}
+
+	hits, err := searchIndexHits(loaded, "demo", "app", 10)
+	if err != nil {
+		t.Fatalf("searchIndexHits failed: %v", err)
+	}
+	if len(hits) != 1 {
+		t.Fatalf("expected one prefix fallback hit, got %d: %#v", len(hits), hits)
+	}
+	if hits[0].Entry.Keyword != "apple" || hits[0].Source != "redis-prefix" {
+		t.Fatalf("unexpected fallback hit: %#v", hits[0])
+	}
+}
