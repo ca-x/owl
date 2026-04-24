@@ -542,7 +542,7 @@ export default function App() {
           ) : null}
 
           {showBackToTop ? (
-            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop} title={t.backToTop}>
+            <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop}>
               <ArrowUp size={22} weight="bold" aria-hidden="true" />
             </button>
           ) : null}
@@ -639,7 +639,7 @@ export default function App() {
         ) : null}
 
         {showBackToTop ? (
-          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop} title={t.backToTop}>
+          <button className="back-to-top-button" type="button" onClick={handleBackToTop} aria-label={t.backToTop}>
             <ArrowUp size={22} weight="bold" aria-hidden="true" />
           </button>
         ) : null}
