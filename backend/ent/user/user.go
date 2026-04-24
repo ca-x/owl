@@ -32,6 +32,10 @@ const (
 	FieldTheme = "theme"
 	// FieldFontMode holds the string denoting the font_mode field in the database.
 	FieldFontMode = "font_mode"
+	// FieldMcpTokenHash holds the string denoting the mcp_token_hash field in the database.
+	FieldMcpTokenHash = "mcp_token_hash"
+	// FieldMcpTokenHint holds the string denoting the mcp_token_hint field in the database.
+	FieldMcpTokenHint = "mcp_token_hint"
 	// EdgeDictionaries holds the string denoting the dictionaries edge name in mutations.
 	EdgeDictionaries = "dictionaries"
 	// EdgeSelectedFont holds the string denoting the selected_font edge name in mutations.
@@ -67,6 +71,8 @@ var Columns = []string{
 	FieldLanguage,
 	FieldTheme,
 	FieldFontMode,
+	FieldMcpTokenHash,
+	FieldMcpTokenHint,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "users"
@@ -111,6 +117,10 @@ var (
 	DefaultTheme string
 	// DefaultFontMode holds the default value on creation for the "font_mode" field.
 	DefaultFontMode string
+	// DefaultMcpTokenHash holds the default value on creation for the "mcp_token_hash" field.
+	DefaultMcpTokenHash string
+	// DefaultMcpTokenHint holds the default value on creation for the "mcp_token_hint" field.
+	DefaultMcpTokenHint string
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -169,6 +179,16 @@ func ByTheme(opts ...sql.OrderTermOption) OrderOption {
 // ByFontMode orders the results by the font_mode field.
 func ByFontMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFontMode, opts...).ToFunc()
+}
+
+// ByMcpTokenHash orders the results by the mcp_token_hash field.
+func ByMcpTokenHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMcpTokenHash, opts...).ToFunc()
+}
+
+// ByMcpTokenHint orders the results by the mcp_token_hint field.
+func ByMcpTokenHint(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMcpTokenHint, opts...).ToFunc()
 }
 
 // ByDictionariesCount orders the results by dictionaries count.

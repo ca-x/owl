@@ -1,9 +1,9 @@
-import { CheckCircle, Eye, EyeSlash, GearSix, PencilSimple, TextAlignLeft, Trash, UploadSimple } from '@phosphor-icons/react'
+import { CheckCircle, Eye, EyeSlash, GearSix, Key, MagicWand, PencilSimple, Question, TextAlignLeft, Trash, UploadSimple, X } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 
 import { SettingsPanel } from '../components/SettingsPanel'
 import { useI18n } from '../i18n'
-import type { DictionarySummary, MaintenanceReport, SystemSettings, UserPreferences } from '../types'
+import type { DictionarySummary, MaintenanceReport, MCPTokenStatus, SystemSettings, UserPreferences } from '../types'
 
 interface DictionaryManagerPageProps {
   dictionaries: DictionarySummary[]
@@ -13,6 +13,10 @@ interface DictionaryManagerPageProps {
   preferences: UserPreferences
   isAdmin: boolean
   systemSettings: SystemSettings | null
+  mcpTokenStatus: MCPTokenStatus | null
+  onMCPTokenSave: (token: string) => Promise<MCPTokenStatus | null>
+  onMCPTokenGenerate: () => Promise<MCPTokenStatus | null>
+  onMCPTokenDelete: () => Promise<MCPTokenStatus | null>
   onSystemSettingsChange: (settings: SystemSettings) => Promise<void>
   onRefresh: () => Promise<void>
   onRefreshLibrary: () => Promise<void>
@@ -37,6 +41,10 @@ export function DictionaryManagerPage({
   preferences,
   isAdmin,
   systemSettings,
+  mcpTokenStatus,
+  onMCPTokenSave,
+  onMCPTokenGenerate,
+  onMCPTokenDelete,
   onSystemSettingsChange,
   onRefresh,
   onRefreshLibrary,
@@ -60,6 +68,7 @@ export function DictionaryManagerPage({
   const [systemSettingsSaving, setSystemSettingsSaving] = useState(false)
   const [systemSettingsError, setSystemSettingsError] = useState('')
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [mcpHelpOpen, setMCPHelpOpen] = useState(false)
   const enabledCount = useMemo(() => dictionaries.filter((item) => item.enabled).length, [dictionaries])
 
 
@@ -73,6 +82,32 @@ export function DictionaryManagerPage({
       setActionNotice({ type: 'error', message: error instanceof Error ? error.message : t.genericError })
     }
   }
+
+
+  async function handleMCPTokenSave(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const nextToken = String(formData.get('mcp_token') ?? '')
+    await runManagerAction(async () => {
+      await onMCPTokenSave(nextToken)
+    }, t.mcpTokenSaved)
+  }
+
+  async function handleMCPTokenGenerate() {
+    await runManagerAction(async () => {
+      await onMCPTokenGenerate()
+    }, t.mcpTokenSaved)
+  }
+
+  async function handleMCPTokenDelete() {
+    if (!window.confirm(t.deleteMCPTokenConfirm)) return
+    await runManagerAction(async () => {
+      await onMCPTokenDelete()
+    }, t.mcpTokenDeleted)
+  }
+
+  const mcpEndpoint = `${window.location.origin}/api/mcp/sse`
+  const mcpTokenExample = mcpTokenStatus?.token || t.mcpTokenExample
 
   async function handleFooterSettingsSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -151,6 +186,81 @@ export function DictionaryManagerPage({
       {actionNotice ? (
         <div className={actionNotice.type === 'success' ? 'manager-feedback-toast success' : 'manager-feedback-toast error'} role="status" aria-live="polite">
           {actionNotice.message}
+        </div>
+      ) : null}
+
+
+      <section className="card manager-utility-card mcp-access-card">
+        <div className="utility-card-head">
+          <div>
+            <div className="eyebrow">{t.mcpAccess}</div>
+            <h3>{t.mcpAccessTitle}</h3>
+            <p className="muted">{t.mcpAccessDescription}</p>
+          </div>
+          <span className="utility-card-icon"><Key size={22} weight="duotone" /></span>
+        </div>
+        <form key={`${mcpTokenStatus?.hint ?? ''}:${mcpTokenStatus?.token ?? ''}`} className="mcp-token-form" onSubmit={handleMCPTokenSave}>
+          <label className="field footer-settings-field">
+            <span>{t.mcpToken}</span>
+            <input name="mcp_token" defaultValue={mcpTokenStatus?.token ?? ''} placeholder={t.mcpTokenPlaceholder} autoComplete="off" />
+          </label>
+          <div className="mcp-token-meta">
+            <span className={mcpTokenStatus?.configured ? 'status-pill active' : 'status-pill muted-pill'}>
+              {mcpTokenStatus?.configured ? `${t.mcpTokenConfigured}${mcpTokenStatus.hint}` : t.mcpTokenNotConfigured}
+            </span>
+          </div>
+          <div className="actions-row wrap mcp-token-actions">
+            <button className="primary-button" type="submit">{t.saveMCPToken}</button>
+            <button className="secondary-button" type="button" onClick={() => void handleMCPTokenGenerate()}>
+              <MagicWand size={16} weight="bold" aria-hidden="true" />
+              <span>{t.generateMCPToken}</span>
+            </button>
+            <button className="danger-button" type="button" onClick={() => void handleMCPTokenDelete()} disabled={!mcpTokenStatus?.configured}>
+              <Trash size={16} weight="bold" aria-hidden="true" />
+              <span>{t.deleteMCPToken}</span>
+            </button>
+            <button className="secondary-button" type="button" onClick={() => setMCPHelpOpen(true)}>
+              <Question size={16} weight="bold" aria-hidden="true" />
+              <span>{t.mcpHelp}</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {mcpHelpOpen ? (
+        <div className="settings-overlay mcp-help-overlay" role="presentation" onClick={() => setMCPHelpOpen(false)}>
+          <div className="mcp-help-modal card" role="dialog" aria-modal="true" aria-labelledby="mcp-help-title" onClick={(event) => event.stopPropagation()}>
+            <div className="settings-drawer-head recorder-drawer-head">
+              <div>
+                <div className="eyebrow">{t.mcpAccess}</div>
+                <h3 id="mcp-help-title">{t.mcpHelpTitle}</h3>
+                <p className="muted drawer-subcopy">{t.mcpHelpDescription}</p>
+              </div>
+              <button className="transport-button" type="button" onClick={() => setMCPHelpOpen(false)} aria-label={t.close}>
+                <X size={18} weight="bold" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="mcp-help-content">
+              <div>
+                <span className="settings-label">{t.mcpEndpoint}</span>
+                <code>{mcpEndpoint}</code>
+              </div>
+              <div>
+                <span className="settings-label">{t.mcpAuthorization}</span>
+                <code>Authorization: Bearer {mcpTokenExample}</code>
+                <code>{mcpEndpoint}?token={encodeURIComponent(mcpTokenExample)}</code>
+                <p className="muted">{t.mcpAuthorizationHeader}</p>
+              </div>
+              <div>
+                <span className="settings-label">{t.mcpAvailableTools}</span>
+                <ul>
+                  <li>{t.mcpListDictionariesHelp}</li>
+                  <li>{t.mcpSearchDictionaryHelp}</li>
+                </ul>
+              </div>
+              <p className="warning-banner">{t.mcpHelpTokenNotice}</p>
+            </div>
+          </div>
         </div>
       ) : null}
 

@@ -169,6 +169,34 @@ func (_u *UserUpdate) SetNillableFontMode(v *string) *UserUpdate {
 	return _u
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (_u *UserUpdate) SetMcpTokenHash(v string) *UserUpdate {
+	_u.mutation.SetMcpTokenHash(v)
+	return _u
+}
+
+// SetNillableMcpTokenHash sets the "mcp_token_hash" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableMcpTokenHash(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetMcpTokenHash(*v)
+	}
+	return _u
+}
+
+// SetMcpTokenHint sets the "mcp_token_hint" field.
+func (_u *UserUpdate) SetMcpTokenHint(v string) *UserUpdate {
+	_u.mutation.SetMcpTokenHint(v)
+	return _u
+}
+
+// SetNillableMcpTokenHint sets the "mcp_token_hint" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableMcpTokenHint(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetMcpTokenHint(*v)
+	}
+	return _u
+}
+
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_u *UserUpdate) AddDictionaryIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddDictionaryIDs(ids...)
@@ -318,6 +346,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.McpTokenHash(); ok {
+		_spec.SetField(user.FieldMcpTokenHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.McpTokenHint(); ok {
+		_spec.SetField(user.FieldMcpTokenHint, field.TypeString, value)
 	}
 	if _u.mutation.DictionariesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -553,6 +587,34 @@ func (_u *UserUpdateOne) SetNillableFontMode(v *string) *UserUpdateOne {
 	return _u
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (_u *UserUpdateOne) SetMcpTokenHash(v string) *UserUpdateOne {
+	_u.mutation.SetMcpTokenHash(v)
+	return _u
+}
+
+// SetNillableMcpTokenHash sets the "mcp_token_hash" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableMcpTokenHash(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetMcpTokenHash(*v)
+	}
+	return _u
+}
+
+// SetMcpTokenHint sets the "mcp_token_hint" field.
+func (_u *UserUpdateOne) SetMcpTokenHint(v string) *UserUpdateOne {
+	_u.mutation.SetMcpTokenHint(v)
+	return _u
+}
+
+// SetNillableMcpTokenHint sets the "mcp_token_hint" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableMcpTokenHint(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetMcpTokenHint(*v)
+	}
+	return _u
+}
+
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_u *UserUpdateOne) AddDictionaryIDs(ids ...int) *UserUpdateOne {
 	_u.mutation.AddDictionaryIDs(ids...)
@@ -732,6 +794,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.McpTokenHash(); ok {
+		_spec.SetField(user.FieldMcpTokenHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.McpTokenHint(); ok {
+		_spec.SetField(user.FieldMcpTokenHint, field.TypeString, value)
 	}
 	if _u.mutation.DictionariesCleared() {
 		edge := &sqlgraph.EdgeSpec{

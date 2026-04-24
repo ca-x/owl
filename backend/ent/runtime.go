@@ -132,4 +132,12 @@ func init() {
 	userDescFontMode := userFields[9].Descriptor()
 	// user.DefaultFontMode holds the default value on creation for the font_mode field.
 	user.DefaultFontMode = userDescFontMode.Default.(string)
+	// userDescMcpTokenHash is the schema descriptor for mcp_token_hash field.
+	userDescMcpTokenHash := userFields[10].Descriptor()
+	// user.DefaultMcpTokenHash holds the default value on creation for the mcp_token_hash field.
+	user.DefaultMcpTokenHash = userDescMcpTokenHash.Default.(string)
+	// userDescMcpTokenHint is the schema descriptor for mcp_token_hint field.
+	userDescMcpTokenHint := userFields[11].Descriptor()
+	// user.DefaultMcpTokenHint holds the default value on creation for the mcp_token_hint field.
+	user.DefaultMcpTokenHint = userDescMcpTokenHint.Default.(string)
 }

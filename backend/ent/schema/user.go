@@ -20,6 +20,8 @@ func (User) Fields() []ent.Field {
 		field.String("language").Default("zh-CN"),
 		field.String("theme").Default("system"),
 		field.String("font_mode").Default("sans"),
+		field.String("mcp_token_hash").Default("").Sensitive(),
+		field.String("mcp_token_hint").Default(""),
 	}
 }
 

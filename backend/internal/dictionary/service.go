@@ -146,6 +146,28 @@ func (s *Service) ListPublic(ctx context.Context) ([]models.DictionarySummary, e
 	return out, nil
 }
 
+func (s *Service) ListAccessible(ctx context.Context, userID int) ([]models.DictionarySummary, error) {
+	items, err := s.client.Dictionary.Query().
+		WithOwner().
+		Where(
+			entdict.Enabled(true),
+			entdict.Or(
+				entdict.Public(true),
+				entdict.HasOwnerWith(entuser.IDEQ(userID)),
+			),
+		).
+		Order(entdict.ByTitle()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]models.DictionarySummary, 0, len(items))
+	for _, item := range items {
+		out = append(out, toSummary(item))
+	}
+	return out, nil
+}
+
 func (s *Service) SearchBackendDebug(ctx context.Context, userID int, isAdmin bool, guest bool) (*models.SearchBackendDebug, error) {
 	query := s.client.Dictionary.Query().Where(entdict.Enabled(true)).Order(entdict.ByTitle())
 	if !isAdmin {

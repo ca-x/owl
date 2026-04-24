@@ -145,6 +145,34 @@ func (_c *UserCreate) SetNillableFontMode(v *string) *UserCreate {
 	return _c
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (_c *UserCreate) SetMcpTokenHash(v string) *UserCreate {
+	_c.mutation.SetMcpTokenHash(v)
+	return _c
+}
+
+// SetNillableMcpTokenHash sets the "mcp_token_hash" field if the given value is not nil.
+func (_c *UserCreate) SetNillableMcpTokenHash(v *string) *UserCreate {
+	if v != nil {
+		_c.SetMcpTokenHash(*v)
+	}
+	return _c
+}
+
+// SetMcpTokenHint sets the "mcp_token_hint" field.
+func (_c *UserCreate) SetMcpTokenHint(v string) *UserCreate {
+	_c.mutation.SetMcpTokenHint(v)
+	return _c
+}
+
+// SetNillableMcpTokenHint sets the "mcp_token_hint" field if the given value is not nil.
+func (_c *UserCreate) SetNillableMcpTokenHint(v *string) *UserCreate {
+	if v != nil {
+		_c.SetMcpTokenHint(*v)
+	}
+	return _c
+}
+
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by IDs.
 func (_c *UserCreate) AddDictionaryIDs(ids ...int) *UserCreate {
 	_c.mutation.AddDictionaryIDs(ids...)
@@ -246,6 +274,14 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultFontMode
 		_c.mutation.SetFontMode(v)
 	}
+	if _, ok := _c.mutation.McpTokenHash(); !ok {
+		v := user.DefaultMcpTokenHash
+		_c.mutation.SetMcpTokenHash(v)
+	}
+	if _, ok := _c.mutation.McpTokenHint(); !ok {
+		v := user.DefaultMcpTokenHint
+		_c.mutation.SetMcpTokenHint(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -289,6 +325,12 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.FontMode(); !ok {
 		return &ValidationError{Name: "font_mode", err: errors.New(`ent: missing required field "User.font_mode"`)}
+	}
+	if _, ok := _c.mutation.McpTokenHash(); !ok {
+		return &ValidationError{Name: "mcp_token_hash", err: errors.New(`ent: missing required field "User.mcp_token_hash"`)}
+	}
+	if _, ok := _c.mutation.McpTokenHint(); !ok {
+		return &ValidationError{Name: "mcp_token_hint", err: errors.New(`ent: missing required field "User.mcp_token_hint"`)}
 	}
 	return nil
 }
@@ -355,6 +397,14 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
 		_node.FontMode = value
+	}
+	if value, ok := _c.mutation.McpTokenHash(); ok {
+		_spec.SetField(user.FieldMcpTokenHash, field.TypeString, value)
+		_node.McpTokenHash = value
+	}
+	if value, ok := _c.mutation.McpTokenHint(); ok {
+		_spec.SetField(user.FieldMcpTokenHint, field.TypeString, value)
+		_node.McpTokenHint = value
 	}
 	if nodes := _c.mutation.DictionariesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

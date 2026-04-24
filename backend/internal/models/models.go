@@ -25,6 +25,12 @@ type SystemSettings struct {
 	Copyright     string `json:"copyright"`
 }
 
+type MCPTokenStatus struct {
+	Configured bool   `json:"configured"`
+	Hint       string `json:"hint"`
+	Token      string `json:"token,omitempty"`
+}
+
 type UserPreferences struct {
 	Language         string       `json:"language"`
 	Theme            string       `json:"theme"`

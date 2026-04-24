@@ -2,6 +2,11 @@ package user
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -373,6 +378,98 @@ func detectFontContentType(path string) string {
 	default:
 		return http.DetectContentType([]byte(path))
 	}
+}
+
+func (s *Service) GetMCPTokenStatus(ctx context.Context, userID int) (*models.MCPTokenStatus, error) {
+	u, err := s.client.User.Get(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &models.MCPTokenStatus{Configured: strings.TrimSpace(u.McpTokenHash) != "", Hint: u.McpTokenHint}, nil
+}
+
+func (s *Service) SetMCPToken(ctx context.Context, userID int, token string) (*models.MCPTokenStatus, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, fmt.Errorf("mcp token is required")
+	}
+	if len(token) < 16 {
+		return nil, fmt.Errorf("mcp token must be at least 16 characters")
+	}
+	hash := hashMCPToken(token)
+	exists, err := s.client.User.Query().Where(entuser.McpTokenHashEQ(hash), entuser.IDNEQ(userID)).Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, fmt.Errorf("mcp token is already in use")
+	}
+	hint := tokenHint(token)
+	if _, err := s.client.User.UpdateOneID(userID).SetMcpTokenHash(hash).SetMcpTokenHint(hint).Save(ctx); err != nil {
+		return nil, err
+	}
+	return &models.MCPTokenStatus{Configured: true, Hint: hint, Token: token}, nil
+}
+
+func (s *Service) GenerateMCPToken(ctx context.Context, userID int) (*models.MCPTokenStatus, error) {
+	for range 3 {
+		token, err := randomMCPToken()
+		if err != nil {
+			return nil, err
+		}
+		status, err := s.SetMCPToken(ctx, userID, token)
+		if err == nil {
+			return status, nil
+		}
+		if !strings.Contains(err.Error(), "already in use") {
+			return nil, err
+		}
+	}
+	return nil, fmt.Errorf("failed to generate a unique mcp token")
+}
+
+func (s *Service) DeleteMCPToken(ctx context.Context, userID int) (*models.MCPTokenStatus, error) {
+	if _, err := s.client.User.UpdateOneID(userID).SetMcpTokenHash("").SetMcpTokenHint("").Save(ctx); err != nil {
+		return nil, err
+	}
+	return &models.MCPTokenStatus{Configured: false}, nil
+}
+
+func (s *Service) AuthenticateMCPToken(ctx context.Context, token string) (*Claims, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, fmt.Errorf("mcp token is required")
+	}
+	hash := hashMCPToken(token)
+	u, err := s.client.User.Query().Where(entuser.McpTokenHashEQ(hash)).Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("invalid mcp token")
+	}
+	if subtle.ConstantTimeCompare([]byte(hash), []byte(u.McpTokenHash)) != 1 {
+		return nil, fmt.Errorf("invalid mcp token")
+	}
+	return &Claims{UserID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin}, nil
+}
+
+func randomMCPToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return "owl_mcp_" + base64.RawURLEncoding.EncodeToString(bytes), nil
+}
+
+func hashMCPToken(token string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return hex.EncodeToString(sum[:])
+}
+
+func tokenHint(token string) string {
+	token = strings.TrimSpace(token)
+	if len(token) <= 8 {
+		return token
+	}
+	return token[:4] + "…" + token[len(token)-4:]
 }
 
 func (s *Service) buildAuthResponse(u *ent.User) (*models.AuthResponse, error) {

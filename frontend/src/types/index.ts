@@ -77,6 +77,13 @@ export interface SystemSettings {
   copyright: string
 }
 
+
+export interface MCPTokenStatus {
+  configured: boolean
+  hint: string
+  token?: string
+}
+
 export interface UserPreferences {
   language: 'zh-CN' | 'en'
   theme: 'paper' | 'blue' | 'green' | 'retro' | 'ibm' | 'nokia' | 'gameboy' | 'blackberry' | 'nintendo' | 'dark' | 'mono' | 'system'

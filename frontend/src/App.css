@@ -3155,3 +3155,58 @@ textarea:focus-visible,
   background: rgba(148, 163, 184, 0.16);
   color: var(--muted);
 }
+
+.mcp-access-card {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.mcp-token-form,
+.mcp-help-content {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.mcp-token-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.mcp-token-actions .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.mcp-help-overlay {
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.mcp-help-modal {
+  width: min(680px, 100%);
+  max-height: min(760px, calc(100dvh - 2rem));
+  overflow-y: auto;
+  padding: 1.25rem;
+  background: var(--bg);
+}
+
+.mcp-help-content code {
+  display: block;
+  overflow-x: auto;
+  margin-top: 0.4rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 58%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--panel-elevated) 86%, transparent);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.mcp-help-content ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--text);
+}

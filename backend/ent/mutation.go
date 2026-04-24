@@ -1705,6 +1705,8 @@ type UserMutation struct {
 	language             *string
 	theme                *string
 	font_mode            *string
+	mcp_token_hash       *string
+	mcp_token_hint       *string
 	clearedFields        map[string]struct{}
 	dictionaries         map[int]struct{}
 	removeddictionaries  map[int]struct{}
@@ -2174,6 +2176,78 @@ func (m *UserMutation) ResetFontMode() {
 	m.font_mode = nil
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (m *UserMutation) SetMcpTokenHash(s string) {
+	m.mcp_token_hash = &s
+}
+
+// McpTokenHash returns the value of the "mcp_token_hash" field in the mutation.
+func (m *UserMutation) McpTokenHash() (r string, exists bool) {
+	v := m.mcp_token_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMcpTokenHash returns the old "mcp_token_hash" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldMcpTokenHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMcpTokenHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMcpTokenHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMcpTokenHash: %w", err)
+	}
+	return oldValue.McpTokenHash, nil
+}
+
+// ResetMcpTokenHash resets all changes to the "mcp_token_hash" field.
+func (m *UserMutation) ResetMcpTokenHash() {
+	m.mcp_token_hash = nil
+}
+
+// SetMcpTokenHint sets the "mcp_token_hint" field.
+func (m *UserMutation) SetMcpTokenHint(s string) {
+	m.mcp_token_hint = &s
+}
+
+// McpTokenHint returns the value of the "mcp_token_hint" field in the mutation.
+func (m *UserMutation) McpTokenHint() (r string, exists bool) {
+	v := m.mcp_token_hint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMcpTokenHint returns the old "mcp_token_hint" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldMcpTokenHint(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMcpTokenHint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMcpTokenHint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMcpTokenHint: %w", err)
+	}
+	return oldValue.McpTokenHint, nil
+}
+
+// ResetMcpTokenHint resets all changes to the "mcp_token_hint" field.
+func (m *UserMutation) ResetMcpTokenHint() {
+	m.mcp_token_hint = nil
+}
+
 // AddDictionaryIDs adds the "dictionaries" edge to the Dictionary entity by ids.
 func (m *UserMutation) AddDictionaryIDs(ids ...int) {
 	if m.dictionaries == nil {
@@ -2301,7 +2375,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
 	}
@@ -2332,6 +2406,12 @@ func (m *UserMutation) Fields() []string {
 	if m.font_mode != nil {
 		fields = append(fields, user.FieldFontMode)
 	}
+	if m.mcp_token_hash != nil {
+		fields = append(fields, user.FieldMcpTokenHash)
+	}
+	if m.mcp_token_hint != nil {
+		fields = append(fields, user.FieldMcpTokenHint)
+	}
 	return fields
 }
 
@@ -2360,6 +2440,10 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Theme()
 	case user.FieldFontMode:
 		return m.FontMode()
+	case user.FieldMcpTokenHash:
+		return m.McpTokenHash()
+	case user.FieldMcpTokenHint:
+		return m.McpTokenHint()
 	}
 	return nil, false
 }
@@ -2389,6 +2473,10 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTheme(ctx)
 	case user.FieldFontMode:
 		return m.OldFontMode(ctx)
+	case user.FieldMcpTokenHash:
+		return m.OldMcpTokenHash(ctx)
+	case user.FieldMcpTokenHint:
+		return m.OldMcpTokenHint(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -2468,6 +2556,20 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFontMode(v)
 		return nil
+	case user.FieldMcpTokenHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMcpTokenHash(v)
+		return nil
+	case user.FieldMcpTokenHint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMcpTokenHint(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
@@ -2546,6 +2648,12 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldFontMode:
 		m.ResetFontMode()
+		return nil
+	case user.FieldMcpTokenHash:
+		m.ResetMcpTokenHash()
+		return nil
+	case user.FieldMcpTokenHint:
+		m.ResetMcpTokenHint()
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)

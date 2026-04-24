@@ -1,4 +1,4 @@
-import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, SharedFont, SystemSettings, UserPreferences, UserSummary } from '../types'
+import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SearchSuggestion, SharedFont, SystemSettings, MCPTokenStatus, UserPreferences, UserSummary } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
@@ -113,6 +113,26 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(settings),
     }, token)
+  },
+
+
+  getMCPToken(token: string) {
+    return request<MCPTokenStatus>('/mcp/token', { method: 'GET' }, token)
+  },
+
+  setMCPToken(token: string, mcpToken: string) {
+    return request<MCPTokenStatus>('/mcp/token', {
+      method: 'PUT',
+      body: JSON.stringify({ token: mcpToken }),
+    }, token)
+  },
+
+  generateMCPToken(token: string) {
+    return request<MCPTokenStatus>('/mcp/token/generate', { method: 'POST' }, token)
+  },
+
+  deleteMCPToken(token: string) {
+    return request<MCPTokenStatus>('/mcp/token', { method: 'DELETE' }, token)
   },
 
   updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>) {

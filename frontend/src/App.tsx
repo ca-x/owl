@@ -7,7 +7,7 @@ import { I18nContext, messages } from './i18n'
 import { DictionaryManagerPage } from './pages/DictionaryManagerPage'
 import { SearchPage } from './pages/SearchPage'
 import { api, ApiError } from './services/api'
-import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SharedFont, SystemSettings, UserPreferences, UserSummary } from './types'
+import type { DictionarySummary, HealthInfo, MaintenanceReport, SearchResult, SharedFont, SystemSettings, MCPTokenStatus, UserPreferences, UserSummary } from './types'
 import './App.css'
 
 type Page = 'search' | 'manage'
@@ -143,6 +143,7 @@ export default function App() {
   const [maintenanceReport, setMaintenanceReport] = useState<MaintenanceReport | null>(null)
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null)
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
+  const [mcpTokenStatus, setMCPTokenStatus] = useState<MCPTokenStatus | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
@@ -237,6 +238,7 @@ export default function App() {
     setDictionaries([])
     setResults([])
     setSystemSettings(null)
+    setMCPTokenStatus(null)
     setAuthError(getErrorMessage(error, t.genericError))
   }, [t.genericError])
 
@@ -265,15 +267,17 @@ export default function App() {
     let active = true
     async function bootstrap() {
       try {
-        const [me, dicts, prefs] = await Promise.all([
+        const [me, dicts, prefs, mcpStatus] = await Promise.all([
           api.me(authToken),
           api.listDictionaries(authToken),
           api.getPreferences(authToken),
+          api.getMCPToken(authToken),
         ])
         if (!active) return
         setUser(me)
         setDictionaries(dicts)
         setPreferences(normalizePreferences(prefs))
+        setMCPTokenStatus(mcpStatus)
         setDictionaryError('')
       } catch (error) {
         if (!active) return
@@ -436,6 +440,7 @@ export default function App() {
     setResults([])
     setMaintenanceReport(null)
     setSystemSettings(null)
+    setMCPTokenStatus(null)
   }
 
   function handleBackToTop() {
@@ -485,6 +490,27 @@ export default function App() {
     const updated = await api.updateSystemSettings(token, next)
     setSystemSettings(updated)
     setHealthInfo((current) => (current ? { ...current, allow_register: updated.allow_register, footer_extra: updated.footer_extra, copyright: updated.copyright } : current))
+  }
+
+  async function handleSetMCPToken(nextToken: string) {
+    if (!token) return null
+    const status = await api.setMCPToken(token, nextToken)
+    setMCPTokenStatus(status)
+    return status
+  }
+
+  async function handleGenerateMCPToken() {
+    if (!token) return null
+    const status = await api.generateMCPToken(token)
+    setMCPTokenStatus(status)
+    return status
+  }
+
+  async function handleDeleteMCPToken() {
+    if (!token) return null
+    const status = await api.deleteMCPToken(token)
+    setMCPTokenStatus(status)
+    return status
   }
 
 
@@ -626,6 +652,10 @@ export default function App() {
               preferences={preferences}
               isAdmin={user.is_admin}
               systemSettings={publicSystemSettings}
+              mcpTokenStatus={mcpTokenStatus}
+              onMCPTokenSave={handleSetMCPToken}
+              onMCPTokenGenerate={handleGenerateMCPToken}
+              onMCPTokenDelete={handleDeleteMCPToken}
               onSystemSettingsChange={handleSystemSettingsChange}
               onRefresh={refreshDictionaries}
               onRefreshLibrary={handleRefreshLibrary}

@@ -67,6 +67,8 @@ var (
 		{Name: "language", Type: field.TypeString, Default: "zh-CN"},
 		{Name: "theme", Type: field.TypeString, Default: "system"},
 		{Name: "font_mode", Type: field.TypeString, Default: "sans"},
+		{Name: "mcp_token_hash", Type: field.TypeString, Default: ""},
+		{Name: "mcp_token_hint", Type: field.TypeString, Default: ""},
 		{Name: "user_selected_font", Type: field.TypeInt, Nullable: true},
 	}
 	// UsersTable holds the schema information for the "users" table.
@@ -77,7 +79,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_fonts_selected_font",
-				Columns:    []*schema.Column{UsersColumns[11]},
+				Columns:    []*schema.Column{UsersColumns[13]},
 				RefColumns: []*schema.Column{FontsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},

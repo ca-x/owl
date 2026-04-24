@@ -37,6 +37,10 @@ type User struct {
 	Theme string `json:"theme,omitempty"`
 	// FontMode holds the value of the "font_mode" field.
 	FontMode string `json:"font_mode,omitempty"`
+	// McpTokenHash holds the value of the "mcp_token_hash" field.
+	McpTokenHash string `json:"-"`
+	// McpTokenHint holds the value of the "mcp_token_hint" field.
+	McpTokenHint string `json:"mcp_token_hint,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges              UserEdges `json:"edges"`
@@ -84,7 +88,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldDisplayName, user.FieldAvatarName, user.FieldAvatarPath, user.FieldAvatarMime, user.FieldPasswordHash, user.FieldLanguage, user.FieldTheme, user.FieldFontMode:
+		case user.FieldUsername, user.FieldDisplayName, user.FieldAvatarName, user.FieldAvatarPath, user.FieldAvatarMime, user.FieldPasswordHash, user.FieldLanguage, user.FieldTheme, user.FieldFontMode, user.FieldMcpTokenHash, user.FieldMcpTokenHint:
 			values[i] = new(sql.NullString)
 		case user.ForeignKeys[0]: // user_selected_font
 			values[i] = new(sql.NullInt64)
@@ -169,6 +173,18 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.FontMode = value.String
 			}
+		case user.FieldMcpTokenHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mcp_token_hash", values[i])
+			} else if value.Valid {
+				_m.McpTokenHash = value.String
+			}
+		case user.FieldMcpTokenHint:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mcp_token_hint", values[i])
+			} else if value.Valid {
+				_m.McpTokenHint = value.String
+			}
 		case user.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field user_selected_font", value)
@@ -250,6 +266,11 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("font_mode=")
 	builder.WriteString(_m.FontMode)
+	builder.WriteString(", ")
+	builder.WriteString("mcp_token_hash=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("mcp_token_hint=")
+	builder.WriteString(_m.McpTokenHint)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -178,6 +178,30 @@ type MessageCatalog = {
   dictionaryDeleted: string
   fontUploaded: string
   fontDeleted: string
+  mcpAccess: string
+  mcpAccessTitle: string
+  mcpAccessDescription: string
+  mcpToken: string
+  mcpTokenPlaceholder: string
+  mcpTokenConfigured: string
+  mcpTokenNotConfigured: string
+  saveMCPToken: string
+  generateMCPToken: string
+  deleteMCPToken: string
+  mcpTokenSaved: string
+  mcpTokenDeleted: string
+  deleteMCPTokenConfirm: string
+  mcpHelp: string
+  mcpHelpTitle: string
+  mcpHelpDescription: string
+  mcpEndpoint: string
+  mcpAuthorization: string
+  mcpAuthorizationHeader: string
+  mcpTokenExample: string
+  mcpAvailableTools: string
+  mcpListDictionariesHelp: string
+  mcpSearchDictionaryHelp: string
+  mcpHelpTokenNotice: string
 }
 
 export const messages: Record<AppLanguage, MessageCatalog> = {
@@ -357,6 +381,31 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     dictionaryDeleted: '词典已删除',
     fontUploaded: '字体已上传',
     fontDeleted: '字体已删除',
+    mcpAccess: 'MCP 接入',
+    mcpAccessTitle: 'MCP SSE 服务',
+    mcpAccessDescription: '为当前用户生成或保存 MCP Token。可用范围是公开词典加你的私有词典。',
+    mcpToken: 'MCP Token',
+    mcpTokenPlaceholder: '输入自定义 Token，至少 16 个字符',
+    mcpTokenConfigured: '已配置 Token：',
+    mcpTokenNotConfigured: '尚未配置 MCP Token',
+    saveMCPToken: '保存 Token',
+    generateMCPToken: '生成 Token',
+    deleteMCPToken: '删除 Token',
+    mcpTokenSaved: 'MCP Token 已保存',
+    mcpTokenDeleted: 'MCP Token 已删除',
+    deleteMCPTokenConfirm: '删除当前 MCP Token？删除后使用该 Token 的客户端将无法继续连接。',
+    mcpHelp: '使用说明',
+    mcpHelpTitle: '如何使用 Owl MCP',
+    mcpHelpDescription: 'MCP 使用 SSE 传输。每个用户使用自己的 Token，只能访问公开词典和自己上传的私有词典。',
+    mcpEndpoint: 'SSE 地址',
+    mcpAuthorization: '认证方式',
+    mcpAuthorizationHeader: '推荐认证方式：Authorization: Bearer <你的 Token>；也可临时使用 ?token=<你的 Token>。初次 SSE 连接必须携带 Token；连接建立后，SDK 后续 POST 请求会通过 session 继续通信。',
+    mcpTokenExample: '你的_MCP_TOKEN',
+    mcpAvailableTools: '可用工具',
+    mcpListDictionariesHelp: 'list_dictionaries：列出当前 Token 可访问的词典。',
+    mcpSearchDictionaryHelp: 'search_dictionary：传入 dictionary_id 和 query，在指定词典中查询。',
+    mcpHelpTokenNotice: '生成后请立即复制 Token；出于安全考虑，之后只显示首尾提示。',
+
   },
   en: {
     appTagline: 'Dictionary app for MDX / MDD',
@@ -534,6 +583,31 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     dictionaryDeleted: 'Dictionary deleted',
     fontUploaded: 'Font uploaded',
     fontDeleted: 'Font deleted',
+    mcpAccess: 'MCP access',
+    mcpAccessTitle: 'MCP SSE service',
+    mcpAccessDescription: 'Generate or save an MCP token for the current user. Scope includes public dictionaries plus your private dictionaries.',
+    mcpToken: 'MCP token',
+    mcpTokenPlaceholder: 'Enter a custom token, at least 16 characters',
+    mcpTokenConfigured: 'Token configured: ',
+    mcpTokenNotConfigured: 'No MCP token configured yet',
+    saveMCPToken: 'Save token',
+    generateMCPToken: 'Generate token',
+    deleteMCPToken: 'Delete token',
+    mcpTokenSaved: 'MCP token saved',
+    mcpTokenDeleted: 'MCP token deleted',
+    deleteMCPTokenConfirm: 'Delete the current MCP token? Clients using this token will no longer be able to connect.',
+    mcpHelp: 'Help',
+    mcpHelpTitle: 'How to use Owl MCP',
+    mcpHelpDescription: 'MCP uses SSE transport. Each user uses their own token and can only access public dictionaries plus private dictionaries they uploaded.',
+    mcpEndpoint: 'SSE endpoint',
+    mcpAuthorization: 'Authorization',
+    mcpAuthorizationHeader: 'Recommended auth: Authorization: Bearer <your token>; for quick setup, ?token=<your token> is also supported. The initial SSE connection must include the token; after the connection is established, SDK POST requests continue through the session.',
+    mcpTokenExample: 'YOUR_MCP_TOKEN',
+    mcpAvailableTools: 'Available tools',
+    mcpListDictionariesHelp: 'list_dictionaries: list dictionaries available to the current token.',
+    mcpSearchDictionaryHelp: 'search_dictionary: pass dictionary_id and query to search a specific dictionary.',
+    mcpHelpTokenNotice: 'Copy the token immediately after generating it; for security, only a short hint is shown later.',
+
   },
 }
 

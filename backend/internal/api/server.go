@@ -28,6 +28,7 @@ type Server struct {
 	users        *user.Service
 	dictionaries *dictionary.Service
 	settings     *settings.Service
+	mcp          http.Handler
 	cancel       context.CancelFunc
 }
 
@@ -73,9 +74,10 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	e := echo.New()
 	e.Use(middleware.Recover())
 	e.Use(middleware.RequestID())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: []string{frontendOrigin}, AllowHeaders: []string{"Authorization", "Content-Type"}, AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodDelete, http.MethodOptions}}))
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{AllowOrigins: []string{frontendOrigin}, AllowHeaders: []string{"Authorization", "Content-Type"}, AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions}}))
 
 	s := &Server{echo: e, users: userSvc, dictionaries: dictSvc, settings: settingsSvc}
+	s.mcp = s.newMCPHandler()
 	e.GET("/api/health", s.handleHealth)
 	e.GET("/api/public/dictionaries", s.handleListPublicDictionaries)
 	e.GET("/api/public/search", s.handlePublicSearch)
@@ -87,6 +89,8 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	e.POST("/api/auth/register", s.handleRegister)
 	e.POST("/api/auth/login", s.handleLogin)
 	e.POST("/api/auth/logout", s.handleLogout)
+	e.GET("/api/mcp/sse", s.handleMCP)
+	e.POST("/api/mcp/sse", s.handleMCP)
 
 	api := e.Group("/api", s.authMiddleware)
 	api.GET("/me", s.handleMe)
@@ -110,6 +114,10 @@ func New(client *ent.Client, userSvc *user.Service, dictSvc *dictionary.Service,
 	api.GET("/search", s.handleSearch)
 	api.GET("/suggest", s.handleSuggest)
 	api.GET("/debug/search-backends", s.handleSearchBackends)
+	api.GET("/mcp/token", s.handleGetMCPToken)
+	api.PUT("/mcp/token", s.handleSetMCPToken)
+	api.POST("/mcp/token/generate", s.handleGenerateMCPToken)
+	api.DELETE("/mcp/token", s.handleDeleteMCPToken)
 	s.registerFrontendRoutes()
 	return s
 }
