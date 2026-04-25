@@ -117,6 +117,7 @@ Authorization: Bearer <MCP_TOKEN>
   - 查询当前 token 用户可访问的词典。
   - 必填：`query`
   - 可选：`dictionary_id` 或 `dictionary_name`
+  - 可选：`format=markdown` 会让 MCP 响应的文本内容以 Markdown 输出；不传 `format` 时保持默认 JSON 文本输出。
   - 如果不指定词典，则按 Web 查询相同范围搜索全部可访问词典。
 
 ### Token 管理

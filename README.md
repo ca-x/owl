@@ -116,6 +116,7 @@ The initial SSE connection must include the token. After the connection is estab
   - Searches dictionaries available to the token owner.
   - Accepts `query`.
   - Optional: `dictionary_id` or `dictionary_name`.
+  - Optional: `format=markdown` returns Markdown text content for the MCP response; omit `format` to keep the default JSON text output.
   - If no dictionary is specified, Owl searches all dictionaries available to the token user, matching the web search scope.
 
 ### Token management

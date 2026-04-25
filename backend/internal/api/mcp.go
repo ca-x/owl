@@ -10,6 +10,7 @@ import (
 	"owl/backend/internal/dictionary"
 	"owl/backend/pkg/version"
 
+	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	echo "github.com/labstack/echo/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -35,6 +36,7 @@ type listDictionariesOutput struct {
 type searchDictionaryInput struct {
 	DictionaryID   *int    `json:"dictionary_id,omitempty" jsonschema:"Optional dictionary id returned by list_dictionaries. If omitted, all accessible dictionaries are searched."`
 	DictionaryName *string `json:"dictionary_name,omitempty" jsonschema:"Optional dictionary name or title returned by list_dictionaries. Used when dictionary_id is omitted."`
+	Format         *string `json:"format,omitempty" jsonschema:"Optional text output format. Use markdown to return Markdown text content; omit to keep the default JSON text output."`
 	Query          string  `json:"query" jsonschema:"Word, phrase, or headword to look up."`
 }
 
@@ -44,6 +46,7 @@ type searchResultInfo struct {
 	Visibility     string  `json:"visibility"`
 	Word           string  `json:"word"`
 	HTML           string  `json:"html"`
+	Markdown       string  `json:"markdown,omitempty"`
 	Score          float64 `json:"score"`
 	Source         string  `json:"source"`
 }
@@ -146,6 +149,10 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 		if query == "" {
 			return nil, searchDictionaryOutput{}, fmt.Errorf("query is required")
 		}
+		format, err := normalizeMCPSearchFormat(input.Format)
+		if err != nil {
+			return nil, searchDictionaryOutput{}, err
+		}
 		dictionaryID := 0
 		if input.DictionaryID != nil {
 			dictionaryID = *input.DictionaryID
@@ -154,7 +161,7 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 		if input.DictionaryName != nil {
 			dictionaryName = *input.DictionaryName
 		}
-		dictionaryID, err := s.resolveMCPDictionaryID(ctx, userID, dictionaryID, dictionaryName)
+		dictionaryID, err = s.resolveMCPDictionaryID(ctx, userID, dictionaryID, dictionaryName)
 		if err != nil {
 			return nil, searchDictionaryOutput{}, err
 		}
@@ -163,8 +170,9 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 			return nil, searchDictionaryOutput{}, err
 		}
 		out := searchDictionaryOutput{Results: make([]searchResultInfo, 0, len(results))}
+		markdownRequested := format == "markdown"
 		for _, result := range results {
-			out.Results = append(out.Results, searchResultInfo{
+			item := searchResultInfo{
 				DictionaryID:   result.DictionaryID,
 				DictionaryName: result.DictionaryName,
 				Visibility:     result.Visibility,
@@ -172,7 +180,18 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 				HTML:           result.HTML,
 				Score:          result.Score,
 				Source:         result.Source,
-			})
+			}
+			if markdownRequested {
+				markdown, err := htmlToMarkdown(result.HTML)
+				if err != nil {
+					return nil, searchDictionaryOutput{}, fmt.Errorf("convert %q to markdown: %w", result.Word, err)
+				}
+				item.Markdown = markdown
+			}
+			out.Results = append(out.Results, item)
+		}
+		if markdownRequested {
+			return mcpMarkdownSearchResult(query, out), out, nil
 		}
 		return mcpTextResult(out), out, nil
 	})
@@ -218,6 +237,54 @@ func (s *Server) resolveMCPDictionaryID(ctx context.Context, userID int, diction
 		}
 	}
 	return 0, fmt.Errorf("dictionary %q is not available to this token", name)
+}
+
+func normalizeMCPSearchFormat(value *string) (string, error) {
+	if value == nil {
+		return "", nil
+	}
+	format := strings.ToLower(strings.TrimSpace(*value))
+	switch format {
+	case "", "json":
+		return "", nil
+	case "markdown":
+		return "markdown", nil
+	default:
+		return "", fmt.Errorf("unsupported format %q; omit format or use markdown", *value)
+	}
+}
+
+func htmlToMarkdown(html string) (string, error) {
+	markdown, err := htmltomarkdown.ConvertString(html)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(markdown), nil
+}
+
+func mcpMarkdownSearchResult(query string, out searchDictionaryOutput) *mcp.CallToolResult {
+	var builder strings.Builder
+	if strings.TrimSpace(query) != "" {
+		fmt.Fprintf(&builder, "# Search results for %s\n\n", query)
+	} else {
+		builder.WriteString("# Search results\n\n")
+	}
+	if len(out.Results) == 0 {
+		builder.WriteString("No matching entries found.")
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: builder.String()}}}
+	}
+	for index, result := range out.Results {
+		if index > 0 {
+			builder.WriteString("\n\n---\n\n")
+		}
+		fmt.Fprintf(&builder, "## %s\n\n", result.Word)
+		fmt.Fprintf(&builder, "> Dictionary: %s  \n", result.DictionaryName)
+		fmt.Fprintf(&builder, "> Visibility: %s  \n", result.Visibility)
+		fmt.Fprintf(&builder, "> Source: %s  \n", result.Source)
+		fmt.Fprintf(&builder, "> Score: %.4g\n\n", result.Score)
+		builder.WriteString(strings.TrimSpace(result.Markdown))
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: strings.TrimSpace(builder.String())}}}
 }
 
 func mcpTextResult(value any) *mcp.CallToolResult {
