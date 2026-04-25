@@ -46,8 +46,9 @@ func TestLoadDatabaseDefaultsToSQLiteDSN(t *testing.T) {
 	if cfg.DatabaseDriver != "sqlite3" {
 		t.Fatalf("expected sqlite3 driver, got %q", cfg.DatabaseDriver)
 	}
-	if cfg.DatabaseDSN == "" || cfg.DatabaseDSN == dbPath {
-		t.Fatalf("expected generated sqlite DSN, got %q", cfg.DatabaseDSN)
+	expectedDSN := "file:" + dbPath + "?cache=shared&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)"
+	if cfg.DatabaseDSN != expectedDSN {
+		t.Fatalf("expected generated sqlite DSN %q, got %q", expectedDSN, cfg.DatabaseDSN)
 	}
 }
 
