@@ -375,11 +375,18 @@ http://localhost:3000
 - `OWL_DB_DSN`：数据库连接字符串；SQLite 默认可留空，由 `OWL_DB_PATH` 自动生成
 - `OWL_DB_PATH`：SQLite 数据库路径
 
+使用 SQLite 且 `OWL_DB_DSN` 为空时，Owl 会自动生成包含 shared cache、外键、WAL 日志模式、NORMAL 同步模式和 10 秒 busy timeout 的 DSN，用于改善 SQLite 下的并发读写体验，同时保留简单部署方式。
+
 示例：
 
 ```text
+# SQLite 默认：DSN 留空，由 OWL_DB_PATH 自动生成。
 OWL_DB_TYPE=sqlite
 OWL_DB_DSN=
+
+# SQLite 显式 DSN，等价于默认生成格式。
+OWL_DB_TYPE=sqlite
+OWL_DB_DSN=file:/app/data/data.db?cache=shared&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)
 
 OWL_DB_TYPE=postgres
 OWL_DB_DSN=postgres://owl:secret@postgres:5432/owl?sslmode=disable

@@ -376,11 +376,18 @@ See `.env.example` for the full list.
 - `OWL_DB_DSN` — database connection string; leave empty for SQLite to use the generated DSN from `OWL_DB_PATH`
 - `OWL_DB_PATH` — SQLite database path used by the default SQLite DSN
 
+When SQLite is used and `OWL_DB_DSN` is empty, Owl generates a DSN with shared cache, foreign keys, WAL journaling, normal synchronous mode, and a 10-second busy timeout. This improves concurrent read/write behavior while keeping the simple SQLite deployment path.
+
 Examples:
 
 ```text
+# SQLite default: leave DSN empty to derive from OWL_DB_PATH.
 OWL_DB_TYPE=sqlite
 OWL_DB_DSN=
+
+# SQLite explicit DSN equivalent.
+OWL_DB_TYPE=sqlite
+OWL_DB_DSN=file:/app/data/data.db?cache=shared&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)
 
 OWL_DB_TYPE=postgres
 OWL_DB_DSN=postgres://owl:secret@postgres:5432/owl?sslmode=disable
