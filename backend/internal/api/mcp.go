@@ -33,9 +33,9 @@ type listDictionariesOutput struct {
 }
 
 type searchDictionaryInput struct {
-	DictionaryID   int    `json:"dictionary_id" jsonschema:"Optional dictionary id returned by list_dictionaries. If omitted, all accessible dictionaries are searched."`
-	DictionaryName string `json:"dictionary_name" jsonschema:"Optional dictionary name or title returned by list_dictionaries. Used when dictionary_id is omitted."`
-	Query          string `json:"query" jsonschema:"Word, phrase, or headword to look up."`
+	DictionaryID   *int    `json:"dictionary_id,omitempty" jsonschema:"Optional dictionary id returned by list_dictionaries. If omitted, all accessible dictionaries are searched."`
+	DictionaryName *string `json:"dictionary_name,omitempty" jsonschema:"Optional dictionary name or title returned by list_dictionaries. Used when dictionary_id is omitted."`
+	Query          string  `json:"query" jsonschema:"Word, phrase, or headword to look up."`
 }
 
 type searchResultInfo struct {
@@ -146,7 +146,15 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 		if query == "" {
 			return nil, searchDictionaryOutput{}, fmt.Errorf("query is required")
 		}
-		dictionaryID, err := s.resolveMCPDictionaryID(ctx, userID, input.DictionaryID, input.DictionaryName)
+		dictionaryID := 0
+		if input.DictionaryID != nil {
+			dictionaryID = *input.DictionaryID
+		}
+		dictionaryName := ""
+		if input.DictionaryName != nil {
+			dictionaryName = *input.DictionaryName
+		}
+		dictionaryID, err := s.resolveMCPDictionaryID(ctx, userID, dictionaryID, dictionaryName)
 		if err != nil {
 			return nil, searchDictionaryOutput{}, err
 		}
