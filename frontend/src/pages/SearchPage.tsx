@@ -1,4 +1,4 @@
-import { GlobeHemisphereEast, LockKey } from '@phosphor-icons/react'
+import { Check, CopySimple, GlobeHemisphereEast, LockKey } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { DictionaryEntryHtml } from '../components/DictionaryEntryHtml'
@@ -59,6 +59,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [activeSuggestion, setActiveSuggestion] = useState<number>(-1)
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(initialURLState.query.length > 0)
+  const [copiedResultKey, setCopiedResultKey] = useState('')
 
   const enabledDictionaries = useMemo(() => dictionaries.filter((item) => item.enabled), [dictionaries])
   const visibleSuggestions = useMemo(
@@ -94,6 +95,24 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
 
   function handleDictionarySelection(value: string) {
     setDictionaryId(value ? Number(value) : undefined)
+  }
+
+  function definitionText(result: SearchResult) {
+    const container = document.createElement('div')
+    container.innerHTML = result.html
+    return `${result.word} · ${result.dictionary_name}\n\n${container.textContent?.replace(/\s+/g, ' ').trim() ?? ''}`.trim()
+  }
+
+  async function copyResultDefinition(result: SearchResult, key: string) {
+    try {
+      await navigator.clipboard.writeText(definitionText(result))
+      setCopiedResultKey(key)
+      window.setTimeout(() => {
+        setCopiedResultKey((current) => (current === key ? '' : current))
+      }, 1600)
+    } catch {
+      setCopiedResultKey('')
+    }
   }
 
   async function runQuickSearch(nextQuery: string, nextDictionaryId?: number) {
@@ -346,6 +365,10 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
         </div>
       ) : (
         <div className="results-grid">
+          <div className="result-output-summary" aria-live="polite">
+            <span className="scope-label">{t.resultCount(results.length)}</span>
+            <strong>{query}</strong>
+          </div>
           {topResult ? (
             <section className="card hero-result reading-surface">
               <div className="hero-result-head">
@@ -358,6 +381,10 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                   <span className={topResult.visibility === 'public' ? 'status-pill info-pill' : 'status-pill muted-pill'}>
                     {topResult.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
                   </span>
+                  <button className="text-chip definition-copy-button" type="button" onClick={() => void copyResultDefinition(topResult, `top-${topResult.dictionary_id}-${topResult.word}`)}>
+                    {copiedResultKey === `top-${topResult.dictionary_id}-${topResult.word}` ? <Check size={14} weight="bold" aria-hidden="true" /> : <CopySimple size={14} weight="bold" aria-hidden="true" />}
+                    <span>{copiedResultKey === `top-${topResult.dictionary_id}-${topResult.word}` ? t.definitionCopied : t.copyDefinition}</span>
+                  </button>
                 </div>
               </div>
               <DictionaryEntryHtml html={topResult.html} className="definition-html main-definition" onLookup={runQuickSearch} />
@@ -380,9 +407,15 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                           {item.dictionary_name} · {item.visibility === 'public' ? t.resultVisibilityPublic : t.resultVisibilityPrivate}
                         </span>
                       </div>
-                      <button className="text-chip" type="button" onClick={() => void runQuickSearch(item.word, item.dictionary_id)}>
-                        {t.searchOnlyThisDictionary}
-                      </button>
+                      <div className="result-card-actions">
+                        <button className="text-chip" type="button" onClick={() => void runQuickSearch(item.word, item.dictionary_id)}>
+                          {t.searchOnlyThisDictionary}
+                        </button>
+                        <button className="text-chip definition-copy-button" type="button" onClick={() => void copyResultDefinition(item, `${item.dictionary_id}-${item.word}-${index}`)}>
+                          {copiedResultKey === `${item.dictionary_id}-${item.word}-${index}` ? <Check size={14} weight="bold" aria-hidden="true" /> : <CopySimple size={14} weight="bold" aria-hidden="true" />}
+                          <span>{copiedResultKey === `${item.dictionary_id}-${item.word}-${index}` ? t.definitionCopied : t.copyDefinition}</span>
+                        </button>
+                      </div>
                     </div>
                     <DictionaryEntryHtml html={item.html} className="definition-html compare-definition" onLookup={runQuickSearch} />
                   </article>

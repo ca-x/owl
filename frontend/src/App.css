@@ -3330,3 +3330,110 @@ textarea:focus-visible,
     line-height: 1.68;
   }
 }
+
+.result-output-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.25rem;
+  color: var(--muted);
+}
+
+.result-output-summary strong {
+  color: var(--text);
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.definition-copy-button,
+.result-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.result-card-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.reading-surface {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-elevated) 96%, transparent), color-mix(in srgb, var(--panel) 92%, transparent)),
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent-soft) 46%, transparent), transparent 34%);
+}
+
+.definition-html {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+.definition-html :is(p, li, dd, def) {
+  max-width: 74ch;
+}
+
+.definition-html :is(ul, ol) {
+  padding-left: 1.35rem;
+}
+
+.definition-html li + li {
+  margin-top: 0.35rem;
+}
+
+.definition-html strong,
+.definition-html b {
+  color: color-mix(in srgb, var(--text) 92%, var(--accent-strong));
+  font-weight: 800;
+}
+
+.definition-html mark {
+  background: color-mix(in srgb, var(--accent-soft) 82%, #fff3b0 18%);
+  color: var(--text);
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.18rem;
+}
+
+.definition-html hr {
+  border: 0;
+  border-top: 1px dashed color-mix(in srgb, var(--border-strong) 58%, transparent);
+  margin: 1.1rem 0;
+}
+
+.definition-html :is(img, video) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.95rem 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--retro-shadow) 20%, transparent);
+}
+
+.main-definition {
+  margin-inline: auto;
+}
+
+.main-definition :is(p, li, dd, def) {
+  font-size: 1.04rem;
+}
+
+@media (max-width: 720px) {
+  .result-output-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .result-card-actions {
+    justify-content: flex-start;
+  }
+
+  .definition-copy-button {
+    min-height: 44px;
+  }
+
+  .main-definition :is(p, li, dd, def) {
+    font-size: 1rem;
+  }
+}

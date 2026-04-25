@@ -40,6 +40,9 @@ type MessageCatalog = {
   noResultTitle: string
   noResultDescription: string
   bestMatch: string
+  resultCount: (count: number) => string
+  copyDefinition: string
+  definitionCopied: string
   moreMatches: string
   moreEntriesFromDictionary: string
   searchOnlyThisDictionary: string
@@ -248,6 +251,9 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     noResultTitle: '没有找到匹配结果',
     noResultDescription: '可以尝试更短的词、不同拼写、切换到全部词典，或者刷新词典库后再试。',
     bestMatch: '最佳匹配',
+    resultCount: (count) => `共 ${count} 条结果`,
+    copyDefinition: '复制释义',
+    definitionCopied: '已复制',
     moreMatches: '更多匹配结果',
     moreEntriesFromDictionary: '来自该词典的更多匹配词条',
     searchOnlyThisDictionary: '仅在该词典中查询',
@@ -455,6 +461,9 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     noResultTitle: 'No matching results found',
     noResultDescription: 'Try a shorter word, a different spelling, switch back to all dictionaries, or refresh the library and try again.',
     bestMatch: 'Best match',
+    resultCount: (count) => `${count} result${count === 1 ? '' : 's'}`,
+    copyDefinition: 'Copy definition',
+    definitionCopied: 'Copied',
     moreMatches: 'More matching entries',
     moreEntriesFromDictionary: 'More matching entries from this dictionary',
     searchOnlyThisDictionary: 'Search only this dictionary',
