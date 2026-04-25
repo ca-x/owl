@@ -2,100 +2,168 @@
 
 [English](README.md)
 
-Owl 是一个支持 **MDX / MDD** 词典文件的 Web 词典应用。当前架构为：**Go 后端 + 嵌入式 React 前端 + 单二进制部署**。
+Owl 是一个自托管的 **MDX / MDD Web 词典**。它面向个人查词、公开词典共享、用户私有词典管理，以及 AI 客户端通过 MCP 查询词典的场景。
 
-## 技术栈
+---
 
-- 后端：Go + Echo v5 + ent + SQLite（`github.com/lib-x/entsqlite`）
-- 词典解析引擎：`github.com/lib-x/mdx v0.1.11`
-- 前端：React + Vite + TypeScript + pnpm
-- 部署：单 Go 服务 / 单 Docker 镜像
-- 自动化：GitHub Actions（CI、二进制发布、Docker 构建）
+## 用户可以做什么
 
-## 核心能力
+### 查词与阅读
 
-### 查询能力
+- 在浏览器中直接查询 MDX 词典。
+- 未登录用户可以查询已启用的**公开词典**。
+- 登录用户可以查询公开词典，以及自己上传的私有词典。
+- 支持查询全部可用词典，也可以筛选到某一本词典。
+- 支持搜索建议和键盘导航。
+- 支持点击词条内部链接，继续跳转查询相关词。
+- 支持渲染 MDX 返回的 HTML 内容。
+- 支持通过后端读取配套 MDD 中的图片、音频、CSS、字体和其他媒体资源。
+- 词条中有音频资源时可以直接播放。
+- 支持复制纯文本释义，方便粘贴到笔记或其他工具中。
+- 支持最近搜索，保留数量可以在管理界面配置。
 
-- 未登录用户可查询：**已启用的公开词典**
-- 已登录用户可查询：
-  - 所有已启用的公开词典
-  - 自己的私有词典
-- 查询结果支持：
-  - Best match 最佳结果
-  - 同词跨词典对比
-  - Public / Private 来源分组
-  - 搜索建议与键盘导航
-- MDX 返回的 HTML 会直接渲染
-- MDD 中的图片、CSS、字体等资源通过后端路由提供
+### 更舒服的输出体验
 
-### 词典维护能力
+- 查询页面同时适配桌面端和移动端。
+- 移动端提供更紧凑的词典筛选控件。
+- 移动端搜索后会直接定位到结果区域，避免最近搜索挡住结果。
+- 最佳匹配结果会被突出显示，其他匹配结果在下方继续展示。
+- 查询结果会显示公开 / 私有来源标识。
+- 支持多种主题，包括复古风格、深色主题、黑白主题等。
+- 阅读字体可以切换为 sans / serif / mono / 自定义字体。
 
-- 上传 MDX 与可选的 MDD 文件
-- 同 basename 的 `.mdx + .mdd` 视为同一词典
-- 先传 MDX、后补 MDD 后可通过刷新重新发现资源
-- 支持递归扫描挂载目录中的词典文件
-- 词典状态会在 UI 中显示：
+### 个人偏好
+
+- 切换界面语言：简体中文 / English。
+- 切换视觉主题。
+- 设置阅读字体模式。
+- 上传并使用共享自定义字体。
+- 设置显示名称和头像。
+- 设置最近搜索保留数量。
+
+---
+
+## 词典管理功能
+
+### 词典维护
+
+- 在网页中上传 `.mdx` 文件和可选的 `.mdd` 文件。
+- 刷新单本词典，用于重新加载或补齐资源。
+- 刷新整个词典库，用于重新扫描挂载目录。
+- 启用 / 停用词典。
+- 设置词典为公开 / 私有。
+- 删除词典。
+- 在界面中查看词典文件状态：
   - `ok`
   - `missing_mdx`
   - `missing_mdd`
   - `missing_all`
-- 维护动作包括：
-  - 刷新单个词典
-  - 刷新整个词典库
-  - 启用 / 停用
-  - 公开 / 私有切换
-  - 删除
-- 刷新会返回结构化维护报告：
+- 查看结构化刷新报告：
   - discovered
   - updated
   - skipped
   - failed
 
-### 用户偏好
+### 词典文件识别规则
 
-每个用户的偏好设置持久化在后端：
-- 语言：`zh-CN` / `en`
-- 主题：`system` / `light` / `dark` / `sepia`
-- 阅读字体：`sans` / `serif` / `mono` / `custom`
-- 支持上传自定义字体
+- 同 basename 的 `.mdx + .mdd` 会被视为同一套词典。
+- 如果先上传 MDX，之后再补充同名 MDD，可以通过刷新重新发现资源。
+- 挂载的词典目录会被递归扫描。
+- 如果不挂载外部目录，也可以只使用网页上传模式。
 
-## 本地开发
+### 站点级管理
 
-### 后端
+管理员可以设置：
 
-```bash
-cd backend
-GOPROXY=https://goproxy.cn,direct GOSUMDB=off go test ./...
-GOPROXY=https://goproxy.cn,direct GOSUMDB=off go vet ./...
-GOPROXY=https://goproxy.cn,direct GOSUMDB=off go run ./cmd/server
+- 是否开放新用户注册。
+- 网站 footer 额外信息。
+- 版权信息。
+
+默认情况下，footer 信息为空时不会显示。
+
+---
+
+## MCP 支持
+
+Owl 内置基于 SSE 的 MCP 服务，方便 AI 客户端调用词典。
+
+### Endpoint
+
+```text
+/api/mcp/sse
 ```
 
-默认地址：
-- `http://localhost:8080`
+认证方式是每个用户自己的 MCP Token：
 
-### 前端
-
-```bash
-cd frontend
-pnpm install
-pnpm lint
-pnpm build
-pnpm dev
+```text
+Authorization: Bearer <MCP_TOKEN>
 ```
 
-前端开发地址：
-- `http://localhost:3000`
+临时测试也可以使用 URL 参数：
 
-说明：
-- `pnpm build` 会把构建产物写到 `backend/web/dist`
-- Go 服务端通过 `go:embed` 直接提供前端页面
-- 开发模式下 Vite 仍会代理 `/api` 到后端
+```text
+/api/mcp/sse?token=<MCP_TOKEN>
+```
+
+初次 SSE 连接必须携带 Token；连接建立后，SDK 后续 POST 请求会通过 MCP session 继续通信。
+
+### MCP 工具
+
+- `list_dictionaries`
+  - 列出当前 token 用户可访问的词典。
+  - 范围：已启用的公开词典 + 当前用户自己的私有词典。
+
+- `search_dictionary`
+  - 查询当前 token 用户可访问的词典。
+  - 必填：`query`
+  - 可选：`dictionary_id` 或 `dictionary_name`
+  - 如果不指定词典，则按 Web 查询相同范围搜索全部可访问词典。
+
+### Token 管理
+
+每个用户都可以在管理界面维护自己的 MCP Token：
+
+- 保存自定义 Token
+- 生成随机 Token
+- 删除 / 撤销 Token
+- 打开使用说明弹窗查看接入方式
+
+Token 只会以 hash 形式存储。生成后请立即复制，之后界面只显示首尾提示。
+
+---
+
+## 技术概览
+
+### 技术栈
+
+- 后端：Go + Echo v5 + ent + SQLite（`github.com/lib-x/entsqlite`）
+- 词典引擎：`github.com/lib-x/mdx`
+- MCP 服务：`github.com/modelcontextprotocol/go-sdk`
+- 前端：React + Vite + TypeScript
+- 可选搜索缓存 / 索引：Redis + RediSearch
+- 部署方式：单 Go 服务 / 单 Docker 镜像
+- 前端生产资源：通过 `go:embed` 嵌入 Go 服务
+- 自动化：GitHub Actions 构建 CI、发布二进制和 Docker 镜像
+
+### 搜索后端行为
+
+Owl 可以不依赖 Redis 运行，此时使用本地 MDX 搜索 / 索引能力。
+
+配置 Redis 后：
+
+- exact / prefix 索引可以写入 Redis
+- fuzzy 查询可以使用 RediSearch
+- 自动补全结果由后端聚合
+- 如果 RediSearch 不可用，会自动回退到内存 fuzzy store
+
+---
 
 ## Docker 部署
 
-当前仓库只保留两个 Docker Compose 文件：
-- `docker-compose.yml` → 不启用 Redis，最简单
-- `docker-compose.redis.yml` → 启用 Redis + RediSearch
+仓库提供两个 Docker Compose 文件：
+
+- `docker-compose.yml`：最简单部署，不启用 Redis
+- `docker-compose.redis.yml`：启用 Redis + RediSearch
 
 ### 方案一：不启用 Redis
 
@@ -107,17 +175,21 @@ docker compose -f docker-compose.yml up -d
 ```
 
 默认地址：
-- `http://localhost:8080`
 
-启动后会得到：
+```text
+http://localhost:8080
+```
+
+该模式会启动：
+
 - Owl：`http://localhost:8080`
-- SQLite：存放在持久化 volume `owl_data` 中
-- 上传词典：存放在 `/app/data/uploads`
-- 使用内存 fuzzy search，不依赖 Redis
+- SQLite：保存在持久化 volume `owl_data` 中
+- 上传词典：保存在 `/app/data/uploads`
+- 不依赖 Redis
 
 ### 方案二：启用 Redis + RediSearch
 
-如果你希望启用 Redis 精确 / 前缀索引，以及 RediSearch 模糊搜索，推荐这样启动：
+如果你希望启用 Redis 前缀 / 精确索引和 RediSearch 模糊查询，可以使用：
 
 ```bash
 cp .env.example .env
@@ -126,16 +198,16 @@ docker compose -f docker-compose.redis.yml pull
 docker compose -f docker-compose.redis.yml up -d
 ```
 
-这个模式下通常会是：
-- exact/prefix：Redis
-- fuzzy：RediSearch
-- 如果模块不可用：自动回退到内存 fuzzy search
+该模式会启动：
 
-说明：
-- 前端由 Go 服务端直接提供
-- 数据通过 `owl_data` volume 持久化
-- Redis 数据通过 `owl_redis` volume 持久化
-- 仓库内的 compose 直接使用镜像 `czyt/owl:latest`
+- Owl：`http://localhost:8080`
+- Redis Stack Server，用于 Redis + RediSearch
+- SQLite 和上传文件保存在 `owl_data`
+- Redis 数据保存在 `owl_redis`
+
+Compose 文件默认使用发布镜像：`czyt/owl:latest`。
+
+---
 
 ## 部署说明
 
@@ -156,46 +228,31 @@ services:
 ```
 
 启动后：
+
 1. 登录
 2. 打开 **管理**
 3. 点击 **刷新词典库**
 
-Owl 会递归扫描这个目录，并自动把同名的 `name.mdx` 和 `name.mdd` 识别成同一套词典。
+Owl 会递归扫描目录，并自动把 `name.mdx` 和 `name.mdd` 识别为同一套词典。
 
 ### 纯网页上传模式
 
 如果你不想挂载外部词典目录，可以保持：
-- `OWL_LIBRARY_DIR=/app/data/uploads`
 
-这样词典就全部通过网页上传管理。
+```text
+OWL_LIBRARY_DIR=/app/data/uploads
+```
+
+这样词典就可以完全通过网页上传和管理。
 
 ### 首次启动检查清单
 
-容器启动后建议按这个顺序检查：
-1. 打开 `http://localhost:8080`
-2. 使用初始化管理员账号登录
-3. 上传一本测试词典，或者挂载后刷新词典库
-4. 在 **管理** 页面设置公开 / 私有
-5. 回到首页确认能正常查词
-
-### 如何确认当前实际使用的搜索后端
-
-游客范围：
-
-```bash
-curl http://localhost:8080/api/public/search-backends
-```
-
-登录范围：
-
-```bash
-curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-backends
-```
-
-重点字段含义：
-- `fuzzy_backend: redisearch` → 当前正在使用 RediSearch
-- `fuzzy_backend: memory-fuzzy` → 当前处于回退模式
-- `prefix_backend: redis-prefix` → Redis 前缀索引已生效
+1. 打开 `http://localhost:8080`。
+2. 使用初始化管理员账号登录。
+3. 上传一本测试词典，或挂载词典目录后刷新词典库。
+4. 根据需要设置词典公开 / 私有。
+5. 回到首页确认可以正常查词。
+6. 可选：配置注册开关、footer、字体和 MCP Token。
 
 ### 升级说明
 
@@ -219,22 +276,71 @@ docker compose -f docker-compose.redis.yml pull
 docker compose -f docker-compose.redis.yml up -d
 ```
 
-SQLite 数据、上传词典和 Redis 数据都会保留在 Docker volume 中，除非你手动删除。
+SQLite 数据、上传词典和 Redis 数据都会保留在 Docker volume 中，除非你手动删除 volume。
 
-## 重要环境变量
+---
 
-详见 `.env.example`。
+## 本地开发
 
-常用项：
+### 后端
+
+```bash
+cd backend
+GOPROXY=https://goproxy.cn,direct GOSUMDB=off go test ./...
+GOPROXY=https://goproxy.cn,direct GOSUMDB=off go vet ./...
+GOPROXY=https://goproxy.cn,direct GOSUMDB=off go run ./cmd/server
+```
+
+后端默认地址：
+
+```text
+http://localhost:8080
+```
+
+### 前端
+
+```bash
+cd frontend
+pnpm install
+pnpm lint
+pnpm build
+pnpm dev
+```
+
+前端开发地址：
+
+```text
+http://localhost:3000
+```
+
+生产风格本地运行时，`pnpm build` 会把前端构建产物写入 `backend/web/dist`，Go 服务通过嵌入资源提供页面。Vite 开发服务会把 `/api` 代理到后端。
+
+---
+
+## 环境变量
+
+完整列表见 `.env.example`。
+
+### 核心服务
+
+- `OWL_PORT`
+- `OWL_FRONTEND_ORIGIN`
 - `OWL_JWT_SECRET`
-- `OWL_BOOTSTRAP_ADMIN`
-- `OWL_ADMIN_USERNAME`
-- `OWL_ADMIN_PASSWORD`
 - `OWL_DATA_DIR`
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
 - `OWL_DB_PATH`
-- `OWL_REDIS_ADDR`（可选）
+
+### 初始化管理员与注册
+
+- `OWL_BOOTSTRAP_ADMIN`
+- `OWL_ADMIN_USERNAME`
+- `OWL_ADMIN_PASSWORD`
+- `OWL_ALLOW_REGISTER`
+
+### Redis / RediSearch
+
+- `OWL_REDIS_ADDR`
 - `OWL_REDIS_PASSWORD`
 - `OWL_REDIS_DB`
 - `OWL_REDIS_KEY_PREFIX`
@@ -242,114 +348,31 @@ SQLite 数据、上传词典和 Redis 数据都会保留在 Docker volume 中，
 - `OWL_REDIS_SEARCH_ENABLED`
 - `OWL_REDIS_SEARCH_KEY_PREFIX`
 
-## 可选 Redis 索引缓存
+### 音频资源
 
-Owl 可以选择使用 Redis 作为 MDX 精确 / 前缀索引缓存层。
-
-当前行为：
-- 配置 Redis 后，Owl 会优先尝试基于 RediSearch 的模糊检索
-- exact/prefix suggestion 索引也会存入 Redis
-- 自动补全分组结果由后端聚合
-- 如果 RediSearch 模块不可用，会自动回退到内存 mdx fuzzy store
-
-启用时可设置：
-- `OWL_REDIS_ADDR=redis:6379`
-- 可选 `OWL_REDIS_PASSWORD` / `OWL_REDIS_DB`
-- 可选 `OWL_REDIS_KEY_PREFIX` / `OWL_REDIS_PREFIX_MAX_LEN`
-- `OWL_REDIS_SEARCH_ENABLED=true`
-- 可选 `OWL_REDIS_SEARCH_KEY_PREFIX`
-
-如果要直接使用仓库内置的 Redis 部署：
-
-```bash
-docker compose -f docker-compose.redis.yml pull
-docker compose -f docker-compose.redis.yml up -d
-```
-
-调试接口：
-- 游客范围：`GET /api/public/search-backends`
-- 登录范围：`GET /api/debug/search-backends`
-
-这些接口会展示当前每本词典实际使用的是：
-- `redisearch`
-- `memory-fuzzy`
-- `redis-prefix`
-
-## 默认管理员账号
-
-如果 `OWL_BOOTSTRAP_ADMIN=true`，启动时会自动创建管理员账号（若不存在）。
-
-默认示例：
-- 用户名：`admin`
-- 密码：`admin123456`
-
-上线前请务必修改。
-
-## API 概览
-
-### 公共接口
-- `GET /api/health`
-- `GET /api/public/dictionaries`
-- `GET /api/public/search?q=word&dict=id`
-- `GET /api/public/suggest?q=prefix&dict=id`
-- `GET /api/public/search-backends`
-- `GET /api/public/dictionaries/:id/resource/*`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-
-### 登录后接口
-- `POST /api/auth/logout`
-- `GET /api/me`
-- `GET /api/preferences`
-- `PUT /api/preferences`
-- `POST /api/preferences/font`
-- `GET /api/preferences/font`
-- `GET /api/dictionaries`
-- `POST /api/dictionaries/upload`
-- `PATCH /api/dictionaries/:id`
-- `PATCH /api/dictionaries/:id/public`
-- `POST /api/dictionaries/:id/refresh`
-- `POST /api/dictionaries/refresh`
-- `DELETE /api/dictionaries/:id`
-- `GET /api/dictionaries/:id/resource/*`
-- `GET /api/search?q=word&dict=id`
-- `GET /api/suggest?q=prefix&dict=id`
-- `GET /api/debug/search-backends`
-
-## CI / 发布自动化
-
-`.github/workflows/` 中包含：
-
-- `ci.yml`
-  - 前端安装 / lint / build（产物写入嵌入目录）
-  - 后端 test / vet
-  - 单镜像 Docker build 验证
-- `binary.yml`
-  - tag 触发二进制构建
-  - 上传 draft release 资产
-- `docker.yml`
-  - tag 触发单镜像多架构 Docker 构建与推送
-
-## 当前本地已验证内容
-
-已验证：
-- `go test ./...`
-- `go vet ./...`
-- `go build ./cmd/server`
-- `pnpm lint`
-- `pnpm build`
-- 使用真实 OALD9 样本验证：图片资源可正常返回；`@@LINK` 不再泄漏到页面文本
-
-未在当前环境完成：
-- Docker 运行时完整验证（当前会话环境受限制）
-- 多套真实词典资源包的完整端到端回归
-
-
-## 音频兼容性
-
-Owl 现在会检测 Ogg Speex / `.spx` 词典音频；当系统内存在 `ffmpeg` 时，会在后端按需透明转码为浏览器可播放的 MP3，并把结果缓存到配置的音频缓存目录。
-
-
-新增环境变量：
 - `OWL_AUDIO_CACHE_DIR`
 - `FFMPEG_BIN`
+
+---
+
+## 调试接口
+
+### 查看搜索后端状态
+
+游客范围：
+
+```bash
+curl http://localhost:8080/api/public/search-backends
+```
+
+登录范围：
+
+```bash
+curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-backends
+```
+
+重点字段含义：
+
+- `fuzzy_backend: redisearch`：正在使用 RediSearch
+- `fuzzy_backend: memory-fuzzy`：处于回退模式
+- `prefix_backend: redis-prefix`：Redis 前缀索引已生效
