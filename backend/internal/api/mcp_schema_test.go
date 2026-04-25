@@ -44,7 +44,12 @@ func TestMCPSearchDictionaryOptionalDictionaryInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	var schema struct {
-		Required []string `json:"required"`
+		Required   []string `json:"required"`
+		Properties map[string]struct {
+			Description string   `json:"description"`
+			Enum        []string `json:"enum"`
+			Default     string   `json:"default"`
+		} `json:"properties"`
 	}
 	if err := json.Unmarshal(encoded, &schema); err != nil {
 		t.Fatal(err)
@@ -53,6 +58,21 @@ func TestMCPSearchDictionaryOptionalDictionaryInput(t *testing.T) {
 		if field == "dictionary_id" || field == "dictionary_name" || field == "format" {
 			t.Fatalf("%s should be optional in schema: %s", field, string(encoded))
 		}
+	}
+	formatProperty, ok := schema.Properties["format"]
+	if !ok {
+		t.Fatalf("format property missing from schema: %s", string(encoded))
+	}
+	for _, expected := range []string{"Optional output format", "json", "markdown", "MCP TextContent"} {
+		if !strings.Contains(formatProperty.Description, expected) {
+			t.Fatalf("format description should mention %q, got %q", expected, formatProperty.Description)
+		}
+	}
+	if formatProperty.Default != "json" {
+		t.Fatalf("expected format default json, got %q", formatProperty.Default)
+	}
+	if strings.Join(formatProperty.Enum, ",") != "json,markdown" {
+		t.Fatalf("expected format enum json,markdown; got %#v", formatProperty.Enum)
 	}
 
 }

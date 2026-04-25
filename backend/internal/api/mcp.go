@@ -11,6 +11,7 @@ import (
 	"owl/backend/pkg/version"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+	"github.com/google/jsonschema-go/jsonschema"
 	echo "github.com/labstack/echo/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -143,7 +144,8 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_dictionary",
 		Title:       "Search dictionaries",
-		Description: "Search by dictionary_id or dictionary_name from list_dictionaries. If neither is provided, search all dictionaries accessible to the MCP token user, matching the web search scope.",
+		Description: "Search by query, optionally narrowed by dictionary_id or dictionary_name from list_dictionaries. Optional format controls only the human-readable MCP text content: omit it or use json for the original JSON text output, or use markdown to convert definitions from HTML to Markdown. If no dictionary is provided, all accessible dictionaries are searched, matching the web search scope.",
+		InputSchema: searchDictionaryInputSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchDictionaryInput) (*mcp.CallToolResult, searchDictionaryOutput, error) {
 		query := strings.TrimSpace(input.Query)
 		if query == "" {
@@ -237,6 +239,22 @@ func (s *Server) resolveMCPDictionaryID(ctx context.Context, userID int, diction
 		}
 	}
 	return 0, fmt.Errorf("dictionary %q is not available to this token", name)
+}
+
+func searchDictionaryInputSchema() *jsonschema.Schema {
+	schema, err := jsonschema.For[searchDictionaryInput](nil)
+	if err != nil {
+		panic(fmt.Sprintf("search_dictionary input schema: %v", err))
+	}
+	formatSchema := schema.Properties["format"]
+	if formatSchema == nil {
+		panic("search_dictionary input schema: missing format property")
+	}
+	formatSchema.Description = "Optional output format for the MCP TextContent. Omit this field, pass an empty string, or pass json to keep the default JSON text output. Pass markdown to return readable Markdown text converted from dictionary HTML; structured output still includes result metadata."
+	formatSchema.Enum = []any{"json", "markdown"}
+	formatSchema.Default = json.RawMessage(`"json"`)
+	formatSchema.Examples = []any{"markdown"}
+	return schema
 }
 
 func normalizeMCPSearchFormat(value *string) (string, error) {
