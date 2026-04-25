@@ -32,6 +32,8 @@ const (
 	FieldTheme = "theme"
 	// FieldFontMode holds the string denoting the font_mode field in the database.
 	FieldFontMode = "font_mode"
+	// FieldRecentSearchLimit holds the string denoting the recent_search_limit field in the database.
+	FieldRecentSearchLimit = "recent_search_limit"
 	// FieldMcpTokenHash holds the string denoting the mcp_token_hash field in the database.
 	FieldMcpTokenHash = "mcp_token_hash"
 	// FieldMcpTokenHint holds the string denoting the mcp_token_hint field in the database.
@@ -71,6 +73,7 @@ var Columns = []string{
 	FieldLanguage,
 	FieldTheme,
 	FieldFontMode,
+	FieldRecentSearchLimit,
 	FieldMcpTokenHash,
 	FieldMcpTokenHint,
 }
@@ -117,6 +120,8 @@ var (
 	DefaultTheme string
 	// DefaultFontMode holds the default value on creation for the "font_mode" field.
 	DefaultFontMode string
+	// DefaultRecentSearchLimit holds the default value on creation for the "recent_search_limit" field.
+	DefaultRecentSearchLimit int
 	// DefaultMcpTokenHash holds the default value on creation for the "mcp_token_hash" field.
 	DefaultMcpTokenHash string
 	// DefaultMcpTokenHint holds the default value on creation for the "mcp_token_hint" field.
@@ -179,6 +184,11 @@ func ByTheme(opts ...sql.OrderTermOption) OrderOption {
 // ByFontMode orders the results by the font_mode field.
 func ByFontMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFontMode, opts...).ToFunc()
+}
+
+// ByRecentSearchLimit orders the results by the recent_search_limit field.
+func ByRecentSearchLimit(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRecentSearchLimit, opts...).ToFunc()
 }
 
 // ByMcpTokenHash orders the results by the mcp_token_hash field.

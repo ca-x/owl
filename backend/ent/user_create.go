@@ -145,6 +145,20 @@ func (_c *UserCreate) SetNillableFontMode(v *string) *UserCreate {
 	return _c
 }
 
+// SetRecentSearchLimit sets the "recent_search_limit" field.
+func (_c *UserCreate) SetRecentSearchLimit(v int) *UserCreate {
+	_c.mutation.SetRecentSearchLimit(v)
+	return _c
+}
+
+// SetNillableRecentSearchLimit sets the "recent_search_limit" field if the given value is not nil.
+func (_c *UserCreate) SetNillableRecentSearchLimit(v *int) *UserCreate {
+	if v != nil {
+		_c.SetRecentSearchLimit(*v)
+	}
+	return _c
+}
+
 // SetMcpTokenHash sets the "mcp_token_hash" field.
 func (_c *UserCreate) SetMcpTokenHash(v string) *UserCreate {
 	_c.mutation.SetMcpTokenHash(v)
@@ -274,6 +288,10 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultFontMode
 		_c.mutation.SetFontMode(v)
 	}
+	if _, ok := _c.mutation.RecentSearchLimit(); !ok {
+		v := user.DefaultRecentSearchLimit
+		_c.mutation.SetRecentSearchLimit(v)
+	}
 	if _, ok := _c.mutation.McpTokenHash(); !ok {
 		v := user.DefaultMcpTokenHash
 		_c.mutation.SetMcpTokenHash(v)
@@ -325,6 +343,9 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.FontMode(); !ok {
 		return &ValidationError{Name: "font_mode", err: errors.New(`ent: missing required field "User.font_mode"`)}
+	}
+	if _, ok := _c.mutation.RecentSearchLimit(); !ok {
+		return &ValidationError{Name: "recent_search_limit", err: errors.New(`ent: missing required field "User.recent_search_limit"`)}
 	}
 	if _, ok := _c.mutation.McpTokenHash(); !ok {
 		return &ValidationError{Name: "mcp_token_hash", err: errors.New(`ent: missing required field "User.mcp_token_hash"`)}
@@ -397,6 +418,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
 		_node.FontMode = value
+	}
+	if value, ok := _c.mutation.RecentSearchLimit(); ok {
+		_spec.SetField(user.FieldRecentSearchLimit, field.TypeInt, value)
+		_node.RecentSearchLimit = value
 	}
 	if value, ok := _c.mutation.McpTokenHash(); ok {
 		_spec.SetField(user.FieldMcpTokenHash, field.TypeString, value)

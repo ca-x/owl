@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -32,8 +33,9 @@ type listDictionariesOutput struct {
 }
 
 type searchDictionaryInput struct {
-	DictionaryID int    `json:"dictionary_id" jsonschema:"Dictionary id returned by list_dictionaries."`
-	Query        string `json:"query" jsonschema:"Word, phrase, or headword to look up."`
+	DictionaryID   int    `json:"dictionary_id" jsonschema:"Optional dictionary id returned by list_dictionaries. If omitted, all accessible dictionaries are searched."`
+	DictionaryName string `json:"dictionary_name" jsonschema:"Optional dictionary name or title returned by list_dictionaries. Used when dictionary_id is omitted."`
+	Query          string `json:"query" jsonschema:"Word, phrase, or headword to look up."`
 }
 
 type searchResultInfo struct {
@@ -132,22 +134,23 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 				Entries:    item.EntryCount,
 			})
 		}
-		return nil, out, nil
+		return mcpTextResult(out), out, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_dictionary",
-		Title:       "Search a dictionary",
-		Description: "Search a specified dictionary by id. The id must come from list_dictionaries and must be public or owned by the MCP token user.",
+		Title:       "Search dictionaries",
+		Description: "Search by dictionary_id or dictionary_name from list_dictionaries. If neither is provided, search all dictionaries accessible to the MCP token user, matching the web search scope.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchDictionaryInput) (*mcp.CallToolResult, searchDictionaryOutput, error) {
 		query := strings.TrimSpace(input.Query)
-		if input.DictionaryID <= 0 {
-			return nil, searchDictionaryOutput{}, fmt.Errorf("dictionary_id is required")
-		}
 		if query == "" {
 			return nil, searchDictionaryOutput{}, fmt.Errorf("query is required")
 		}
-		results, err := s.dictionaries.Search(ctx, dictionary.SearchParams{UserID: userID, IsAdmin: false, Query: query, DictionaryID: input.DictionaryID})
+		dictionaryID, err := s.resolveMCPDictionaryID(ctx, userID, input.DictionaryID, input.DictionaryName)
+		if err != nil {
+			return nil, searchDictionaryOutput{}, err
+		}
+		results, err := s.dictionaries.Search(ctx, dictionary.SearchParams{UserID: userID, IsAdmin: false, Query: query, DictionaryID: dictionaryID})
 		if err != nil {
 			return nil, searchDictionaryOutput{}, err
 		}
@@ -163,7 +166,7 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 				Source:         result.Source,
 			})
 		}
-		return nil, out, nil
+		return mcpTextResult(out), out, nil
 	})
 
 	return server
@@ -187,4 +190,32 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (s *Server) resolveMCPDictionaryID(ctx context.Context, userID int, dictionaryID int, dictionaryName string) (int, error) {
+	if dictionaryID > 0 {
+		return dictionaryID, nil
+	}
+	name := strings.TrimSpace(dictionaryName)
+	if name == "" {
+		return 0, nil
+	}
+	items, err := s.dictionaries.ListAccessible(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	for _, item := range items {
+		if strings.EqualFold(item.Name, name) || strings.EqualFold(item.Title, name) || strings.EqualFold(firstNonEmpty(item.Title, item.Name), name) {
+			return item.ID, nil
+		}
+	}
+	return 0, fmt.Errorf("dictionary %q is not available to this token", name)
+}
+
+func mcpTextResult(value any) *mcp.CallToolResult {
+	payload, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		payload = []byte(fmt.Sprint(value))
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(payload)}}}
 }

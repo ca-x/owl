@@ -32,6 +32,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   avatar_url: '',
   custom_font_name: '',
   custom_font_family: '',
+  recent_search_limit: 8,
 }
 
 
@@ -45,12 +46,19 @@ function normalizeThemePreference(theme: string): UserPreferences['theme'] {
   return DEFAULT_PREFERENCES.theme
 }
 
+function normalizeRecentSearchLimit(value: unknown): number {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric)) return 8
+  return Math.max(0, Math.min(20, Math.round(numeric)))
+}
+
 function normalizePreferences(preferences: Partial<UserPreferences>): UserPreferences {
   const normalized: UserPreferences = {
     ...DEFAULT_PREFERENCES,
     ...preferences,
     theme: normalizeThemePreference(preferences.theme ?? DEFAULT_PREFERENCES.theme),
     language: preferences.language === 'en' ? 'en' : 'zh-CN',
+    recent_search_limit: normalizeRecentSearchLimit(preferences.recent_search_limit ?? DEFAULT_PREFERENCES.recent_search_limit),
     font_mode:
       preferences.font_mode === 'serif' || preferences.font_mode === 'mono' || preferences.font_mode === 'custom'
         ? preferences.font_mode
@@ -165,8 +173,9 @@ export default function App() {
       theme: preferences.theme,
       font_mode: preferences.font_mode,
       custom_font_name: preferences.custom_font_name,
+      recent_search_limit: preferences.recent_search_limit,
     }))
-  }, [preferences.language, preferences.theme, preferences.font_mode, preferences.custom_font_name])
+  }, [preferences.language, preferences.theme, preferences.font_mode, preferences.custom_font_name, preferences.recent_search_limit])
 
   useEffect(() => {
     const resolvedTheme = preferences.theme === 'system'
@@ -274,9 +283,17 @@ export default function App() {
           api.getMCPToken(authToken),
         ])
         if (!active) return
+        const normalizedPrefs = normalizePreferences(prefs)
         setUser(me)
         setDictionaries(dicts)
-        setPreferences(normalizePreferences(prefs))
+        setPreferences(normalizedPrefs)
+        setRecentSearches((current) => {
+          const next = current.slice(0, normalizedPrefs.recent_search_limit)
+          if (next.length !== current.length) {
+            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next))
+          }
+          return next
+        })
         setMCPTokenStatus(mcpStatus)
         setDictionaryError('')
       } catch (error) {
@@ -372,7 +389,8 @@ export default function App() {
         : await api.publicSearch(normalizedQuery, dictionaryId)
       setResults(data)
       setRecentSearches((current) => {
-        const next = [normalizedQuery, ...current.filter((item) => item !== normalizedQuery)].slice(0, 8)
+        const limit = normalizeRecentSearchLimit(preferences.recent_search_limit)
+        const next = limit > 0 ? [normalizedQuery, ...current.filter((item) => item !== normalizedQuery)].slice(0, limit) : []
         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next))
         return next
       })
@@ -450,7 +468,7 @@ export default function App() {
     document.scrollingElement?.scrollTo(scrollOptions)
   }
 
-  async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>>) {
+  async function updatePreferences(patch: Partial<Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name' | 'recent_search_limit'>>) {
     const optimistic = normalizePreferences({ ...preferences, ...patch })
     setPreferences(optimistic)
     if (!token) {
@@ -462,6 +480,7 @@ export default function App() {
       font_mode: optimistic.font_mode,
       display_name: optimistic.display_name,
       custom_font_name: optimistic.custom_font_name,
+      recent_search_limit: optimistic.recent_search_limit,
     })
     setPreferences(normalizePreferences(next))
   }
@@ -477,6 +496,16 @@ export default function App() {
     const next = await api.uploadAvatar(token, file)
     setPreferences(normalizePreferences(next))
     setUser((current) => (current ? { ...current, avatar_url: next.avatar_url } : current))
+  }
+
+  async function handleRecentSearchLimitChange(limit: number) {
+    const normalizedLimit = normalizeRecentSearchLimit(limit)
+    await updatePreferences({ recent_search_limit: normalizedLimit })
+    setRecentSearches((current) => {
+      const next = current.slice(0, normalizedLimit)
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next))
+      return next
+    })
   }
 
   async function handleDeleteFont(name: string) {
@@ -670,6 +699,7 @@ export default function App() {
               onFontUpload={handleFontUpload}
               onDeleteFont={handleDeleteFont}
               onAvatarUpload={handleAvatarUpload}
+              onRecentSearchLimitChange={handleRecentSearchLimitChange}
             />
           )}
         </main>

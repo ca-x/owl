@@ -37,6 +37,8 @@ type User struct {
 	Theme string `json:"theme,omitempty"`
 	// FontMode holds the value of the "font_mode" field.
 	FontMode string `json:"font_mode,omitempty"`
+	// RecentSearchLimit holds the value of the "recent_search_limit" field.
+	RecentSearchLimit int `json:"recent_search_limit,omitempty"`
 	// McpTokenHash holds the value of the "mcp_token_hash" field.
 	McpTokenHash string `json:"-"`
 	// McpTokenHint holds the value of the "mcp_token_hint" field.
@@ -86,7 +88,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldIsAdmin:
 			values[i] = new(sql.NullBool)
-		case user.FieldID:
+		case user.FieldID, user.FieldRecentSearchLimit:
 			values[i] = new(sql.NullInt64)
 		case user.FieldUsername, user.FieldDisplayName, user.FieldAvatarName, user.FieldAvatarPath, user.FieldAvatarMime, user.FieldPasswordHash, user.FieldLanguage, user.FieldTheme, user.FieldFontMode, user.FieldMcpTokenHash, user.FieldMcpTokenHint:
 			values[i] = new(sql.NullString)
@@ -172,6 +174,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field font_mode", values[i])
 			} else if value.Valid {
 				_m.FontMode = value.String
+			}
+		case user.FieldRecentSearchLimit:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field recent_search_limit", values[i])
+			} else if value.Valid {
+				_m.RecentSearchLimit = int(value.Int64)
 			}
 		case user.FieldMcpTokenHash:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -266,6 +274,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("font_mode=")
 	builder.WriteString(_m.FontMode)
+	builder.WriteString(", ")
+	builder.WriteString("recent_search_limit=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RecentSearchLimit))
 	builder.WriteString(", ")
 	builder.WriteString("mcp_token_hash=<sensitive>")
 	builder.WriteString(", ")

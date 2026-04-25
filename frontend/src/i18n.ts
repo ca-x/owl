@@ -143,6 +143,11 @@ type MessageCatalog = {
   updateAvatar: string
   sharedControls: string
   sharedControlsDescription: string
+  recentSearchLimit: string
+  recentSearchLimitDescription: string
+  saveRecentSearchLimit: string
+  recentSearchLimitSaved: string
+  mobileDictionaryFilter: string
   fontManagement: string
   fontManagementDescription: string
   fontModeLabel: string
@@ -346,6 +351,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     updateAvatar: '更新头像',
     sharedControls: '通用控制',
     sharedControlsDescription: '个人资料、语言与主题在这里统一维护。',
+    recentSearchLimit: '最近搜索数量',
+    recentSearchLimitDescription: '设置最近搜索最多保留多少条；填 0 可关闭最近搜索记录。',
+    saveRecentSearchLimit: '保存最近搜索设置',
+    recentSearchLimitSaved: '最近搜索设置已保存',
+    mobileDictionaryFilter: '词典筛选',
     fontManagement: '字体管理',
     fontManagementDescription: '字体是全局共享设置，因此单独放在管理界面维护。',
     fontModeLabel: '阅读字体模式',
@@ -403,7 +413,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     mcpTokenExample: '你的_MCP_TOKEN',
     mcpAvailableTools: '可用工具',
     mcpListDictionariesHelp: 'list_dictionaries：列出当前 Token 可访问的词典。',
-    mcpSearchDictionaryHelp: 'search_dictionary：传入 dictionary_id 和 query，在指定词典中查询。',
+    mcpSearchDictionaryHelp: 'search_dictionary：传入 query，可选 dictionary_id 或 dictionary_name；不传词典时按 Web 相同范围查询所有可访问词典。',
     mcpHelpTokenNotice: '生成后请立即复制 Token；出于安全考虑，之后只显示首尾提示。',
 
   },
@@ -548,6 +558,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     updateAvatar: 'Update avatar',
     sharedControls: 'Shared controls',
     sharedControlsDescription: 'Profile, language, and theme are maintained here for the whole app.',
+    recentSearchLimit: 'Recent search count',
+    recentSearchLimitDescription: 'Set how many recent searches to keep. Use 0 to disable recent search history.',
+    saveRecentSearchLimit: 'Save recent search setting',
+    recentSearchLimitSaved: 'Recent search setting saved',
+    mobileDictionaryFilter: 'Dictionary filter',
     fontManagement: 'Font management',
     fontManagementDescription: 'Fonts are shared globally, so they are managed separately inside the dictionary workspace.',
     fontModeLabel: 'Reading font mode',
@@ -605,7 +620,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     mcpTokenExample: 'YOUR_MCP_TOKEN',
     mcpAvailableTools: 'Available tools',
     mcpListDictionariesHelp: 'list_dictionaries: list dictionaries available to the current token.',
-    mcpSearchDictionaryHelp: 'search_dictionary: pass dictionary_id and query to search a specific dictionary.',
+    mcpSearchDictionaryHelp: 'search_dictionary: pass query with optional dictionary_id or dictionary_name. If no dictionary is provided, it searches all dictionaries in the same accessible scope as web search.',
     mcpHelpTokenNotice: 'Copy the token immediately after generating it; for security, only a short hint is shown later.',
 
   },

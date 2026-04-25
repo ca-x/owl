@@ -104,6 +104,11 @@ func FontMode(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldFontMode, v))
 }
 
+// RecentSearchLimit applies equality check predicate on the "recent_search_limit" field. It's identical to RecentSearchLimitEQ.
+func RecentSearchLimit(v int) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldRecentSearchLimit, v))
+}
+
 // McpTokenHash applies equality check predicate on the "mcp_token_hash" field. It's identical to McpTokenHashEQ.
 func McpTokenHash(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldMcpTokenHash, v))
@@ -707,6 +712,46 @@ func FontModeEqualFold(v string) predicate.User {
 // FontModeContainsFold applies the ContainsFold predicate on the "font_mode" field.
 func FontModeContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldFontMode, v))
+}
+
+// RecentSearchLimitEQ applies the EQ predicate on the "recent_search_limit" field.
+func RecentSearchLimitEQ(v int) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldRecentSearchLimit, v))
+}
+
+// RecentSearchLimitNEQ applies the NEQ predicate on the "recent_search_limit" field.
+func RecentSearchLimitNEQ(v int) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldRecentSearchLimit, v))
+}
+
+// RecentSearchLimitIn applies the In predicate on the "recent_search_limit" field.
+func RecentSearchLimitIn(vs ...int) predicate.User {
+	return predicate.User(sql.FieldIn(FieldRecentSearchLimit, vs...))
+}
+
+// RecentSearchLimitNotIn applies the NotIn predicate on the "recent_search_limit" field.
+func RecentSearchLimitNotIn(vs ...int) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldRecentSearchLimit, vs...))
+}
+
+// RecentSearchLimitGT applies the GT predicate on the "recent_search_limit" field.
+func RecentSearchLimitGT(v int) predicate.User {
+	return predicate.User(sql.FieldGT(FieldRecentSearchLimit, v))
+}
+
+// RecentSearchLimitGTE applies the GTE predicate on the "recent_search_limit" field.
+func RecentSearchLimitGTE(v int) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldRecentSearchLimit, v))
+}
+
+// RecentSearchLimitLT applies the LT predicate on the "recent_search_limit" field.
+func RecentSearchLimitLT(v int) predicate.User {
+	return predicate.User(sql.FieldLT(FieldRecentSearchLimit, v))
+}
+
+// RecentSearchLimitLTE applies the LTE predicate on the "recent_search_limit" field.
+func RecentSearchLimitLTE(v int) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldRecentSearchLimit, v))
 }
 
 // McpTokenHashEQ applies the EQ predicate on the "mcp_token_hash" field.

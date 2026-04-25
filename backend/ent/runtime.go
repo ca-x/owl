@@ -132,12 +132,16 @@ func init() {
 	userDescFontMode := userFields[9].Descriptor()
 	// user.DefaultFontMode holds the default value on creation for the font_mode field.
 	user.DefaultFontMode = userDescFontMode.Default.(string)
+	// userDescRecentSearchLimit is the schema descriptor for recent_search_limit field.
+	userDescRecentSearchLimit := userFields[10].Descriptor()
+	// user.DefaultRecentSearchLimit holds the default value on creation for the recent_search_limit field.
+	user.DefaultRecentSearchLimit = userDescRecentSearchLimit.Default.(int)
 	// userDescMcpTokenHash is the schema descriptor for mcp_token_hash field.
-	userDescMcpTokenHash := userFields[10].Descriptor()
+	userDescMcpTokenHash := userFields[11].Descriptor()
 	// user.DefaultMcpTokenHash holds the default value on creation for the mcp_token_hash field.
 	user.DefaultMcpTokenHash = userDescMcpTokenHash.Default.(string)
 	// userDescMcpTokenHint is the schema descriptor for mcp_token_hint field.
-	userDescMcpTokenHint := userFields[11].Descriptor()
+	userDescMcpTokenHint := userFields[12].Descriptor()
 	// user.DefaultMcpTokenHint holds the default value on creation for the mcp_token_hint field.
 	user.DefaultMcpTokenHint = userDescMcpTokenHint.Default.(string)
 }

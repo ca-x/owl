@@ -51,11 +51,12 @@ type publicDictionaryRequest struct {
 }
 
 type preferencesRequest struct {
-	Language       string `json:"language"`
-	Theme          string `json:"theme"`
-	FontMode       string `json:"font_mode"`
-	DisplayName    string `json:"display_name"`
-	CustomFontName string `json:"custom_font_name"`
+	Language          string `json:"language"`
+	Theme             string `json:"theme"`
+	FontMode          string `json:"font_mode"`
+	DisplayName       string `json:"display_name"`
+	CustomFontName    string `json:"custom_font_name"`
+	RecentSearchLimit int    `json:"recent_search_limit"`
 }
 
 type systemSettingsRequest struct {
@@ -305,11 +306,12 @@ func (s *Server) handleUpdatePreferences(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 	prefs, err := s.users.UpdatePreferences(c.Request().Context(), user.ID, models.UserPreferences{
-		Language:       req.Language,
-		Theme:          req.Theme,
-		FontMode:       req.FontMode,
-		DisplayName:    req.DisplayName,
-		CustomFontName: req.CustomFontName,
+		Language:          req.Language,
+		Theme:             req.Theme,
+		FontMode:          req.FontMode,
+		DisplayName:       req.DisplayName,
+		CustomFontName:    req.CustomFontName,
+		RecentSearchLimit: req.RecentSearchLimit,
 	})
 	if err != nil {
 		return mapEntError(err)

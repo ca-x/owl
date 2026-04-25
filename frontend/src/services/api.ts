@@ -135,7 +135,7 @@ export const api = {
     return request<MCPTokenStatus>('/mcp/token', { method: 'DELETE' }, token)
   },
 
-  updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name'>) {
+  updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name' | 'recent_search_limit'>) {
     return request<UserPreferences>('/preferences', {
       method: 'PUT',
       body: JSON.stringify(preferences),

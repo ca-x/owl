@@ -169,6 +169,27 @@ func (_u *UserUpdate) SetNillableFontMode(v *string) *UserUpdate {
 	return _u
 }
 
+// SetRecentSearchLimit sets the "recent_search_limit" field.
+func (_u *UserUpdate) SetRecentSearchLimit(v int) *UserUpdate {
+	_u.mutation.ResetRecentSearchLimit()
+	_u.mutation.SetRecentSearchLimit(v)
+	return _u
+}
+
+// SetNillableRecentSearchLimit sets the "recent_search_limit" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableRecentSearchLimit(v *int) *UserUpdate {
+	if v != nil {
+		_u.SetRecentSearchLimit(*v)
+	}
+	return _u
+}
+
+// AddRecentSearchLimit adds value to the "recent_search_limit" field.
+func (_u *UserUpdate) AddRecentSearchLimit(v int) *UserUpdate {
+	_u.mutation.AddRecentSearchLimit(v)
+	return _u
+}
+
 // SetMcpTokenHash sets the "mcp_token_hash" field.
 func (_u *UserUpdate) SetMcpTokenHash(v string) *UserUpdate {
 	_u.mutation.SetMcpTokenHash(v)
@@ -346,6 +367,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RecentSearchLimit(); ok {
+		_spec.SetField(user.FieldRecentSearchLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRecentSearchLimit(); ok {
+		_spec.AddField(user.FieldRecentSearchLimit, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.McpTokenHash(); ok {
 		_spec.SetField(user.FieldMcpTokenHash, field.TypeString, value)
@@ -587,6 +614,27 @@ func (_u *UserUpdateOne) SetNillableFontMode(v *string) *UserUpdateOne {
 	return _u
 }
 
+// SetRecentSearchLimit sets the "recent_search_limit" field.
+func (_u *UserUpdateOne) SetRecentSearchLimit(v int) *UserUpdateOne {
+	_u.mutation.ResetRecentSearchLimit()
+	_u.mutation.SetRecentSearchLimit(v)
+	return _u
+}
+
+// SetNillableRecentSearchLimit sets the "recent_search_limit" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableRecentSearchLimit(v *int) *UserUpdateOne {
+	if v != nil {
+		_u.SetRecentSearchLimit(*v)
+	}
+	return _u
+}
+
+// AddRecentSearchLimit adds value to the "recent_search_limit" field.
+func (_u *UserUpdateOne) AddRecentSearchLimit(v int) *UserUpdateOne {
+	_u.mutation.AddRecentSearchLimit(v)
+	return _u
+}
+
 // SetMcpTokenHash sets the "mcp_token_hash" field.
 func (_u *UserUpdateOne) SetMcpTokenHash(v string) *UserUpdateOne {
 	_u.mutation.SetMcpTokenHash(v)
@@ -794,6 +842,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.FontMode(); ok {
 		_spec.SetField(user.FieldFontMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RecentSearchLimit(); ok {
+		_spec.SetField(user.FieldRecentSearchLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRecentSearchLimit(); ok {
+		_spec.AddField(user.FieldRecentSearchLimit, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.McpTokenHash(); ok {
 		_spec.SetField(user.FieldMcpTokenHash, field.TypeString, value)

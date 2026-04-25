@@ -93,6 +93,7 @@ export interface UserPreferences {
   custom_font_name: string
   custom_font_family: string
   custom_font_url?: string
+  recent_search_limit: number
   available_fonts?: SharedFont[]
 }
 

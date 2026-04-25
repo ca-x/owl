@@ -3210,3 +3210,123 @@ textarea:focus-visible,
   padding-left: 1.2rem;
   color: var(--text);
 }
+
+.mobile-dictionary-select {
+  display: none;
+}
+
+.mobile-results-anchor {
+  scroll-margin-top: 0.75rem;
+}
+
+.recent-limit-settings {
+  margin-top: 1rem;
+}
+
+.recent-limit-field {
+  max-width: 260px;
+}
+
+.settings-helper-text {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .scope-banner {
+    align-items: stretch;
+  }
+
+  .scope-banner > strong {
+    line-height: 1.35;
+  }
+
+  .desktop-filter-toggle {
+    display: none;
+  }
+
+  .mobile-dictionary-select {
+    display: grid;
+    gap: 0.35rem;
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+
+  .mobile-dictionary-select span {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .mobile-dictionary-select select {
+    width: 100%;
+    min-height: 46px;
+    border: 2px solid color-mix(in srgb, var(--border-strong) 54%, transparent);
+    border-radius: 12px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.42), transparent 44%),
+      color-mix(in srgb, var(--panel-elevated) 90%, var(--retro-plastic) 10%);
+    color: var(--text);
+    padding: 0.65rem 0.8rem;
+    font-weight: 700;
+  }
+
+  .filter-strip-panel {
+    display: none;
+  }
+
+  .recent-searches {
+    gap: 0.45rem;
+  }
+
+  .recent-search-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+  }
+
+  .recent-chip {
+    flex: 0 0 auto;
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .results-grid {
+    gap: 0.85rem;
+  }
+
+  .hero-result {
+    padding: 1rem;
+  }
+
+  .hero-result-head {
+    gap: 0.65rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-result-head h3 {
+    font-size: clamp(1.35rem, 8vw, 1.8rem);
+  }
+
+  .result-badges {
+    justify-content: flex-start;
+  }
+
+  .result-meta.compact-result-meta {
+    align-items: stretch;
+    gap: 0.7rem;
+  }
+
+  .result-meta.compact-result-meta .text-chip {
+    align-self: flex-start;
+  }
+
+  .definition-html {
+    font-size: 0.98rem;
+    line-height: 1.68;
+  }
+}

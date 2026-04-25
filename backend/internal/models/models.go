@@ -32,15 +32,16 @@ type MCPTokenStatus struct {
 }
 
 type UserPreferences struct {
-	Language         string       `json:"language"`
-	Theme            string       `json:"theme"`
-	FontMode         string       `json:"font_mode"`
-	DisplayName      string       `json:"display_name"`
-	AvatarURL        string       `json:"avatar_url,omitempty"`
-	CustomFontName   string       `json:"custom_font_name"`
-	CustomFontFamily string       `json:"custom_font_family"`
-	CustomFontURL    string       `json:"custom_font_url,omitempty"`
-	AvailableFonts   []SharedFont `json:"available_fonts,omitempty"`
+	Language          string       `json:"language"`
+	Theme             string       `json:"theme"`
+	FontMode          string       `json:"font_mode"`
+	DisplayName       string       `json:"display_name"`
+	AvatarURL         string       `json:"avatar_url,omitempty"`
+	CustomFontName    string       `json:"custom_font_name"`
+	CustomFontFamily  string       `json:"custom_font_family"`
+	CustomFontURL     string       `json:"custom_font_url,omitempty"`
+	RecentSearchLimit int          `json:"recent_search_limit"`
+	AvailableFonts    []SharedFont `json:"available_fonts,omitempty"`
 }
 
 type DictionarySummary struct {

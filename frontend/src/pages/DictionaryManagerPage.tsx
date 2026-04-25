@@ -31,6 +31,7 @@ interface DictionaryManagerPageProps {
   onFontUpload: (file: File) => Promise<void>
   onDeleteFont: (name: string) => Promise<void>
   onAvatarUpload: (file: File) => Promise<void>
+  onRecentSearchLimitChange: (limit: number) => Promise<void>
 }
 
 export function DictionaryManagerPage({
@@ -59,6 +60,7 @@ export function DictionaryManagerPage({
   onFontUpload,
   onDeleteFont,
   onAvatarUpload,
+  onRecentSearchLimitChange,
 }: DictionaryManagerPageProps) {
   const { t } = useI18n()
   const [mdxFile, setMdxFile] = useState<File | null>(null)
@@ -83,6 +85,15 @@ export function DictionaryManagerPage({
     }
   }
 
+
+  async function handleRecentSearchLimitSave(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const limit = Number(formData.get('recent_search_limit') ?? preferences.recent_search_limit)
+    await runManagerAction(async () => {
+      await onRecentSearchLimitChange(limit)
+    }, t.recentSearchLimitSaved)
+  }
 
   async function handleMCPTokenSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -283,6 +294,24 @@ export function DictionaryManagerPage({
           showProfileEditor={false}
           showFontMode={false}
         />
+        <form className="settings-section recent-limit-settings" onSubmit={handleRecentSearchLimitSave}>
+          <label className="field compact-profile-field recent-limit-field">
+            <span>{t.recentSearchLimit}</span>
+            <input
+              name="recent_search_limit"
+              type="number"
+              min={0}
+              max={20}
+              step={1}
+              defaultValue={preferences.recent_search_limit}
+              aria-describedby="recent-search-limit-help"
+            />
+          </label>
+          <p id="recent-search-limit-help" className="muted settings-helper-text">{t.recentSearchLimitDescription}</p>
+          <div className="actions-row footer-settings-actions">
+            <button className="primary-button" type="submit">{t.saveRecentSearchLimit}</button>
+          </div>
+        </form>
       </section>
 
 

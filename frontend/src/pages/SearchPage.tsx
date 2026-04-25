@@ -52,6 +52,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   const initialURLState = useMemo(() => readSearchURLState(), [])
   const hydratedFromURL = useRef(false)
   const pageTopRef = useRef<HTMLElement | null>(null)
+  const resultsRef = useRef<HTMLDivElement | null>(null)
   const [query, setQuery] = useState(initialURLState.query)
   const [dictionaryId, setDictionaryId] = useState<number | undefined>(initialURLState.dictionaryId)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
@@ -78,6 +79,23 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
     return { topResult: bestMatch ?? null, groupedResults: rest }
   }, [results])
 
+  function isMobileViewport() {
+    return window.matchMedia('(max-width: 720px)').matches
+  }
+
+  function scrollAfterSearch() {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const target = isMobileViewport() ? resultsRef.current : pageTopRef.current
+    const targetTop = target?.getBoundingClientRect().top ?? 0
+    const offset = isMobileViewport() ? 10 : 12
+    const top = Math.max(0, window.scrollY + targetTop - offset)
+    window.scrollTo({ top, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+  }
+
+  function handleDictionarySelection(value: string) {
+    setDictionaryId(value ? Number(value) : undefined)
+  }
+
   async function runQuickSearch(nextQuery: string, nextDictionaryId?: number) {
     const normalizedQuery = nextQuery.trim()
     if (!normalizedQuery) return
@@ -89,9 +107,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
     updateSearchURL(normalizedQuery, resolvedDictionaryId, 'push')
     await onSearch(normalizedQuery, resolvedDictionaryId)
     window.requestAnimationFrame(() => {
-      const targetTop = pageTopRef.current?.getBoundingClientRect().top ?? 0
-      const top = Math.max(0, window.scrollY + targetTop - 12)
-      window.scrollTo({ top, behavior: 'smooth' })
+      scrollAfterSearch()
     })
   }
 
@@ -264,7 +280,16 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
         <div className="scope-banner">
           <span className="scope-label">{t.currentScope}</span>
           <strong>{scopeLabel}</strong>
-          <button className="text-chip" type="button" onClick={() => setFiltersExpanded((current) => !current)}>
+          <label className="mobile-dictionary-select">
+            <span>{t.mobileDictionaryFilter}</span>
+            <select value={dictionaryId ?? ''} onChange={(event) => handleDictionarySelection(event.target.value)}>
+              <option value="">{t.allDictionaries}</option>
+              {enabledDictionaries.map((item) => (
+                <option key={item.id} value={item.id}>{item.title || item.name}</option>
+              ))}
+            </select>
+          </label>
+          <button className="text-chip desktop-filter-toggle" type="button" onClick={() => setFiltersExpanded((current) => !current)}>
             {filtersExpanded ? t.hideFilters : t.showFilters}
           </button>
         </div>
@@ -306,6 +331,8 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
       </section>
 
       {error ? <div className="error-banner">{error}</div> : null}
+
+      <div ref={resultsRef} className="mobile-results-anchor" aria-hidden="true" />
 
       {results.length === 0 && query ? (
         <div className="empty-state card">

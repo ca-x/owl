@@ -134,7 +134,8 @@ func (s *Service) UpdatePreferences(ctx context.Context, userID int, prefs model
 	update := s.client.User.UpdateOneID(userID).
 		SetLanguage(normalizeLanguage(prefs.Language)).
 		SetTheme(normalizeTheme(prefs.Theme)).
-		SetFontMode(fontMode)
+		SetFontMode(fontMode).
+		SetRecentSearchLimit(normalizeRecentSearchLimit(prefs.RecentSearchLimit))
 	if displayName := strings.TrimSpace(prefs.DisplayName); displayName != "" {
 		update = update.SetDisplayName(displayName)
 	}
@@ -355,6 +356,16 @@ func normalizeFontMode(value string) string {
 	}
 }
 
+func normalizeRecentSearchLimit(value int) int {
+	if value < 0 {
+		return 0
+	}
+	if value > 20 {
+		return 20
+	}
+	return value
+}
+
 func sanitizeFontFamily(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.ReplaceAll(value, "_", " ")
@@ -569,11 +580,12 @@ func sharedFontModel(font *ent.Font) models.SharedFont {
 
 func (s *Service) buildPreferences(ctx context.Context, u *ent.User) *models.UserPreferences {
 	prefs := &models.UserPreferences{
-		Language:       normalizeLanguage(u.Language),
-		Theme:          normalizeTheme(u.Theme),
-		FontMode:       normalizeFontMode(u.FontMode),
-		DisplayName:    firstNonEmpty(strings.TrimSpace(u.DisplayName), u.Username),
-		AvailableFonts: s.ListSharedFonts(ctx),
+		Language:          normalizeLanguage(u.Language),
+		Theme:             normalizeTheme(u.Theme),
+		FontMode:          normalizeFontMode(u.FontMode),
+		DisplayName:       firstNonEmpty(strings.TrimSpace(u.DisplayName), u.Username),
+		RecentSearchLimit: normalizeRecentSearchLimit(u.RecentSearchLimit),
+		AvailableFonts:    s.ListSharedFonts(ctx),
 	}
 	if selected, err := s.selectedFont(ctx, u); err == nil && selected != nil {
 		prefs.CustomFontName = selected.Name

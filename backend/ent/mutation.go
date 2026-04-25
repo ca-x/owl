@@ -1692,30 +1692,32 @@ func (m *FontMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	username             *string
-	display_name         *string
-	avatar_name          *string
-	avatar_path          *string
-	avatar_mime          *string
-	password_hash        *string
-	is_admin             *bool
-	language             *string
-	theme                *string
-	font_mode            *string
-	mcp_token_hash       *string
-	mcp_token_hint       *string
-	clearedFields        map[string]struct{}
-	dictionaries         map[int]struct{}
-	removeddictionaries  map[int]struct{}
-	cleareddictionaries  bool
-	selected_font        *int
-	clearedselected_font bool
-	done                 bool
-	oldValue             func(context.Context) (*User, error)
-	predicates           []predicate.User
+	op                     Op
+	typ                    string
+	id                     *int
+	username               *string
+	display_name           *string
+	avatar_name            *string
+	avatar_path            *string
+	avatar_mime            *string
+	password_hash          *string
+	is_admin               *bool
+	language               *string
+	theme                  *string
+	font_mode              *string
+	recent_search_limit    *int
+	addrecent_search_limit *int
+	mcp_token_hash         *string
+	mcp_token_hint         *string
+	clearedFields          map[string]struct{}
+	dictionaries           map[int]struct{}
+	removeddictionaries    map[int]struct{}
+	cleareddictionaries    bool
+	selected_font          *int
+	clearedselected_font   bool
+	done                   bool
+	oldValue               func(context.Context) (*User, error)
+	predicates             []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -2176,6 +2178,62 @@ func (m *UserMutation) ResetFontMode() {
 	m.font_mode = nil
 }
 
+// SetRecentSearchLimit sets the "recent_search_limit" field.
+func (m *UserMutation) SetRecentSearchLimit(i int) {
+	m.recent_search_limit = &i
+	m.addrecent_search_limit = nil
+}
+
+// RecentSearchLimit returns the value of the "recent_search_limit" field in the mutation.
+func (m *UserMutation) RecentSearchLimit() (r int, exists bool) {
+	v := m.recent_search_limit
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRecentSearchLimit returns the old "recent_search_limit" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldRecentSearchLimit(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRecentSearchLimit is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRecentSearchLimit requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRecentSearchLimit: %w", err)
+	}
+	return oldValue.RecentSearchLimit, nil
+}
+
+// AddRecentSearchLimit adds i to the "recent_search_limit" field.
+func (m *UserMutation) AddRecentSearchLimit(i int) {
+	if m.addrecent_search_limit != nil {
+		*m.addrecent_search_limit += i
+	} else {
+		m.addrecent_search_limit = &i
+	}
+}
+
+// AddedRecentSearchLimit returns the value that was added to the "recent_search_limit" field in this mutation.
+func (m *UserMutation) AddedRecentSearchLimit() (r int, exists bool) {
+	v := m.addrecent_search_limit
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRecentSearchLimit resets all changes to the "recent_search_limit" field.
+func (m *UserMutation) ResetRecentSearchLimit() {
+	m.recent_search_limit = nil
+	m.addrecent_search_limit = nil
+}
+
 // SetMcpTokenHash sets the "mcp_token_hash" field.
 func (m *UserMutation) SetMcpTokenHash(s string) {
 	m.mcp_token_hash = &s
@@ -2375,7 +2433,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
 	}
@@ -2405,6 +2463,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.font_mode != nil {
 		fields = append(fields, user.FieldFontMode)
+	}
+	if m.recent_search_limit != nil {
+		fields = append(fields, user.FieldRecentSearchLimit)
 	}
 	if m.mcp_token_hash != nil {
 		fields = append(fields, user.FieldMcpTokenHash)
@@ -2440,6 +2501,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Theme()
 	case user.FieldFontMode:
 		return m.FontMode()
+	case user.FieldRecentSearchLimit:
+		return m.RecentSearchLimit()
 	case user.FieldMcpTokenHash:
 		return m.McpTokenHash()
 	case user.FieldMcpTokenHint:
@@ -2473,6 +2536,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTheme(ctx)
 	case user.FieldFontMode:
 		return m.OldFontMode(ctx)
+	case user.FieldRecentSearchLimit:
+		return m.OldRecentSearchLimit(ctx)
 	case user.FieldMcpTokenHash:
 		return m.OldMcpTokenHash(ctx)
 	case user.FieldMcpTokenHint:
@@ -2556,6 +2621,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFontMode(v)
 		return nil
+	case user.FieldRecentSearchLimit:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRecentSearchLimit(v)
+		return nil
 	case user.FieldMcpTokenHash:
 		v, ok := value.(string)
 		if !ok {
@@ -2577,13 +2649,21 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *UserMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addrecent_search_limit != nil {
+		fields = append(fields, user.FieldRecentSearchLimit)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case user.FieldRecentSearchLimit:
+		return m.AddedRecentSearchLimit()
+	}
 	return nil, false
 }
 
@@ -2592,6 +2672,13 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *UserMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case user.FieldRecentSearchLimit:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRecentSearchLimit(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User numeric field %s", name)
 }
@@ -2648,6 +2735,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldFontMode:
 		m.ResetFontMode()
+		return nil
+	case user.FieldRecentSearchLimit:
+		m.ResetRecentSearchLimit()
 		return nil
 	case user.FieldMcpTokenHash:
 		m.ResetMcpTokenHash()
