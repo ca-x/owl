@@ -63,7 +63,7 @@ func TestMCPSearchDictionaryOptionalDictionaryInput(t *testing.T) {
 	if !ok {
 		t.Fatalf("format property missing from schema: %s", string(encoded))
 	}
-	for _, expected := range []string{"Optional output format", "json", "markdown", "MCP TextContent"} {
+	for _, expected := range []string{"Optional output format", "json", "markdown", "instead of html", "reducing token usage"} {
 		if !strings.Contains(formatProperty.Description, expected) {
 			t.Fatalf("format description should mention %q, got %q", expected, formatProperty.Description)
 		}
@@ -119,6 +119,48 @@ func TestHTMLToMarkdownConvertsDictionaryHTML(t *testing.T) {
 		if !strings.Contains(markdown, expected) {
 			t.Fatalf("expected markdown to contain %q, got:\n%s", expected, markdown)
 		}
+	}
+}
+
+func TestMCPSearchResultOmitsUnusedDefinitionFormat(t *testing.T) {
+	jsonPayload, err := json.Marshal(searchDictionaryOutput{Results: []searchResultInfo{{
+		DictionaryID:   1,
+		DictionaryName: "Test Dictionary",
+		Visibility:     "public",
+		Word:           "owl",
+		HTML:           "<p>HTML only</p>",
+		Score:          1,
+		Source:         "exact",
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonText := string(jsonPayload)
+	if !strings.Contains(jsonText, `"html"`) {
+		t.Fatalf("expected default JSON payload to include html, got %s", jsonText)
+	}
+	if strings.Contains(jsonText, `"markdown"`) {
+		t.Fatalf("expected default JSON payload to omit markdown, got %s", jsonText)
+	}
+
+	markdownPayload, err := json.Marshal(searchDictionaryOutput{Results: []searchResultInfo{{
+		DictionaryID:   1,
+		DictionaryName: "Test Dictionary",
+		Visibility:     "public",
+		Word:           "owl",
+		Markdown:       "Markdown only",
+		Score:          1,
+		Source:         "exact",
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	markdownText := string(markdownPayload)
+	if !strings.Contains(markdownText, `"markdown"`) {
+		t.Fatalf("expected markdown payload to include markdown, got %s", markdownText)
+	}
+	if strings.Contains(markdownText, `"html"`) {
+		t.Fatalf("expected markdown payload to omit html, got %s", markdownText)
 	}
 }
 

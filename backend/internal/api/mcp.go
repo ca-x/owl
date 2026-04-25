@@ -46,7 +46,7 @@ type searchResultInfo struct {
 	DictionaryName string  `json:"dictionary_name"`
 	Visibility     string  `json:"visibility"`
 	Word           string  `json:"word"`
-	HTML           string  `json:"html"`
+	HTML           string  `json:"html,omitempty"`
 	Markdown       string  `json:"markdown,omitempty"`
 	Score          float64 `json:"score"`
 	Source         string  `json:"source"`
@@ -144,7 +144,7 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_dictionary",
 		Title:       "Search dictionaries",
-		Description: "Search by query, optionally narrowed by dictionary_id or dictionary_name from list_dictionaries. Optional format controls only the human-readable MCP text content: omit it or use json for the original JSON text output, or use markdown to convert definitions from HTML to Markdown. If no dictionary is provided, all accessible dictionaries are searched, matching the web search scope.",
+		Description: "Search by query, optionally narrowed by dictionary_id or dictionary_name from list_dictionaries. Optional format controls definition payload shape: omit it or use json for the original JSON text output with HTML definitions, or use markdown to return Markdown text and structured results without HTML to reduce tokens. If no dictionary is provided, all accessible dictionaries are searched, matching the web search scope.",
 		InputSchema: searchDictionaryInputSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchDictionaryInput) (*mcp.CallToolResult, searchDictionaryOutput, error) {
 		query := strings.TrimSpace(input.Query)
@@ -179,7 +179,6 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 				DictionaryName: result.DictionaryName,
 				Visibility:     result.Visibility,
 				Word:           result.Word,
-				HTML:           result.HTML,
 				Score:          result.Score,
 				Source:         result.Source,
 			}
@@ -189,6 +188,8 @@ func (s *Server) buildMCPServer(userID int) *mcp.Server {
 					return nil, searchDictionaryOutput{}, fmt.Errorf("convert %q to markdown: %w", result.Word, err)
 				}
 				item.Markdown = markdown
+			} else {
+				item.HTML = result.HTML
 			}
 			out.Results = append(out.Results, item)
 		}
@@ -250,7 +251,7 @@ func searchDictionaryInputSchema() *jsonschema.Schema {
 	if formatSchema == nil {
 		panic("search_dictionary input schema: missing format property")
 	}
-	formatSchema.Description = "Optional output format for the MCP TextContent. Omit this field, pass an empty string, or pass json to keep the default JSON text output. Pass markdown to return readable Markdown text converted from dictionary HTML; structured output still includes result metadata."
+	formatSchema.Description = "Optional output format for definition payloads. Omit this field, pass an empty string, or pass json to keep the default JSON text output and structured results with html. Pass markdown to return readable Markdown text and structured results with markdown instead of html, reducing token usage."
 	formatSchema.Enum = []any{"json", "markdown"}
 	formatSchema.Default = json.RawMessage(`"json"`)
 	formatSchema.Examples = []any{"markdown"}
