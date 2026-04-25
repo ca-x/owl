@@ -14,10 +14,10 @@ func (Dictionary) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").NotEmpty(),
 		field.String("title").Default(""),
-		field.String("description").Default(""),
+		field.Text("description").Default(""),
 		field.String("slug").NotEmpty(),
-		field.String("mdx_path").NotEmpty(),
-		field.String("mdd_paths_json").Default("[]"),
+		field.Text("mdx_path").NotEmpty(),
+		field.Text("mdd_paths_json").Default("[]"),
 		field.Int("entry_count").Default(0),
 		field.Bool("enabled").Default(true),
 		field.Bool("public").Default(false),

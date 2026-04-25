@@ -1,4 +1,21 @@
 services:
+  mysql:
+    image: mysql:8.4
+    container_name: owl-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: owl
+      MYSQL_USER: owl
+      MYSQL_PASSWORD: owl_password
+      MYSQL_ROOT_PASSWORD: owl_root_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uowl", "-powl_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - owl_mysql:/var/lib/mysql
+
   owl:
     image: czyt/owl:latest
     container_name: owl
@@ -6,6 +23,9 @@ services:
     pull_policy: always
     env_file:
       - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
     environment:
       OWL_PORT: ${OWL_PORT:-8080}
       OWL_JWT_SECRET: ${OWL_JWT_SECRET:-change-me-in-production}
@@ -16,8 +36,8 @@ services:
       OWL_UPLOADS_DIR: /app/data/uploads
       OWL_LIBRARY_DIR: ${OWL_LIBRARY_DIR:-/app/data/uploads}
       OWL_DB_PATH: /app/data/data.db
-      OWL_DB_TYPE: ${OWL_DB_TYPE:-sqlite}
-      OWL_DB_DSN: ${OWL_DB_DSN:-}
+      OWL_DB_TYPE: mysql
+      OWL_DB_DSN: ${OWL_DB_DSN:-owl:owl_password@tcp(mysql:3306)/owl?parseTime=true&charset=utf8mb4&loc=Local}
       OWL_FRONTEND_ORIGIN: '*'
       OWL_REDIS_ADDR: ''
       OWL_REDIS_PASSWORD: ''
@@ -33,3 +53,4 @@ services:
 
 volumes:
   owl_data:
+  owl_mysql:

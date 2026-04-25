@@ -14,7 +14,7 @@ func (Font) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").Unique().NotEmpty(),
 		field.String("family").NotEmpty(),
-		field.String("path").NotEmpty(),
+		field.Text("path").NotEmpty(),
 		field.String("mime").NotEmpty(),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),

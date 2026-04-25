@@ -13,7 +13,7 @@ func (User) Fields() []ent.Field {
 		field.String("username").Unique().NotEmpty(),
 		field.String("display_name").Default(""),
 		field.String("avatar_name").Default(""),
-		field.String("avatar_path").Default(""),
+		field.Text("avatar_path").Default(""),
 		field.String("avatar_mime").Default(""),
 		field.String("password_hash").Sensitive().NotEmpty(),
 		field.Bool("is_admin").Default(false),

@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: owl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: owl
+      POSTGRES_USER: owl
+      POSTGRES_PASSWORD: owl_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U owl -d owl"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - owl_postgres:/var/lib/postgresql/data
+
   owl:
     image: czyt/owl:latest
     container_name: owl
@@ -6,6 +22,9 @@ services:
     pull_policy: always
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       OWL_PORT: ${OWL_PORT:-8080}
       OWL_JWT_SECRET: ${OWL_JWT_SECRET:-change-me-in-production}
@@ -16,8 +35,8 @@ services:
       OWL_UPLOADS_DIR: /app/data/uploads
       OWL_LIBRARY_DIR: ${OWL_LIBRARY_DIR:-/app/data/uploads}
       OWL_DB_PATH: /app/data/data.db
-      OWL_DB_TYPE: ${OWL_DB_TYPE:-sqlite}
-      OWL_DB_DSN: ${OWL_DB_DSN:-}
+      OWL_DB_TYPE: postgres
+      OWL_DB_DSN: ${OWL_DB_DSN:-postgres://owl:owl_password@postgres:5432/owl?sslmode=disable}
       OWL_FRONTEND_ORIGIN: '*'
       OWL_REDIS_ADDR: ''
       OWL_REDIS_PASSWORD: ''
@@ -33,3 +52,4 @@ services:
 
 volumes:
   owl_data:
+  owl_postgres:

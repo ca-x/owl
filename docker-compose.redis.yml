@@ -25,6 +25,8 @@ services:
       OWL_UPLOADS_DIR: /app/data/uploads
       OWL_LIBRARY_DIR: ${OWL_LIBRARY_DIR:-/app/data/uploads}
       OWL_DB_PATH: /app/data/data.db
+      OWL_DB_TYPE: ${OWL_DB_TYPE:-sqlite}
+      OWL_DB_DSN: ${OWL_DB_DSN:-}
       OWL_FRONTEND_ORIGIN: '*'
       OWL_REDIS_ADDR: redis:6379
       OWL_REDIS_PASSWORD: ${OWL_REDIS_PASSWORD:-}

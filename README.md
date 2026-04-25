@@ -135,7 +135,8 @@ Tokens are stored hashed; after generation, only a short hint is shown later.
 
 ### Stack
 
-- Backend: Go + Echo v5 + ent + SQLite via `github.com/lib-x/entsqlite`
+- Backend: Go + Echo v5 + ent
+- Databases: SQLite by default, plus PostgreSQL and MySQL via configurable driver/DSN
 - Dictionary engine: `github.com/lib-x/mdx`
 - MCP server: `github.com/modelcontextprotocol/go-sdk`
 - Frontend: React + Vite + TypeScript
@@ -159,10 +160,12 @@ When Redis is configured:
 
 ## Docker deployment
 
-This repository provides two Docker Compose files:
+This repository provides four Docker Compose files:
 
-- `docker-compose.yml` — simplest deployment, no Redis
-- `docker-compose.redis.yml` — Redis + RediSearch enabled
+- `docker-compose.yml` — simplest deployment, SQLite, no Redis
+- `docker-compose.redis.yml` — SQLite + Redis + RediSearch
+- `docker-compose.postgres.yml` — PostgreSQL, no Redis
+- `docker-compose.mysql.yml` — MySQL, no Redis
 
 ### Option 1: no Redis
 
@@ -201,8 +204,44 @@ This starts:
 
 - Owl on `http://localhost:8080`
 - Redis Stack Server for Redis + RediSearch
-- SQLite and uploads in `owl_data`
+- SQLite database and uploads in `owl_data`
 - Redis data in `owl_redis`
+
+### Option 3: PostgreSQL
+
+Use this when you want Owl metadata in PostgreSQL instead of SQLite. Uploaded dictionary files still live in `owl_data`; only the relational database changes.
+
+```bash
+cp .env.example .env
+# edit OWL_JWT_SECRET and admin credentials
+docker compose -f docker-compose.postgres.yml pull
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+This starts PostgreSQL with a built-in `owl` database/user and sets:
+
+```text
+OWL_DB_TYPE=postgres
+OWL_DB_DSN=postgres://...
+```
+
+### Option 4: MySQL
+
+Use this when you want Owl metadata in MySQL instead of SQLite. Uploaded dictionary files still live in `owl_data`; only the relational database changes.
+
+```bash
+cp .env.example .env
+# edit OWL_JWT_SECRET and admin credentials
+docker compose -f docker-compose.mysql.yml pull
+docker compose -f docker-compose.mysql.yml up -d
+```
+
+This starts MySQL with a built-in `owl` database/user and sets:
+
+```text
+OWL_DB_TYPE=mysql
+OWL_DB_DSN=owl:...@tcp(mysql:3306)/owl?parseTime=true&charset=utf8mb4&loc=Local
+```
 
 The compose files use the published image `czyt/owl:latest`.
 
@@ -275,7 +314,9 @@ docker compose -f docker-compose.redis.yml pull
 docker compose -f docker-compose.redis.yml up -d
 ```
 
-SQLite data, uploaded dictionaries, and Redis data remain in Docker volumes unless you remove the volumes manually.
+For PostgreSQL or MySQL, use the same pattern with `docker-compose.postgres.yml` or `docker-compose.mysql.yml`.
+
+SQLite/PostgreSQL/MySQL data, uploaded dictionaries, and Redis data remain in Docker volumes unless you remove the volumes manually.
 
 ---
 
@@ -328,7 +369,25 @@ See `.env.example` for the full list.
 - `OWL_DATA_DIR`
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
-- `OWL_DB_PATH`
+
+### Database
+
+- `OWL_DB_TYPE` — `sqlite` by default; also supports `postgres` / `postgresql` and `mysql` / `mariadb`
+- `OWL_DB_DSN` — database connection string; leave empty for SQLite to use the generated DSN from `OWL_DB_PATH`
+- `OWL_DB_PATH` — SQLite database path used by the default SQLite DSN
+
+Examples:
+
+```text
+OWL_DB_TYPE=sqlite
+OWL_DB_DSN=
+
+OWL_DB_TYPE=postgres
+OWL_DB_DSN=postgres://owl:secret@postgres:5432/owl?sslmode=disable
+
+OWL_DB_TYPE=mysql
+OWL_DB_DSN=owl:secret@tcp(mysql:3306)/owl?parseTime=true&charset=utf8mb4&loc=Local
+```
 
 ### Bootstrap and registration
 

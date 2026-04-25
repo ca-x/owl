@@ -17,7 +17,9 @@ import (
 	"owl/backend/internal/settings"
 	"owl/backend/internal/user"
 
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib-x/entsqlite"
+	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -29,9 +31,12 @@ func main() {
 	if err := config.EnsureRuntimeDirs(cfg); err != nil {
 		log.Fatal(err)
 	}
-	client, err := ent.Open("sqlite3", cfg.DatabaseDSN)
+	if cfg.DatabaseDSN == "" {
+		log.Fatalf("database DSN is required for OWL_DB_TYPE=%s", cfg.DatabaseType)
+	}
+	client, err := ent.Open(cfg.DatabaseDriver, cfg.DatabaseDSN)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("open %s database: %v", cfg.DatabaseType, err)
 	}
 	defer client.Close()
 	if err := client.Schema.Create(context.Background(), migrate.WithForeignKeys(true)); err != nil {
