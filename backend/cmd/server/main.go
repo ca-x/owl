@@ -78,16 +78,19 @@ func main() {
 		cfg.RedisPrefixMaxLen,
 		cfg.RedisSearchKeyPrefix,
 		cfg.RedisSearchEnabled,
+		cfg.MaxLoadedDictionaries,
 		cfg.AudioCacheDir,
 		cfg.FFmpegBin,
 	)
 	server := api.New(client, userSvc, dictSvc, settingsSvc, cfg.FrontendOrigin)
 
-	go func() {
-		if err := dictSvc.WarmEnabledDictionaries(context.Background()); err != nil {
-			log.Printf("warm enabled dictionaries: %v", err)
-		}
-	}()
+	if cfg.WarmDictionaries {
+		go func() {
+			if err := dictSvc.WarmEnabledDictionaries(context.Background()); err != nil {
+				log.Printf("warm enabled dictionaries: %v", err)
+			}
+		}()
+	}
 
 	go func() {
 		if err := server.Start(":" + cfg.Port); err != nil {

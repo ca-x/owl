@@ -9,29 +9,31 @@ import (
 )
 
 type Config struct {
-	Port                 string
-	JWTSecret            string
-	DataDir              string
-	UploadsDir           string
-	LibraryDir           string
-	DatabasePath         string
-	DatabaseType         string
-	DatabaseDriver       string
-	DatabaseDSN          string
-	FrontendOrigin       string
-	BootstrapAdmin       bool
-	AllowRegister        bool
-	AdminUsername        string
-	AdminPassword        string
-	RedisAddr            string
-	RedisPassword        string
-	RedisDB              int
-	RedisKeyPrefix       string
-	RedisPrefixMaxLen    int
-	RedisSearchKeyPrefix string
-	RedisSearchEnabled   bool
-	AudioCacheDir        string
-	FFmpegBin            string
+	Port                  string
+	JWTSecret             string
+	DataDir               string
+	UploadsDir            string
+	LibraryDir            string
+	DatabasePath          string
+	DatabaseType          string
+	DatabaseDriver        string
+	DatabaseDSN           string
+	FrontendOrigin        string
+	BootstrapAdmin        bool
+	AllowRegister         bool
+	WarmDictionaries      bool
+	MaxLoadedDictionaries int
+	AdminUsername         string
+	AdminPassword         string
+	RedisAddr             string
+	RedisPassword         string
+	RedisDB               int
+	RedisKeyPrefix        string
+	RedisPrefixMaxLen     int
+	RedisSearchKeyPrefix  string
+	RedisSearchEnabled    bool
+	AudioCacheDir         string
+	FFmpegBin             string
 }
 
 func Load() (Config, error) {
@@ -45,29 +47,31 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("OWL_JWT_SECRET is required")
 	}
 	cfg := Config{
-		Port:                 getEnv("OWL_PORT", "8080"),
-		JWTSecret:            jwtSecret,
-		DataDir:              dataDir,
-		UploadsDir:           uploadsDir,
-		LibraryDir:           getEnv("OWL_LIBRARY_DIR", uploadsDir),
-		DatabasePath:         databasePath,
-		DatabaseType:         databaseType,
-		DatabaseDriver:       entDriverName(databaseType),
-		DatabaseDSN:          databaseDSN,
-		FrontendOrigin:       getEnv("OWL_FRONTEND_ORIGIN", "*"),
-		BootstrapAdmin:       getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
-		AllowRegister:        getEnvBool("OWL_ALLOW_REGISTER", true),
-		AdminUsername:        strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
-		AdminPassword:        getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
-		RedisAddr:            strings.TrimSpace(os.Getenv("OWL_REDIS_ADDR")),
-		RedisPassword:        os.Getenv("OWL_REDIS_PASSWORD"),
-		RedisDB:              getEnvInt("OWL_REDIS_DB", 0),
-		RedisKeyPrefix:       getEnv("OWL_REDIS_KEY_PREFIX", "owl:mdx:index"),
-		RedisPrefixMaxLen:    getEnvInt("OWL_REDIS_PREFIX_MAX_LEN", 8),
-		RedisSearchKeyPrefix: getEnv("OWL_REDIS_SEARCH_KEY_PREFIX", "owl:mdx:search"),
-		RedisSearchEnabled:   getEnvBool("OWL_REDIS_SEARCH_ENABLED", true),
-		AudioCacheDir:        getEnv("OWL_AUDIO_CACHE_DIR", filepath.Join(dataDir, "cache", "audio")),
-		FFmpegBin:            strings.TrimSpace(os.Getenv("FFMPEG_BIN")),
+		Port:                  getEnv("OWL_PORT", "8080"),
+		JWTSecret:             jwtSecret,
+		DataDir:               dataDir,
+		UploadsDir:            uploadsDir,
+		LibraryDir:            getEnv("OWL_LIBRARY_DIR", uploadsDir),
+		DatabasePath:          databasePath,
+		DatabaseType:          databaseType,
+		DatabaseDriver:        entDriverName(databaseType),
+		DatabaseDSN:           databaseDSN,
+		FrontendOrigin:        getEnv("OWL_FRONTEND_ORIGIN", "*"),
+		BootstrapAdmin:        getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
+		AllowRegister:         getEnvBool("OWL_ALLOW_REGISTER", true),
+		WarmDictionaries:      getEnvBool("OWL_WARM_DICTIONARIES", false),
+		MaxLoadedDictionaries: normalizeNonNegativeInt(getEnvInt("OWL_MAX_LOADED_DICTIONARIES", 8)),
+		AdminUsername:         strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
+		AdminPassword:         getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
+		RedisAddr:             strings.TrimSpace(os.Getenv("OWL_REDIS_ADDR")),
+		RedisPassword:         os.Getenv("OWL_REDIS_PASSWORD"),
+		RedisDB:               getEnvInt("OWL_REDIS_DB", 0),
+		RedisKeyPrefix:        getEnv("OWL_REDIS_KEY_PREFIX", "owl:mdx:index"),
+		RedisPrefixMaxLen:     getEnvInt("OWL_REDIS_PREFIX_MAX_LEN", 8),
+		RedisSearchKeyPrefix:  getEnv("OWL_REDIS_SEARCH_KEY_PREFIX", "owl:mdx:search"),
+		RedisSearchEnabled:    getEnvBool("OWL_REDIS_SEARCH_ENABLED", true),
+		AudioCacheDir:         getEnv("OWL_AUDIO_CACHE_DIR", filepath.Join(dataDir, "cache", "audio")),
+		FFmpegBin:             strings.TrimSpace(os.Getenv("FFMPEG_BIN")),
 	}
 	return cfg, nil
 }
@@ -152,4 +156,11 @@ func getEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func normalizeNonNegativeInt(value int) int {
+	if value < 0 {
+		return 0
+	}
+	return value
 }

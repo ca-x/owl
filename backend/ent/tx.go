@@ -14,6 +14,10 @@ type Tx struct {
 	config
 	// Dictionary is the client for interacting with the Dictionary builders.
 	Dictionary *DictionaryClient
+	// DictionaryIndexEntry is the client for interacting with the DictionaryIndexEntry builders.
+	DictionaryIndexEntry *DictionaryIndexEntryClient
+	// DictionaryIndexManifest is the client for interacting with the DictionaryIndexManifest builders.
+	DictionaryIndexManifest *DictionaryIndexManifestClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
 	// User is the client for interacting with the User builders.
@@ -150,6 +154,8 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Dictionary = NewDictionaryClient(tx.config)
+	tx.DictionaryIndexEntry = NewDictionaryIndexEntryClient(tx.config)
+	tx.DictionaryIndexManifest = NewDictionaryIndexManifestClient(tx.config)
 	tx.Font = NewFontClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

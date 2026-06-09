@@ -142,21 +142,21 @@ Token 只会以 hash 形式存储。生成后请立即复制，之后界面只�
 - 词典引擎：`github.com/lib-x/mdx`
 - MCP 服务：`github.com/modelcontextprotocol/go-sdk`
 - 前端：React + Vite + TypeScript
-- 可选搜索缓存 / 索引：Redis + RediSearch
+- 搜索索引：默认使用数据库持久索引；可选 Redis + RediSearch
 - 部署方式：单 Go 服务 / 单 Docker 镜像
 - 前端生产资源：通过 `go:embed` 嵌入 Go 服务
 - 自动化：GitHub Actions 构建 CI、发布二进制和 Docker 镜像
 
 ### 搜索后端行为
 
-Owl 可以不依赖 Redis 运行，此时使用本地 MDX 搜索 / 索引能力。
+Owl 可以不依赖 Redis 运行，此时会把导出的 MDX 搜索索引写入已配置数据库，只在需要渲染命中释义时才加载完整词典对象。
 
 配置 Redis 后：
 
 - exact / prefix 索引可以写入 Redis
 - fuzzy 查询可以使用 RediSearch
 - 自动补全结果由后端聚合
-- 如果 RediSearch 不可用，会自动回退到内存 fuzzy store
+- 如果 RediSearch 不可用，会自动回退到前缀索引搜索
 
 ---
 
@@ -369,6 +369,8 @@ http://localhost:3000
 - `OWL_DATA_DIR`
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
+- `OWL_WARM_DICTIONARIES`：默认 `false`。设为 `true` 会在启动时预加载所有已启用词典；大词典库建议保持关闭，避免重启慢和基础内存占用过高。
+- `OWL_MAX_LOADED_DICTIONARIES`：进程内最多保留的完整已加载词典数量。默认 `8`；设为 `0` 表示不限制缓存。
 
 ### 数据库
 
@@ -439,5 +441,7 @@ curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-b
 重点字段含义：
 
 - `fuzzy_backend: redisearch`：正在使用 RediSearch
+- `fuzzy_backend: sql-index`：正在使用本地数据库索引
 - `fuzzy_backend: memory-fuzzy`：处于回退模式
 - `prefix_backend: redis-prefix`：Redis 前缀索引已生效
+- `prefix_backend: sql-prefix`：本地数据库前缀索引已生效

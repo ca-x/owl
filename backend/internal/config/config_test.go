@@ -70,3 +70,47 @@ func TestLoadDatabaseTypeAndDSN(t *testing.T) {
 		t.Fatalf("unexpected database DSN %q", cfg.DatabaseDSN)
 	}
 }
+
+func TestLoadWarmDictionariesDefaultsToFalse(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.WarmDictionaries {
+		t.Fatal("expected dictionary warmup to be disabled by default")
+	}
+}
+
+func TestLoadWarmDictionariesCanBeEnabled(t *testing.T) {
+	t.Setenv("OWL_WARM_DICTIONARIES", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.WarmDictionaries {
+		t.Fatal("expected dictionary warmup to be enabled")
+	}
+}
+
+func TestLoadMaxLoadedDictionariesDefault(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MaxLoadedDictionaries != 8 {
+		t.Fatalf("expected default loaded dictionary limit 8, got %d", cfg.MaxLoadedDictionaries)
+	}
+}
+
+func TestLoadMaxLoadedDictionariesCanBeDisabled(t *testing.T) {
+	t.Setenv("OWL_MAX_LOADED_DICTIONARIES", "0")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MaxLoadedDictionaries != 0 {
+		t.Fatalf("expected unlimited loaded dictionary cache, got %d", cfg.MaxLoadedDictionaries)
+	}
+}

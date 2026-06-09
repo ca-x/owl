@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 type User struct{ ent.Schema }
@@ -30,5 +31,11 @@ func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("dictionaries", Dictionary.Type),
 		edge.To("selected_font", Font.Type).Unique(),
+	}
+}
+
+func (User) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("mcp_token_hash"),
 	}
 }

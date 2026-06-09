@@ -20,6 +20,30 @@ func (f DictionaryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictionaryMutation", m)
 }
 
+// The DictionaryIndexEntryFunc type is an adapter to allow the use of ordinary
+// function as DictionaryIndexEntry mutator.
+type DictionaryIndexEntryFunc func(context.Context, *ent.DictionaryIndexEntryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DictionaryIndexEntryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictionaryIndexEntryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictionaryIndexEntryMutation", m)
+}
+
+// The DictionaryIndexManifestFunc type is an adapter to allow the use of ordinary
+// function as DictionaryIndexManifest mutator.
+type DictionaryIndexManifestFunc func(context.Context, *ent.DictionaryIndexManifestMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DictionaryIndexManifestFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictionaryIndexManifestMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictionaryIndexManifestMutation", m)
+}
+
 // The FontFunc type is an adapter to allow the use of ordinary
 // function as Font mutator.
 type FontFunc func(context.Context, *ent.FontMutation) (ent.Value, error)

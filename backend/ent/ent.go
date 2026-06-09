@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/dictionaryindexentry"
+	"owl/backend/ent/dictionaryindexmanifest"
 	"owl/backend/ent/font"
 	"owl/backend/ent/user"
 	"reflect"
@@ -75,9 +77,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			dictionary.Table: dictionary.ValidColumn,
-			font.Table:       font.ValidColumn,
-			user.Table:       user.ValidColumn,
+			dictionary.Table:              dictionary.ValidColumn,
+			dictionaryindexentry.Table:    dictionaryindexentry.ValidColumn,
+			dictionaryindexmanifest.Table: dictionaryindexmanifest.ValidColumn,
+			font.Table:                    font.ValidColumn,
+			user.Table:                    user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

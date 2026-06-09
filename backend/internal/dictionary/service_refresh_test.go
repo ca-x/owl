@@ -8,7 +8,7 @@ import (
 )
 
 func TestLibraryRefreshLockSerializesConcurrentRefreshes(t *testing.T) {
-	svc := NewService(nil, "", "", nil, "", 0, "", false, "", "")
+	svc := NewService(nil, "", "", nil, "", 0, "", false, 0, "", "")
 
 	firstInside := make(chan struct{})
 	releaseFirst := make(chan struct{})
@@ -61,5 +61,47 @@ func TestLibraryRefreshLockSerializesConcurrentRefreshes(t *testing.T) {
 	case <-secondDone:
 	case <-time.After(time.Second):
 		t.Fatal("second refresh did not finish")
+	}
+}
+
+func TestLoadedDictionaryCacheEvictsLeastRecentlyUsed(t *testing.T) {
+	svc := NewService(nil, "", "", nil, "", 0, "", false, 2, "", "")
+
+	svc.mu.Lock()
+	first := &LoadedDictionary{}
+	second := &LoadedDictionary{}
+	third := &LoadedDictionary{}
+	svc.cacheLoadedLocked(1, first)
+	svc.cacheLoadedLocked(2, second)
+	svc.touchLoadedLocked(1)
+	svc.cacheLoadedLocked(3, third)
+	svc.mu.Unlock()
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	if _, ok := svc.loaded[2]; ok {
+		t.Fatal("expected dictionary 2 to be evicted")
+	}
+	if svc.loaded[1] != first {
+		t.Fatal("expected dictionary 1 to remain cached")
+	}
+	if svc.loaded[3] != third {
+		t.Fatal("expected dictionary 3 to remain cached")
+	}
+}
+
+func TestLoadedDictionaryCacheCanBeUnlimited(t *testing.T) {
+	svc := NewService(nil, "", "", nil, "", 0, "", false, 0, "", "")
+
+	svc.mu.Lock()
+	svc.cacheLoadedLocked(1, &LoadedDictionary{})
+	svc.cacheLoadedLocked(2, &LoadedDictionary{})
+	svc.cacheLoadedLocked(3, &LoadedDictionary{})
+	svc.mu.Unlock()
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	if len(svc.loaded) != 3 {
+		t.Fatalf("expected unlimited cache to retain all dictionaries, got %d", len(svc.loaded))
 	}
 }

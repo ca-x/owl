@@ -12,6 +12,8 @@ import (
 	"owl/backend/ent/migrate"
 
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/dictionaryindexentry"
+	"owl/backend/ent/dictionaryindexmanifest"
 	"owl/backend/ent/font"
 	"owl/backend/ent/user"
 
@@ -28,6 +30,10 @@ type Client struct {
 	Schema *migrate.Schema
 	// Dictionary is the client for interacting with the Dictionary builders.
 	Dictionary *DictionaryClient
+	// DictionaryIndexEntry is the client for interacting with the DictionaryIndexEntry builders.
+	DictionaryIndexEntry *DictionaryIndexEntryClient
+	// DictionaryIndexManifest is the client for interacting with the DictionaryIndexManifest builders.
+	DictionaryIndexManifest *DictionaryIndexManifestClient
 	// Font is the client for interacting with the Font builders.
 	Font *FontClient
 	// User is the client for interacting with the User builders.
@@ -44,6 +50,8 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Dictionary = NewDictionaryClient(c.config)
+	c.DictionaryIndexEntry = NewDictionaryIndexEntryClient(c.config)
+	c.DictionaryIndexManifest = NewDictionaryIndexManifestClient(c.config)
 	c.Font = NewFontClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -136,11 +144,13 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Dictionary: NewDictionaryClient(cfg),
-		Font:       NewFontClient(cfg),
-		User:       NewUserClient(cfg),
+		ctx:                     ctx,
+		config:                  cfg,
+		Dictionary:              NewDictionaryClient(cfg),
+		DictionaryIndexEntry:    NewDictionaryIndexEntryClient(cfg),
+		DictionaryIndexManifest: NewDictionaryIndexManifestClient(cfg),
+		Font:                    NewFontClient(cfg),
+		User:                    NewUserClient(cfg),
 	}, nil
 }
 
@@ -158,11 +168,13 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Dictionary: NewDictionaryClient(cfg),
-		Font:       NewFontClient(cfg),
-		User:       NewUserClient(cfg),
+		ctx:                     ctx,
+		config:                  cfg,
+		Dictionary:              NewDictionaryClient(cfg),
+		DictionaryIndexEntry:    NewDictionaryIndexEntryClient(cfg),
+		DictionaryIndexManifest: NewDictionaryIndexManifestClient(cfg),
+		Font:                    NewFontClient(cfg),
+		User:                    NewUserClient(cfg),
 	}, nil
 }
 
@@ -192,6 +204,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Dictionary.Use(hooks...)
+	c.DictionaryIndexEntry.Use(hooks...)
+	c.DictionaryIndexManifest.Use(hooks...)
 	c.Font.Use(hooks...)
 	c.User.Use(hooks...)
 }
@@ -200,6 +214,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Dictionary.Intercept(interceptors...)
+	c.DictionaryIndexEntry.Intercept(interceptors...)
+	c.DictionaryIndexManifest.Intercept(interceptors...)
 	c.Font.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
@@ -209,6 +225,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *DictionaryMutation:
 		return c.Dictionary.mutate(ctx, m)
+	case *DictionaryIndexEntryMutation:
+		return c.DictionaryIndexEntry.mutate(ctx, m)
+	case *DictionaryIndexManifestMutation:
+		return c.DictionaryIndexManifest.mutate(ctx, m)
 	case *FontMutation:
 		return c.Font.mutate(ctx, m)
 	case *UserMutation:
@@ -364,6 +384,272 @@ func (c *DictionaryClient) mutate(ctx context.Context, m *DictionaryMutation) (V
 		return (&DictionaryDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Dictionary mutation op: %q", m.Op())
+	}
+}
+
+// DictionaryIndexEntryClient is a client for the DictionaryIndexEntry schema.
+type DictionaryIndexEntryClient struct {
+	config
+}
+
+// NewDictionaryIndexEntryClient returns a client for the DictionaryIndexEntry from the given config.
+func NewDictionaryIndexEntryClient(c config) *DictionaryIndexEntryClient {
+	return &DictionaryIndexEntryClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `dictionaryindexentry.Hooks(f(g(h())))`.
+func (c *DictionaryIndexEntryClient) Use(hooks ...Hook) {
+	c.hooks.DictionaryIndexEntry = append(c.hooks.DictionaryIndexEntry, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `dictionaryindexentry.Intercept(f(g(h())))`.
+func (c *DictionaryIndexEntryClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DictionaryIndexEntry = append(c.inters.DictionaryIndexEntry, interceptors...)
+}
+
+// Create returns a builder for creating a DictionaryIndexEntry entity.
+func (c *DictionaryIndexEntryClient) Create() *DictionaryIndexEntryCreate {
+	mutation := newDictionaryIndexEntryMutation(c.config, OpCreate)
+	return &DictionaryIndexEntryCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DictionaryIndexEntry entities.
+func (c *DictionaryIndexEntryClient) CreateBulk(builders ...*DictionaryIndexEntryCreate) *DictionaryIndexEntryCreateBulk {
+	return &DictionaryIndexEntryCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DictionaryIndexEntryClient) MapCreateBulk(slice any, setFunc func(*DictionaryIndexEntryCreate, int)) *DictionaryIndexEntryCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DictionaryIndexEntryCreateBulk{err: fmt.Errorf("calling to DictionaryIndexEntryClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DictionaryIndexEntryCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DictionaryIndexEntryCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DictionaryIndexEntry.
+func (c *DictionaryIndexEntryClient) Update() *DictionaryIndexEntryUpdate {
+	mutation := newDictionaryIndexEntryMutation(c.config, OpUpdate)
+	return &DictionaryIndexEntryUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DictionaryIndexEntryClient) UpdateOne(_m *DictionaryIndexEntry) *DictionaryIndexEntryUpdateOne {
+	mutation := newDictionaryIndexEntryMutation(c.config, OpUpdateOne, withDictionaryIndexEntry(_m))
+	return &DictionaryIndexEntryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DictionaryIndexEntryClient) UpdateOneID(id int) *DictionaryIndexEntryUpdateOne {
+	mutation := newDictionaryIndexEntryMutation(c.config, OpUpdateOne, withDictionaryIndexEntryID(id))
+	return &DictionaryIndexEntryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DictionaryIndexEntry.
+func (c *DictionaryIndexEntryClient) Delete() *DictionaryIndexEntryDelete {
+	mutation := newDictionaryIndexEntryMutation(c.config, OpDelete)
+	return &DictionaryIndexEntryDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DictionaryIndexEntryClient) DeleteOne(_m *DictionaryIndexEntry) *DictionaryIndexEntryDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DictionaryIndexEntryClient) DeleteOneID(id int) *DictionaryIndexEntryDeleteOne {
+	builder := c.Delete().Where(dictionaryindexentry.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DictionaryIndexEntryDeleteOne{builder}
+}
+
+// Query returns a query builder for DictionaryIndexEntry.
+func (c *DictionaryIndexEntryClient) Query() *DictionaryIndexEntryQuery {
+	return &DictionaryIndexEntryQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDictionaryIndexEntry},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DictionaryIndexEntry entity by its id.
+func (c *DictionaryIndexEntryClient) Get(ctx context.Context, id int) (*DictionaryIndexEntry, error) {
+	return c.Query().Where(dictionaryindexentry.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DictionaryIndexEntryClient) GetX(ctx context.Context, id int) *DictionaryIndexEntry {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DictionaryIndexEntryClient) Hooks() []Hook {
+	return c.hooks.DictionaryIndexEntry
+}
+
+// Interceptors returns the client interceptors.
+func (c *DictionaryIndexEntryClient) Interceptors() []Interceptor {
+	return c.inters.DictionaryIndexEntry
+}
+
+func (c *DictionaryIndexEntryClient) mutate(ctx context.Context, m *DictionaryIndexEntryMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DictionaryIndexEntryCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DictionaryIndexEntryUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DictionaryIndexEntryUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DictionaryIndexEntryDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DictionaryIndexEntry mutation op: %q", m.Op())
+	}
+}
+
+// DictionaryIndexManifestClient is a client for the DictionaryIndexManifest schema.
+type DictionaryIndexManifestClient struct {
+	config
+}
+
+// NewDictionaryIndexManifestClient returns a client for the DictionaryIndexManifest from the given config.
+func NewDictionaryIndexManifestClient(c config) *DictionaryIndexManifestClient {
+	return &DictionaryIndexManifestClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `dictionaryindexmanifest.Hooks(f(g(h())))`.
+func (c *DictionaryIndexManifestClient) Use(hooks ...Hook) {
+	c.hooks.DictionaryIndexManifest = append(c.hooks.DictionaryIndexManifest, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `dictionaryindexmanifest.Intercept(f(g(h())))`.
+func (c *DictionaryIndexManifestClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DictionaryIndexManifest = append(c.inters.DictionaryIndexManifest, interceptors...)
+}
+
+// Create returns a builder for creating a DictionaryIndexManifest entity.
+func (c *DictionaryIndexManifestClient) Create() *DictionaryIndexManifestCreate {
+	mutation := newDictionaryIndexManifestMutation(c.config, OpCreate)
+	return &DictionaryIndexManifestCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DictionaryIndexManifest entities.
+func (c *DictionaryIndexManifestClient) CreateBulk(builders ...*DictionaryIndexManifestCreate) *DictionaryIndexManifestCreateBulk {
+	return &DictionaryIndexManifestCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DictionaryIndexManifestClient) MapCreateBulk(slice any, setFunc func(*DictionaryIndexManifestCreate, int)) *DictionaryIndexManifestCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DictionaryIndexManifestCreateBulk{err: fmt.Errorf("calling to DictionaryIndexManifestClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DictionaryIndexManifestCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DictionaryIndexManifestCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DictionaryIndexManifest.
+func (c *DictionaryIndexManifestClient) Update() *DictionaryIndexManifestUpdate {
+	mutation := newDictionaryIndexManifestMutation(c.config, OpUpdate)
+	return &DictionaryIndexManifestUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DictionaryIndexManifestClient) UpdateOne(_m *DictionaryIndexManifest) *DictionaryIndexManifestUpdateOne {
+	mutation := newDictionaryIndexManifestMutation(c.config, OpUpdateOne, withDictionaryIndexManifest(_m))
+	return &DictionaryIndexManifestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DictionaryIndexManifestClient) UpdateOneID(id int) *DictionaryIndexManifestUpdateOne {
+	mutation := newDictionaryIndexManifestMutation(c.config, OpUpdateOne, withDictionaryIndexManifestID(id))
+	return &DictionaryIndexManifestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DictionaryIndexManifest.
+func (c *DictionaryIndexManifestClient) Delete() *DictionaryIndexManifestDelete {
+	mutation := newDictionaryIndexManifestMutation(c.config, OpDelete)
+	return &DictionaryIndexManifestDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DictionaryIndexManifestClient) DeleteOne(_m *DictionaryIndexManifest) *DictionaryIndexManifestDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DictionaryIndexManifestClient) DeleteOneID(id int) *DictionaryIndexManifestDeleteOne {
+	builder := c.Delete().Where(dictionaryindexmanifest.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DictionaryIndexManifestDeleteOne{builder}
+}
+
+// Query returns a query builder for DictionaryIndexManifest.
+func (c *DictionaryIndexManifestClient) Query() *DictionaryIndexManifestQuery {
+	return &DictionaryIndexManifestQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDictionaryIndexManifest},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DictionaryIndexManifest entity by its id.
+func (c *DictionaryIndexManifestClient) Get(ctx context.Context, id int) (*DictionaryIndexManifest, error) {
+	return c.Query().Where(dictionaryindexmanifest.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DictionaryIndexManifestClient) GetX(ctx context.Context, id int) *DictionaryIndexManifest {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DictionaryIndexManifestClient) Hooks() []Hook {
+	return c.hooks.DictionaryIndexManifest
+}
+
+// Interceptors returns the client interceptors.
+func (c *DictionaryIndexManifestClient) Interceptors() []Interceptor {
+	return c.inters.DictionaryIndexManifest
+}
+
+func (c *DictionaryIndexManifestClient) mutate(ctx context.Context, m *DictionaryIndexManifestMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DictionaryIndexManifestCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DictionaryIndexManifestUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DictionaryIndexManifestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DictionaryIndexManifestDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DictionaryIndexManifest mutation op: %q", m.Op())
 	}
 }
 
@@ -684,9 +970,10 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Dictionary, Font, User []ent.Hook
+		Dictionary, DictionaryIndexEntry, DictionaryIndexManifest, Font, User []ent.Hook
 	}
 	inters struct {
-		Dictionary, Font, User []ent.Interceptor
+		Dictionary, DictionaryIndexEntry, DictionaryIndexManifest, Font,
+		User []ent.Interceptor
 	}
 )

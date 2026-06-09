@@ -9,6 +9,12 @@ import (
 // Dictionary is the predicate function for dictionary builders.
 type Dictionary func(*sql.Selector)
 
+// DictionaryIndexEntry is the predicate function for dictionaryindexentry builders.
+type DictionaryIndexEntry func(*sql.Selector)
+
+// DictionaryIndexManifest is the predicate function for dictionaryindexmanifest builders.
+type DictionaryIndexManifest func(*sql.Selector)
+
 // Font is the predicate function for font builders.
 type Font func(*sql.Selector)
 

@@ -141,21 +141,21 @@ Tokens are stored hashed; after generation, only a short hint is shown later.
 - Dictionary engine: `github.com/lib-x/mdx`
 - MCP server: `github.com/modelcontextprotocol/go-sdk`
 - Frontend: React + Vite + TypeScript
-- Search cache/index option: Redis + RediSearch
+- Search indexes: database-backed local index by default; optional Redis + RediSearch
 - Deployment: single Go service / single Docker image
 - Frontend serving: production assets are embedded into the Go server with `go:embed`
 - Automation: GitHub Actions for CI, release binaries, and Docker images
 
 ### Search backend behavior
 
-Owl can run without Redis. In that mode it uses the local MDX search/index implementation.
+Owl can run without Redis. In that mode it stores the exported MDX search index in the configured database and loads full dictionary objects only when a matched definition must be rendered.
 
 When Redis is configured:
 
 - exact/prefix indexes can be stored in Redis
 - fuzzy lookup can use RediSearch
 - autocomplete suggestions are aggregated by the backend
-- if RediSearch is unavailable, Owl falls back automatically to the in-memory fuzzy store
+- if RediSearch is unavailable, Owl falls back automatically to prefix index search
 
 ---
 
@@ -370,6 +370,8 @@ See `.env.example` for the full list.
 - `OWL_DATA_DIR`
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
+- `OWL_WARM_DICTIONARIES` — `false` by default. Set to `true` to preload all enabled dictionaries on startup. Keep it disabled for large libraries to avoid slow restarts and high baseline memory use.
+- `OWL_MAX_LOADED_DICTIONARIES` — maximum number of fully loaded dictionaries retained in process memory. Defaults to `8`; use `0` for unlimited caching.
 
 ### Database
 
@@ -440,5 +442,7 @@ curl -H 'Authorization: Bearer <token>' http://localhost:8080/api/debug/search-b
 Important fields:
 
 - `fuzzy_backend: redisearch` — RediSearch is active
+- `fuzzy_backend: sql-index` — local database-backed search index is active
 - `fuzzy_backend: memory-fuzzy` — fallback mode is active
 - `prefix_backend: redis-prefix` — Redis prefix index is active
+- `prefix_backend: sql-prefix` — local database-backed prefix index is active

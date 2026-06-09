@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/dictionaryindexentry"
+	"owl/backend/ent/dictionaryindexmanifest"
 	"owl/backend/ent/font"
 	"owl/backend/ent/predicate"
 	"owl/backend/ent/user"
@@ -26,9 +28,11 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDictionary = "Dictionary"
-	TypeFont       = "Font"
-	TypeUser       = "User"
+	TypeDictionary              = "Dictionary"
+	TypeDictionaryIndexEntry    = "DictionaryIndexEntry"
+	TypeDictionaryIndexManifest = "DictionaryIndexManifest"
+	TypeFont                    = "Font"
+	TypeUser                    = "User"
 )
 
 // DictionaryMutation represents an operation that mutates the Dictionary nodes in the graph.
@@ -998,6 +1002,1538 @@ func (m *DictionaryMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Dictionary edge %s", name)
+}
+
+// DictionaryIndexEntryMutation represents an operation that mutates the DictionaryIndexEntry nodes in the graph.
+type DictionaryIndexEntryMutation struct {
+	config
+	op                     Op
+	typ                    string
+	id                     *int
+	dictionary_name        *string
+	keyword                *string
+	normalized_keyword     *string
+	lookup_key             *string
+	lookup_key_lower       *string
+	record_start_offset    *int64
+	addrecord_start_offset *int64
+	record_end_offset      *int64
+	addrecord_end_offset   *int64
+	key_block_idx          *int64
+	addkey_block_idx       *int64
+	is_resource            *bool
+	payload                *string
+	clearedFields          map[string]struct{}
+	done                   bool
+	oldValue               func(context.Context) (*DictionaryIndexEntry, error)
+	predicates             []predicate.DictionaryIndexEntry
+}
+
+var _ ent.Mutation = (*DictionaryIndexEntryMutation)(nil)
+
+// dictionaryindexentryOption allows management of the mutation configuration using functional options.
+type dictionaryindexentryOption func(*DictionaryIndexEntryMutation)
+
+// newDictionaryIndexEntryMutation creates new mutation for the DictionaryIndexEntry entity.
+func newDictionaryIndexEntryMutation(c config, op Op, opts ...dictionaryindexentryOption) *DictionaryIndexEntryMutation {
+	m := &DictionaryIndexEntryMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDictionaryIndexEntry,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDictionaryIndexEntryID sets the ID field of the mutation.
+func withDictionaryIndexEntryID(id int) dictionaryindexentryOption {
+	return func(m *DictionaryIndexEntryMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DictionaryIndexEntry
+		)
+		m.oldValue = func(ctx context.Context) (*DictionaryIndexEntry, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DictionaryIndexEntry.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDictionaryIndexEntry sets the old DictionaryIndexEntry of the mutation.
+func withDictionaryIndexEntry(node *DictionaryIndexEntry) dictionaryindexentryOption {
+	return func(m *DictionaryIndexEntryMutation) {
+		m.oldValue = func(context.Context) (*DictionaryIndexEntry, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DictionaryIndexEntryMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DictionaryIndexEntryMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DictionaryIndexEntryMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DictionaryIndexEntryMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DictionaryIndexEntry.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDictionaryName sets the "dictionary_name" field.
+func (m *DictionaryIndexEntryMutation) SetDictionaryName(s string) {
+	m.dictionary_name = &s
+}
+
+// DictionaryName returns the value of the "dictionary_name" field in the mutation.
+func (m *DictionaryIndexEntryMutation) DictionaryName() (r string, exists bool) {
+	v := m.dictionary_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictionaryName returns the old "dictionary_name" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldDictionaryName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictionaryName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictionaryName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictionaryName: %w", err)
+	}
+	return oldValue.DictionaryName, nil
+}
+
+// ResetDictionaryName resets all changes to the "dictionary_name" field.
+func (m *DictionaryIndexEntryMutation) ResetDictionaryName() {
+	m.dictionary_name = nil
+}
+
+// SetKeyword sets the "keyword" field.
+func (m *DictionaryIndexEntryMutation) SetKeyword(s string) {
+	m.keyword = &s
+}
+
+// Keyword returns the value of the "keyword" field in the mutation.
+func (m *DictionaryIndexEntryMutation) Keyword() (r string, exists bool) {
+	v := m.keyword
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyword returns the old "keyword" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldKeyword(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyword is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyword requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyword: %w", err)
+	}
+	return oldValue.Keyword, nil
+}
+
+// ResetKeyword resets all changes to the "keyword" field.
+func (m *DictionaryIndexEntryMutation) ResetKeyword() {
+	m.keyword = nil
+}
+
+// SetNormalizedKeyword sets the "normalized_keyword" field.
+func (m *DictionaryIndexEntryMutation) SetNormalizedKeyword(s string) {
+	m.normalized_keyword = &s
+}
+
+// NormalizedKeyword returns the value of the "normalized_keyword" field in the mutation.
+func (m *DictionaryIndexEntryMutation) NormalizedKeyword() (r string, exists bool) {
+	v := m.normalized_keyword
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNormalizedKeyword returns the old "normalized_keyword" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldNormalizedKeyword(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNormalizedKeyword is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNormalizedKeyword requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNormalizedKeyword: %w", err)
+	}
+	return oldValue.NormalizedKeyword, nil
+}
+
+// ResetNormalizedKeyword resets all changes to the "normalized_keyword" field.
+func (m *DictionaryIndexEntryMutation) ResetNormalizedKeyword() {
+	m.normalized_keyword = nil
+}
+
+// SetLookupKey sets the "lookup_key" field.
+func (m *DictionaryIndexEntryMutation) SetLookupKey(s string) {
+	m.lookup_key = &s
+}
+
+// LookupKey returns the value of the "lookup_key" field in the mutation.
+func (m *DictionaryIndexEntryMutation) LookupKey() (r string, exists bool) {
+	v := m.lookup_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLookupKey returns the old "lookup_key" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldLookupKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLookupKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLookupKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLookupKey: %w", err)
+	}
+	return oldValue.LookupKey, nil
+}
+
+// ResetLookupKey resets all changes to the "lookup_key" field.
+func (m *DictionaryIndexEntryMutation) ResetLookupKey() {
+	m.lookup_key = nil
+}
+
+// SetLookupKeyLower sets the "lookup_key_lower" field.
+func (m *DictionaryIndexEntryMutation) SetLookupKeyLower(s string) {
+	m.lookup_key_lower = &s
+}
+
+// LookupKeyLower returns the value of the "lookup_key_lower" field in the mutation.
+func (m *DictionaryIndexEntryMutation) LookupKeyLower() (r string, exists bool) {
+	v := m.lookup_key_lower
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLookupKeyLower returns the old "lookup_key_lower" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldLookupKeyLower(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLookupKeyLower is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLookupKeyLower requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLookupKeyLower: %w", err)
+	}
+	return oldValue.LookupKeyLower, nil
+}
+
+// ResetLookupKeyLower resets all changes to the "lookup_key_lower" field.
+func (m *DictionaryIndexEntryMutation) ResetLookupKeyLower() {
+	m.lookup_key_lower = nil
+}
+
+// SetRecordStartOffset sets the "record_start_offset" field.
+func (m *DictionaryIndexEntryMutation) SetRecordStartOffset(i int64) {
+	m.record_start_offset = &i
+	m.addrecord_start_offset = nil
+}
+
+// RecordStartOffset returns the value of the "record_start_offset" field in the mutation.
+func (m *DictionaryIndexEntryMutation) RecordStartOffset() (r int64, exists bool) {
+	v := m.record_start_offset
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRecordStartOffset returns the old "record_start_offset" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldRecordStartOffset(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRecordStartOffset is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRecordStartOffset requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRecordStartOffset: %w", err)
+	}
+	return oldValue.RecordStartOffset, nil
+}
+
+// AddRecordStartOffset adds i to the "record_start_offset" field.
+func (m *DictionaryIndexEntryMutation) AddRecordStartOffset(i int64) {
+	if m.addrecord_start_offset != nil {
+		*m.addrecord_start_offset += i
+	} else {
+		m.addrecord_start_offset = &i
+	}
+}
+
+// AddedRecordStartOffset returns the value that was added to the "record_start_offset" field in this mutation.
+func (m *DictionaryIndexEntryMutation) AddedRecordStartOffset() (r int64, exists bool) {
+	v := m.addrecord_start_offset
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRecordStartOffset resets all changes to the "record_start_offset" field.
+func (m *DictionaryIndexEntryMutation) ResetRecordStartOffset() {
+	m.record_start_offset = nil
+	m.addrecord_start_offset = nil
+}
+
+// SetRecordEndOffset sets the "record_end_offset" field.
+func (m *DictionaryIndexEntryMutation) SetRecordEndOffset(i int64) {
+	m.record_end_offset = &i
+	m.addrecord_end_offset = nil
+}
+
+// RecordEndOffset returns the value of the "record_end_offset" field in the mutation.
+func (m *DictionaryIndexEntryMutation) RecordEndOffset() (r int64, exists bool) {
+	v := m.record_end_offset
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRecordEndOffset returns the old "record_end_offset" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldRecordEndOffset(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRecordEndOffset is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRecordEndOffset requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRecordEndOffset: %w", err)
+	}
+	return oldValue.RecordEndOffset, nil
+}
+
+// AddRecordEndOffset adds i to the "record_end_offset" field.
+func (m *DictionaryIndexEntryMutation) AddRecordEndOffset(i int64) {
+	if m.addrecord_end_offset != nil {
+		*m.addrecord_end_offset += i
+	} else {
+		m.addrecord_end_offset = &i
+	}
+}
+
+// AddedRecordEndOffset returns the value that was added to the "record_end_offset" field in this mutation.
+func (m *DictionaryIndexEntryMutation) AddedRecordEndOffset() (r int64, exists bool) {
+	v := m.addrecord_end_offset
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRecordEndOffset resets all changes to the "record_end_offset" field.
+func (m *DictionaryIndexEntryMutation) ResetRecordEndOffset() {
+	m.record_end_offset = nil
+	m.addrecord_end_offset = nil
+}
+
+// SetKeyBlockIdx sets the "key_block_idx" field.
+func (m *DictionaryIndexEntryMutation) SetKeyBlockIdx(i int64) {
+	m.key_block_idx = &i
+	m.addkey_block_idx = nil
+}
+
+// KeyBlockIdx returns the value of the "key_block_idx" field in the mutation.
+func (m *DictionaryIndexEntryMutation) KeyBlockIdx() (r int64, exists bool) {
+	v := m.key_block_idx
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyBlockIdx returns the old "key_block_idx" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldKeyBlockIdx(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyBlockIdx is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyBlockIdx requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyBlockIdx: %w", err)
+	}
+	return oldValue.KeyBlockIdx, nil
+}
+
+// AddKeyBlockIdx adds i to the "key_block_idx" field.
+func (m *DictionaryIndexEntryMutation) AddKeyBlockIdx(i int64) {
+	if m.addkey_block_idx != nil {
+		*m.addkey_block_idx += i
+	} else {
+		m.addkey_block_idx = &i
+	}
+}
+
+// AddedKeyBlockIdx returns the value that was added to the "key_block_idx" field in this mutation.
+func (m *DictionaryIndexEntryMutation) AddedKeyBlockIdx() (r int64, exists bool) {
+	v := m.addkey_block_idx
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetKeyBlockIdx resets all changes to the "key_block_idx" field.
+func (m *DictionaryIndexEntryMutation) ResetKeyBlockIdx() {
+	m.key_block_idx = nil
+	m.addkey_block_idx = nil
+}
+
+// SetIsResource sets the "is_resource" field.
+func (m *DictionaryIndexEntryMutation) SetIsResource(b bool) {
+	m.is_resource = &b
+}
+
+// IsResource returns the value of the "is_resource" field in the mutation.
+func (m *DictionaryIndexEntryMutation) IsResource() (r bool, exists bool) {
+	v := m.is_resource
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsResource returns the old "is_resource" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldIsResource(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsResource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsResource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsResource: %w", err)
+	}
+	return oldValue.IsResource, nil
+}
+
+// ResetIsResource resets all changes to the "is_resource" field.
+func (m *DictionaryIndexEntryMutation) ResetIsResource() {
+	m.is_resource = nil
+}
+
+// SetPayload sets the "payload" field.
+func (m *DictionaryIndexEntryMutation) SetPayload(s string) {
+	m.payload = &s
+}
+
+// Payload returns the value of the "payload" field in the mutation.
+func (m *DictionaryIndexEntryMutation) Payload() (r string, exists bool) {
+	v := m.payload
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPayload returns the old "payload" field's value of the DictionaryIndexEntry entity.
+// If the DictionaryIndexEntry object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexEntryMutation) OldPayload(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPayload is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPayload requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayload: %w", err)
+	}
+	return oldValue.Payload, nil
+}
+
+// ResetPayload resets all changes to the "payload" field.
+func (m *DictionaryIndexEntryMutation) ResetPayload() {
+	m.payload = nil
+}
+
+// Where appends a list predicates to the DictionaryIndexEntryMutation builder.
+func (m *DictionaryIndexEntryMutation) Where(ps ...predicate.DictionaryIndexEntry) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DictionaryIndexEntryMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DictionaryIndexEntryMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DictionaryIndexEntry, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DictionaryIndexEntryMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DictionaryIndexEntryMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DictionaryIndexEntry).
+func (m *DictionaryIndexEntryMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DictionaryIndexEntryMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.dictionary_name != nil {
+		fields = append(fields, dictionaryindexentry.FieldDictionaryName)
+	}
+	if m.keyword != nil {
+		fields = append(fields, dictionaryindexentry.FieldKeyword)
+	}
+	if m.normalized_keyword != nil {
+		fields = append(fields, dictionaryindexentry.FieldNormalizedKeyword)
+	}
+	if m.lookup_key != nil {
+		fields = append(fields, dictionaryindexentry.FieldLookupKey)
+	}
+	if m.lookup_key_lower != nil {
+		fields = append(fields, dictionaryindexentry.FieldLookupKeyLower)
+	}
+	if m.record_start_offset != nil {
+		fields = append(fields, dictionaryindexentry.FieldRecordStartOffset)
+	}
+	if m.record_end_offset != nil {
+		fields = append(fields, dictionaryindexentry.FieldRecordEndOffset)
+	}
+	if m.key_block_idx != nil {
+		fields = append(fields, dictionaryindexentry.FieldKeyBlockIdx)
+	}
+	if m.is_resource != nil {
+		fields = append(fields, dictionaryindexentry.FieldIsResource)
+	}
+	if m.payload != nil {
+		fields = append(fields, dictionaryindexentry.FieldPayload)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DictionaryIndexEntryMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case dictionaryindexentry.FieldDictionaryName:
+		return m.DictionaryName()
+	case dictionaryindexentry.FieldKeyword:
+		return m.Keyword()
+	case dictionaryindexentry.FieldNormalizedKeyword:
+		return m.NormalizedKeyword()
+	case dictionaryindexentry.FieldLookupKey:
+		return m.LookupKey()
+	case dictionaryindexentry.FieldLookupKeyLower:
+		return m.LookupKeyLower()
+	case dictionaryindexentry.FieldRecordStartOffset:
+		return m.RecordStartOffset()
+	case dictionaryindexentry.FieldRecordEndOffset:
+		return m.RecordEndOffset()
+	case dictionaryindexentry.FieldKeyBlockIdx:
+		return m.KeyBlockIdx()
+	case dictionaryindexentry.FieldIsResource:
+		return m.IsResource()
+	case dictionaryindexentry.FieldPayload:
+		return m.Payload()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DictionaryIndexEntryMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case dictionaryindexentry.FieldDictionaryName:
+		return m.OldDictionaryName(ctx)
+	case dictionaryindexentry.FieldKeyword:
+		return m.OldKeyword(ctx)
+	case dictionaryindexentry.FieldNormalizedKeyword:
+		return m.OldNormalizedKeyword(ctx)
+	case dictionaryindexentry.FieldLookupKey:
+		return m.OldLookupKey(ctx)
+	case dictionaryindexentry.FieldLookupKeyLower:
+		return m.OldLookupKeyLower(ctx)
+	case dictionaryindexentry.FieldRecordStartOffset:
+		return m.OldRecordStartOffset(ctx)
+	case dictionaryindexentry.FieldRecordEndOffset:
+		return m.OldRecordEndOffset(ctx)
+	case dictionaryindexentry.FieldKeyBlockIdx:
+		return m.OldKeyBlockIdx(ctx)
+	case dictionaryindexentry.FieldIsResource:
+		return m.OldIsResource(ctx)
+	case dictionaryindexentry.FieldPayload:
+		return m.OldPayload(ctx)
+	}
+	return nil, fmt.Errorf("unknown DictionaryIndexEntry field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictionaryIndexEntryMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case dictionaryindexentry.FieldDictionaryName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictionaryName(v)
+		return nil
+	case dictionaryindexentry.FieldKeyword:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyword(v)
+		return nil
+	case dictionaryindexentry.FieldNormalizedKeyword:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNormalizedKeyword(v)
+		return nil
+	case dictionaryindexentry.FieldLookupKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLookupKey(v)
+		return nil
+	case dictionaryindexentry.FieldLookupKeyLower:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLookupKeyLower(v)
+		return nil
+	case dictionaryindexentry.FieldRecordStartOffset:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRecordStartOffset(v)
+		return nil
+	case dictionaryindexentry.FieldRecordEndOffset:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRecordEndOffset(v)
+		return nil
+	case dictionaryindexentry.FieldKeyBlockIdx:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyBlockIdx(v)
+		return nil
+	case dictionaryindexentry.FieldIsResource:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsResource(v)
+		return nil
+	case dictionaryindexentry.FieldPayload:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPayload(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictionaryIndexEntry field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DictionaryIndexEntryMutation) AddedFields() []string {
+	var fields []string
+	if m.addrecord_start_offset != nil {
+		fields = append(fields, dictionaryindexentry.FieldRecordStartOffset)
+	}
+	if m.addrecord_end_offset != nil {
+		fields = append(fields, dictionaryindexentry.FieldRecordEndOffset)
+	}
+	if m.addkey_block_idx != nil {
+		fields = append(fields, dictionaryindexentry.FieldKeyBlockIdx)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DictionaryIndexEntryMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case dictionaryindexentry.FieldRecordStartOffset:
+		return m.AddedRecordStartOffset()
+	case dictionaryindexentry.FieldRecordEndOffset:
+		return m.AddedRecordEndOffset()
+	case dictionaryindexentry.FieldKeyBlockIdx:
+		return m.AddedKeyBlockIdx()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictionaryIndexEntryMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case dictionaryindexentry.FieldRecordStartOffset:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRecordStartOffset(v)
+		return nil
+	case dictionaryindexentry.FieldRecordEndOffset:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRecordEndOffset(v)
+		return nil
+	case dictionaryindexentry.FieldKeyBlockIdx:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddKeyBlockIdx(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictionaryIndexEntry numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DictionaryIndexEntryMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DictionaryIndexEntryMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DictionaryIndexEntryMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DictionaryIndexEntry nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DictionaryIndexEntryMutation) ResetField(name string) error {
+	switch name {
+	case dictionaryindexentry.FieldDictionaryName:
+		m.ResetDictionaryName()
+		return nil
+	case dictionaryindexentry.FieldKeyword:
+		m.ResetKeyword()
+		return nil
+	case dictionaryindexentry.FieldNormalizedKeyword:
+		m.ResetNormalizedKeyword()
+		return nil
+	case dictionaryindexentry.FieldLookupKey:
+		m.ResetLookupKey()
+		return nil
+	case dictionaryindexentry.FieldLookupKeyLower:
+		m.ResetLookupKeyLower()
+		return nil
+	case dictionaryindexentry.FieldRecordStartOffset:
+		m.ResetRecordStartOffset()
+		return nil
+	case dictionaryindexentry.FieldRecordEndOffset:
+		m.ResetRecordEndOffset()
+		return nil
+	case dictionaryindexentry.FieldKeyBlockIdx:
+		m.ResetKeyBlockIdx()
+		return nil
+	case dictionaryindexentry.FieldIsResource:
+		m.ResetIsResource()
+		return nil
+	case dictionaryindexentry.FieldPayload:
+		m.ResetPayload()
+		return nil
+	}
+	return fmt.Errorf("unknown DictionaryIndexEntry field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DictionaryIndexEntryMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DictionaryIndexEntryMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DictionaryIndexEntryMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DictionaryIndexEntryMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DictionaryIndexEntryMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DictionaryIndexEntryMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DictionaryIndexEntryMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DictionaryIndexEntry unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DictionaryIndexEntryMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DictionaryIndexEntry edge %s", name)
+}
+
+// DictionaryIndexManifestMutation represents an operation that mutates the DictionaryIndexManifest nodes in the graph.
+type DictionaryIndexManifestMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	dictionary_name *string
+	source_path     *string
+	fingerprint     *string
+	schema_version  *string
+	built_at        *time.Time
+	expires_at      *time.Time
+	clearedFields   map[string]struct{}
+	done            bool
+	oldValue        func(context.Context) (*DictionaryIndexManifest, error)
+	predicates      []predicate.DictionaryIndexManifest
+}
+
+var _ ent.Mutation = (*DictionaryIndexManifestMutation)(nil)
+
+// dictionaryindexmanifestOption allows management of the mutation configuration using functional options.
+type dictionaryindexmanifestOption func(*DictionaryIndexManifestMutation)
+
+// newDictionaryIndexManifestMutation creates new mutation for the DictionaryIndexManifest entity.
+func newDictionaryIndexManifestMutation(c config, op Op, opts ...dictionaryindexmanifestOption) *DictionaryIndexManifestMutation {
+	m := &DictionaryIndexManifestMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDictionaryIndexManifest,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDictionaryIndexManifestID sets the ID field of the mutation.
+func withDictionaryIndexManifestID(id int) dictionaryindexmanifestOption {
+	return func(m *DictionaryIndexManifestMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DictionaryIndexManifest
+		)
+		m.oldValue = func(ctx context.Context) (*DictionaryIndexManifest, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DictionaryIndexManifest.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDictionaryIndexManifest sets the old DictionaryIndexManifest of the mutation.
+func withDictionaryIndexManifest(node *DictionaryIndexManifest) dictionaryindexmanifestOption {
+	return func(m *DictionaryIndexManifestMutation) {
+		m.oldValue = func(context.Context) (*DictionaryIndexManifest, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DictionaryIndexManifestMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DictionaryIndexManifestMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DictionaryIndexManifestMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DictionaryIndexManifestMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DictionaryIndexManifest.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDictionaryName sets the "dictionary_name" field.
+func (m *DictionaryIndexManifestMutation) SetDictionaryName(s string) {
+	m.dictionary_name = &s
+}
+
+// DictionaryName returns the value of the "dictionary_name" field in the mutation.
+func (m *DictionaryIndexManifestMutation) DictionaryName() (r string, exists bool) {
+	v := m.dictionary_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDictionaryName returns the old "dictionary_name" field's value of the DictionaryIndexManifest entity.
+// If the DictionaryIndexManifest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexManifestMutation) OldDictionaryName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDictionaryName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDictionaryName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDictionaryName: %w", err)
+	}
+	return oldValue.DictionaryName, nil
+}
+
+// ResetDictionaryName resets all changes to the "dictionary_name" field.
+func (m *DictionaryIndexManifestMutation) ResetDictionaryName() {
+	m.dictionary_name = nil
+}
+
+// SetSourcePath sets the "source_path" field.
+func (m *DictionaryIndexManifestMutation) SetSourcePath(s string) {
+	m.source_path = &s
+}
+
+// SourcePath returns the value of the "source_path" field in the mutation.
+func (m *DictionaryIndexManifestMutation) SourcePath() (r string, exists bool) {
+	v := m.source_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourcePath returns the old "source_path" field's value of the DictionaryIndexManifest entity.
+// If the DictionaryIndexManifest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexManifestMutation) OldSourcePath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourcePath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourcePath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourcePath: %w", err)
+	}
+	return oldValue.SourcePath, nil
+}
+
+// ResetSourcePath resets all changes to the "source_path" field.
+func (m *DictionaryIndexManifestMutation) ResetSourcePath() {
+	m.source_path = nil
+}
+
+// SetFingerprint sets the "fingerprint" field.
+func (m *DictionaryIndexManifestMutation) SetFingerprint(s string) {
+	m.fingerprint = &s
+}
+
+// Fingerprint returns the value of the "fingerprint" field in the mutation.
+func (m *DictionaryIndexManifestMutation) Fingerprint() (r string, exists bool) {
+	v := m.fingerprint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFingerprint returns the old "fingerprint" field's value of the DictionaryIndexManifest entity.
+// If the DictionaryIndexManifest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexManifestMutation) OldFingerprint(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFingerprint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFingerprint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFingerprint: %w", err)
+	}
+	return oldValue.Fingerprint, nil
+}
+
+// ResetFingerprint resets all changes to the "fingerprint" field.
+func (m *DictionaryIndexManifestMutation) ResetFingerprint() {
+	m.fingerprint = nil
+}
+
+// SetSchemaVersion sets the "schema_version" field.
+func (m *DictionaryIndexManifestMutation) SetSchemaVersion(s string) {
+	m.schema_version = &s
+}
+
+// SchemaVersion returns the value of the "schema_version" field in the mutation.
+func (m *DictionaryIndexManifestMutation) SchemaVersion() (r string, exists bool) {
+	v := m.schema_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSchemaVersion returns the old "schema_version" field's value of the DictionaryIndexManifest entity.
+// If the DictionaryIndexManifest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexManifestMutation) OldSchemaVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSchemaVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSchemaVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSchemaVersion: %w", err)
+	}
+	return oldValue.SchemaVersion, nil
+}
+
+// ResetSchemaVersion resets all changes to the "schema_version" field.
+func (m *DictionaryIndexManifestMutation) ResetSchemaVersion() {
+	m.schema_version = nil
+}
+
+// SetBuiltAt sets the "built_at" field.
+func (m *DictionaryIndexManifestMutation) SetBuiltAt(t time.Time) {
+	m.built_at = &t
+}
+
+// BuiltAt returns the value of the "built_at" field in the mutation.
+func (m *DictionaryIndexManifestMutation) BuiltAt() (r time.Time, exists bool) {
+	v := m.built_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBuiltAt returns the old "built_at" field's value of the DictionaryIndexManifest entity.
+// If the DictionaryIndexManifest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexManifestMutation) OldBuiltAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBuiltAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBuiltAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBuiltAt: %w", err)
+	}
+	return oldValue.BuiltAt, nil
+}
+
+// ResetBuiltAt resets all changes to the "built_at" field.
+func (m *DictionaryIndexManifestMutation) ResetBuiltAt() {
+	m.built_at = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *DictionaryIndexManifestMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *DictionaryIndexManifestMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the DictionaryIndexManifest entity.
+// If the DictionaryIndexManifest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DictionaryIndexManifestMutation) OldExpiresAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ClearExpiresAt clears the value of the "expires_at" field.
+func (m *DictionaryIndexManifestMutation) ClearExpiresAt() {
+	m.expires_at = nil
+	m.clearedFields[dictionaryindexmanifest.FieldExpiresAt] = struct{}{}
+}
+
+// ExpiresAtCleared returns if the "expires_at" field was cleared in this mutation.
+func (m *DictionaryIndexManifestMutation) ExpiresAtCleared() bool {
+	_, ok := m.clearedFields[dictionaryindexmanifest.FieldExpiresAt]
+	return ok
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *DictionaryIndexManifestMutation) ResetExpiresAt() {
+	m.expires_at = nil
+	delete(m.clearedFields, dictionaryindexmanifest.FieldExpiresAt)
+}
+
+// Where appends a list predicates to the DictionaryIndexManifestMutation builder.
+func (m *DictionaryIndexManifestMutation) Where(ps ...predicate.DictionaryIndexManifest) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DictionaryIndexManifestMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DictionaryIndexManifestMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DictionaryIndexManifest, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DictionaryIndexManifestMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DictionaryIndexManifestMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DictionaryIndexManifest).
+func (m *DictionaryIndexManifestMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DictionaryIndexManifestMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.dictionary_name != nil {
+		fields = append(fields, dictionaryindexmanifest.FieldDictionaryName)
+	}
+	if m.source_path != nil {
+		fields = append(fields, dictionaryindexmanifest.FieldSourcePath)
+	}
+	if m.fingerprint != nil {
+		fields = append(fields, dictionaryindexmanifest.FieldFingerprint)
+	}
+	if m.schema_version != nil {
+		fields = append(fields, dictionaryindexmanifest.FieldSchemaVersion)
+	}
+	if m.built_at != nil {
+		fields = append(fields, dictionaryindexmanifest.FieldBuiltAt)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, dictionaryindexmanifest.FieldExpiresAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DictionaryIndexManifestMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case dictionaryindexmanifest.FieldDictionaryName:
+		return m.DictionaryName()
+	case dictionaryindexmanifest.FieldSourcePath:
+		return m.SourcePath()
+	case dictionaryindexmanifest.FieldFingerprint:
+		return m.Fingerprint()
+	case dictionaryindexmanifest.FieldSchemaVersion:
+		return m.SchemaVersion()
+	case dictionaryindexmanifest.FieldBuiltAt:
+		return m.BuiltAt()
+	case dictionaryindexmanifest.FieldExpiresAt:
+		return m.ExpiresAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DictionaryIndexManifestMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case dictionaryindexmanifest.FieldDictionaryName:
+		return m.OldDictionaryName(ctx)
+	case dictionaryindexmanifest.FieldSourcePath:
+		return m.OldSourcePath(ctx)
+	case dictionaryindexmanifest.FieldFingerprint:
+		return m.OldFingerprint(ctx)
+	case dictionaryindexmanifest.FieldSchemaVersion:
+		return m.OldSchemaVersion(ctx)
+	case dictionaryindexmanifest.FieldBuiltAt:
+		return m.OldBuiltAt(ctx)
+	case dictionaryindexmanifest.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown DictionaryIndexManifest field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictionaryIndexManifestMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case dictionaryindexmanifest.FieldDictionaryName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDictionaryName(v)
+		return nil
+	case dictionaryindexmanifest.FieldSourcePath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourcePath(v)
+		return nil
+	case dictionaryindexmanifest.FieldFingerprint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFingerprint(v)
+		return nil
+	case dictionaryindexmanifest.FieldSchemaVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSchemaVersion(v)
+		return nil
+	case dictionaryindexmanifest.FieldBuiltAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBuiltAt(v)
+		return nil
+	case dictionaryindexmanifest.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DictionaryIndexManifest field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DictionaryIndexManifestMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DictionaryIndexManifestMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DictionaryIndexManifestMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DictionaryIndexManifest numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DictionaryIndexManifestMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(dictionaryindexmanifest.FieldExpiresAt) {
+		fields = append(fields, dictionaryindexmanifest.FieldExpiresAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DictionaryIndexManifestMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DictionaryIndexManifestMutation) ClearField(name string) error {
+	switch name {
+	case dictionaryindexmanifest.FieldExpiresAt:
+		m.ClearExpiresAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DictionaryIndexManifest nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DictionaryIndexManifestMutation) ResetField(name string) error {
+	switch name {
+	case dictionaryindexmanifest.FieldDictionaryName:
+		m.ResetDictionaryName()
+		return nil
+	case dictionaryindexmanifest.FieldSourcePath:
+		m.ResetSourcePath()
+		return nil
+	case dictionaryindexmanifest.FieldFingerprint:
+		m.ResetFingerprint()
+		return nil
+	case dictionaryindexmanifest.FieldSchemaVersion:
+		m.ResetSchemaVersion()
+		return nil
+	case dictionaryindexmanifest.FieldBuiltAt:
+		m.ResetBuiltAt()
+		return nil
+	case dictionaryindexmanifest.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DictionaryIndexManifest field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DictionaryIndexManifestMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DictionaryIndexManifestMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DictionaryIndexManifestMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DictionaryIndexManifestMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DictionaryIndexManifestMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DictionaryIndexManifestMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DictionaryIndexManifestMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DictionaryIndexManifest unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DictionaryIndexManifestMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DictionaryIndexManifest edge %s", name)
 }
 
 // FontMutation represents an operation that mutates the Font nodes in the graph.

@@ -4,6 +4,8 @@ package ent
 
 import (
 	"owl/backend/ent/dictionary"
+	"owl/backend/ent/dictionaryindexentry"
+	"owl/backend/ent/dictionaryindexmanifest"
 	"owl/backend/ent/font"
 	"owl/backend/ent/schema"
 	"owl/backend/ent/user"
@@ -62,6 +64,54 @@ func init() {
 	dictionary.DefaultUpdatedAt = dictionaryDescUpdatedAt.Default.(func() time.Time)
 	// dictionary.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	dictionary.UpdateDefaultUpdatedAt = dictionaryDescUpdatedAt.UpdateDefault.(func() time.Time)
+	dictionaryindexentryFields := schema.DictionaryIndexEntry{}.Fields()
+	_ = dictionaryindexentryFields
+	// dictionaryindexentryDescDictionaryName is the schema descriptor for dictionary_name field.
+	dictionaryindexentryDescDictionaryName := dictionaryindexentryFields[0].Descriptor()
+	// dictionaryindexentry.DictionaryNameValidator is a validator for the "dictionary_name" field. It is called by the builders before save.
+	dictionaryindexentry.DictionaryNameValidator = dictionaryindexentryDescDictionaryName.Validators[0].(func(string) error)
+	// dictionaryindexentryDescKeyword is the schema descriptor for keyword field.
+	dictionaryindexentryDescKeyword := dictionaryindexentryFields[1].Descriptor()
+	// dictionaryindexentry.KeywordValidator is a validator for the "keyword" field. It is called by the builders before save.
+	dictionaryindexentry.KeywordValidator = dictionaryindexentryDescKeyword.Validators[0].(func(string) error)
+	// dictionaryindexentryDescNormalizedKeyword is the schema descriptor for normalized_keyword field.
+	dictionaryindexentryDescNormalizedKeyword := dictionaryindexentryFields[2].Descriptor()
+	// dictionaryindexentry.DefaultNormalizedKeyword holds the default value on creation for the normalized_keyword field.
+	dictionaryindexentry.DefaultNormalizedKeyword = dictionaryindexentryDescNormalizedKeyword.Default.(string)
+	// dictionaryindexentryDescLookupKey is the schema descriptor for lookup_key field.
+	dictionaryindexentryDescLookupKey := dictionaryindexentryFields[3].Descriptor()
+	// dictionaryindexentry.LookupKeyValidator is a validator for the "lookup_key" field. It is called by the builders before save.
+	dictionaryindexentry.LookupKeyValidator = dictionaryindexentryDescLookupKey.Validators[0].(func(string) error)
+	// dictionaryindexentryDescLookupKeyLower is the schema descriptor for lookup_key_lower field.
+	dictionaryindexentryDescLookupKeyLower := dictionaryindexentryFields[4].Descriptor()
+	// dictionaryindexentry.LookupKeyLowerValidator is a validator for the "lookup_key_lower" field. It is called by the builders before save.
+	dictionaryindexentry.LookupKeyLowerValidator = dictionaryindexentryDescLookupKeyLower.Validators[0].(func(string) error)
+	// dictionaryindexentryDescIsResource is the schema descriptor for is_resource field.
+	dictionaryindexentryDescIsResource := dictionaryindexentryFields[8].Descriptor()
+	// dictionaryindexentry.DefaultIsResource holds the default value on creation for the is_resource field.
+	dictionaryindexentry.DefaultIsResource = dictionaryindexentryDescIsResource.Default.(bool)
+	// dictionaryindexentryDescPayload is the schema descriptor for payload field.
+	dictionaryindexentryDescPayload := dictionaryindexentryFields[9].Descriptor()
+	// dictionaryindexentry.PayloadValidator is a validator for the "payload" field. It is called by the builders before save.
+	dictionaryindexentry.PayloadValidator = dictionaryindexentryDescPayload.Validators[0].(func(string) error)
+	dictionaryindexmanifestFields := schema.DictionaryIndexManifest{}.Fields()
+	_ = dictionaryindexmanifestFields
+	// dictionaryindexmanifestDescDictionaryName is the schema descriptor for dictionary_name field.
+	dictionaryindexmanifestDescDictionaryName := dictionaryindexmanifestFields[0].Descriptor()
+	// dictionaryindexmanifest.DictionaryNameValidator is a validator for the "dictionary_name" field. It is called by the builders before save.
+	dictionaryindexmanifest.DictionaryNameValidator = dictionaryindexmanifestDescDictionaryName.Validators[0].(func(string) error)
+	// dictionaryindexmanifestDescSourcePath is the schema descriptor for source_path field.
+	dictionaryindexmanifestDescSourcePath := dictionaryindexmanifestFields[1].Descriptor()
+	// dictionaryindexmanifest.DefaultSourcePath holds the default value on creation for the source_path field.
+	dictionaryindexmanifest.DefaultSourcePath = dictionaryindexmanifestDescSourcePath.Default.(string)
+	// dictionaryindexmanifestDescFingerprint is the schema descriptor for fingerprint field.
+	dictionaryindexmanifestDescFingerprint := dictionaryindexmanifestFields[2].Descriptor()
+	// dictionaryindexmanifest.DefaultFingerprint holds the default value on creation for the fingerprint field.
+	dictionaryindexmanifest.DefaultFingerprint = dictionaryindexmanifestDescFingerprint.Default.(string)
+	// dictionaryindexmanifestDescSchemaVersion is the schema descriptor for schema_version field.
+	dictionaryindexmanifestDescSchemaVersion := dictionaryindexmanifestFields[3].Descriptor()
+	// dictionaryindexmanifest.DefaultSchemaVersion holds the default value on creation for the schema_version field.
+	dictionaryindexmanifest.DefaultSchemaVersion = dictionaryindexmanifestDescSchemaVersion.Default.(string)
 	fontFields := schema.Font{}.Fields()
 	_ = fontFields
 	// fontDescName is the schema descriptor for name field.

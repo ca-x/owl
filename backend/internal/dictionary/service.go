@@ -29,18 +29,21 @@ import (
 )
 
 type Service struct {
-	client               *ent.Client
-	uploadsDir           string
-	libraryDir           string
-	redisClient          *redis.Client
-	redisKeyPrefix       string
-	redisPrefixMaxLen    int
-	redisSearchKeyPrefix string
-	redisSearchEnabled   bool
-	audioTranscoder      *audioTranscoder
-	libraryRefreshMu     sync.Mutex
-	mu                   sync.RWMutex
-	loaded               map[int]*LoadedDictionary
+	client                *ent.Client
+	uploadsDir            string
+	libraryDir            string
+	redisClient           *redis.Client
+	redisKeyPrefix        string
+	redisPrefixMaxLen     int
+	redisSearchKeyPrefix  string
+	redisSearchEnabled    bool
+	maxLoadedDictionaries int
+	audioTranscoder       *audioTranscoder
+	libraryRefreshMu      sync.Mutex
+	mu                    sync.RWMutex
+	loaded                map[int]*LoadedDictionary
+	loadedOrder           []int
+	loading               map[int]*dictionaryLoadCall
 }
 
 type LoadedDictionary struct {
@@ -54,6 +57,12 @@ type LoadedDictionary struct {
 	RediSearchEnabled bool
 }
 
+type dictionaryLoadCall struct {
+	done   chan struct{}
+	loaded *LoadedDictionary
+	err    error
+}
+
 type SearchParams struct {
 	UserID       int
 	IsAdmin      bool
@@ -62,18 +71,20 @@ type SearchParams struct {
 	Guest        bool
 }
 
-func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int, redisSearchKeyPrefix string, redisSearchEnabled bool, audioCacheDir string, ffmpegBin string) *Service {
+func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int, redisSearchKeyPrefix string, redisSearchEnabled bool, maxLoadedDictionaries int, audioCacheDir string, ffmpegBin string) *Service {
 	return &Service{
-		client:               client,
-		uploadsDir:           uploadsDir,
-		libraryDir:           libraryDir,
-		redisClient:          redisClient,
-		redisKeyPrefix:       strings.TrimSpace(redisKeyPrefix),
-		redisPrefixMaxLen:    redisPrefixMaxLen,
-		redisSearchKeyPrefix: strings.TrimSpace(redisSearchKeyPrefix),
-		redisSearchEnabled:   redisSearchEnabled,
-		audioTranscoder:      newAudioTranscoder(audioCacheDir, firstNonEmpty(strings.TrimSpace(ffmpegBin), resolveFFmpegBinary())),
-		loaded:               make(map[int]*LoadedDictionary),
+		client:                client,
+		uploadsDir:            uploadsDir,
+		libraryDir:            libraryDir,
+		redisClient:           redisClient,
+		redisKeyPrefix:        strings.TrimSpace(redisKeyPrefix),
+		redisPrefixMaxLen:     redisPrefixMaxLen,
+		redisSearchKeyPrefix:  strings.TrimSpace(redisSearchKeyPrefix),
+		redisSearchEnabled:    redisSearchEnabled,
+		maxLoadedDictionaries: normalizeLoadedDictionaryLimit(maxLoadedDictionaries),
+		audioTranscoder:       newAudioTranscoder(audioCacheDir, firstNonEmpty(strings.TrimSpace(ffmpegBin), resolveFFmpegBinary())),
+		loaded:                make(map[int]*LoadedDictionary),
+		loading:               make(map[int]*dictionaryLoadCall),
 	}
 }
 
@@ -226,6 +237,9 @@ func (s *Service) Delete(ctx context.Context, id int, userID int, isAdmin bool) 
 		return err
 	}
 	s.unload(item.ID)
+	if err := s.deleteExternalIndex(ctx, item); err != nil {
+		log.Printf("delete dictionary index id=%d name=%s: %v", item.ID, item.Slug, err)
+	}
 	_ = os.Remove(item.MdxPath)
 	for _, path := range decodePaths(item.MddPathsJSON) {
 		_ = os.Remove(path)
@@ -276,7 +290,7 @@ func (s *Service) Upload(ctx context.Context, userID int, mdxFile *multipart.Fil
 		return nil, err
 	}
 	s.mu.Lock()
-	s.loaded[created.ID] = loaded
+	s.cacheLoadedLocked(created.ID, loaded)
 	s.mu.Unlock()
 	return ptrSummary(created), nil
 }
@@ -305,12 +319,24 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 	results := make([]models.SearchResult, 0)
 	seen := make(map[string]struct{})
 	for _, item := range dicts {
-		loaded, err := s.ensureLoaded(item)
+		hits, indexed, err := s.searchExternalIndexHits(ctx, item, params.Query, 10)
 		if err != nil {
 			continue
 		}
-
-		hits, err := searchIndexHits(loaded, item.Slug, params.Query, 10)
+		if !indexed {
+			loaded, err := s.ensureLoaded(item)
+			if err != nil {
+				continue
+			}
+			hits, err = searchIndexHits(loaded, item.Slug, params.Query, 10)
+			if err != nil {
+				continue
+			}
+		}
+		if len(hits) == 0 {
+			continue
+		}
+		loaded, err := s.ensureLoaded(item)
 		if err != nil {
 			continue
 		}
@@ -392,6 +418,130 @@ func searchIndexHits(loaded *LoadedDictionary, dictionaryName string, query stri
 		hits = hits[:limit]
 	}
 	return hits, nil
+}
+
+func (s *Service) searchExternalIndexHits(ctx context.Context, item *ent.Dictionary, query string, limit int) ([]mdx.SearchHit, bool, error) {
+	if item == nil || !s.hasExternalIndexStore() {
+		return nil, false, nil
+	}
+	if err := s.ensureExternalIndex(ctx, item); err != nil {
+		return nil, false, err
+	}
+	hits, err := s.searchExternalStoreHits(ctx, item.Slug, query, limit)
+	if err != nil {
+		if errors.Is(err, mdx.ErrIndexMiss) {
+			return nil, true, nil
+		}
+		return nil, false, err
+	}
+	return hits, true, nil
+}
+
+func (s *Service) ensureExternalIndex(ctx context.Context, item *ent.Dictionary) error {
+	if item == nil || !s.hasExternalIndexStore() {
+		return nil
+	}
+	prefixStore := s.newManagedPrefixStore(ctx)
+	var searchStore *redisSearchStore
+	if s.redisClient != nil && s.redisSearchEnabled {
+		searchStore = newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), item.Slug)
+		searchStore.ctx = ctx
+	}
+	managed := newManagedDictionaryIndexStore(prefixStore, searchStore)
+	_, err := mdx.EnsureDictionaryIndex(item.MdxPath, managed, mdx.WithReuseIfUnchanged(true))
+	return err
+}
+
+func (s *Service) deleteExternalIndex(ctx context.Context, item *ent.Dictionary) error {
+	if item == nil || !s.hasExternalIndexStore() {
+		return nil
+	}
+	prefixStore := s.newManagedPrefixStore(ctx)
+	var searchStore *redisSearchStore
+	if s.redisClient != nil && s.redisSearchEnabled {
+		searchStore = newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), item.Slug)
+		searchStore.ctx = ctx
+	}
+	managed := newManagedDictionaryIndexStore(prefixStore, searchStore)
+	return managed.DeleteDictionary(item.Slug)
+}
+
+func (s *Service) searchExternalStoreHits(ctx context.Context, dictionaryName string, query string, limit int) ([]mdx.SearchHit, error) {
+	if !s.hasExternalIndexStore() {
+		return nil, mdx.ErrIndexMiss
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	hits := make([]mdx.SearchHit, 0, limit)
+	if s.redisClient != nil && s.redisSearchEnabled {
+		searchStore := newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), dictionaryName)
+		searchStore.ctx = ctx
+		searchHits, searchErr := searchStore.Search(dictionaryName, query, limit)
+		if searchErr == nil {
+			hits = append(hits, searchHits...)
+		} else if !errors.Is(searchErr, mdx.ErrIndexMiss) && !isRediSearchUnavailable(searchErr) {
+			return nil, searchErr
+		}
+	}
+
+	prefixStore := s.newManagedPrefixStore(ctx)
+	if len(hits) == 0 {
+		if searchStore, ok := prefixStore.(mdx.FuzzyIndexStore); ok {
+			searchHits, searchErr := searchStore.Search(dictionaryName, query, limit)
+			if searchErr == nil {
+				hits = append(hits, searchHits...)
+			} else if !errors.Is(searchErr, mdx.ErrIndexMiss) {
+				return nil, searchErr
+			}
+		}
+	}
+	if len(hits) == 0 {
+		entries, prefixErr := prefixStore.PrefixSearch(dictionaryName, query, limit)
+		if prefixErr != nil {
+			return nil, prefixErr
+		}
+		for _, entry := range entries {
+			hits = append(hits, mdx.SearchHit{Entry: entry, Score: prefixScore(query, entry.Keyword), Source: s.prefixSearchSource()})
+		}
+	}
+	if len(hits) == 0 {
+		return nil, mdx.ErrIndexMiss
+	}
+	if len(hits) > limit {
+		hits = hits[:limit]
+	}
+	return hits, nil
+}
+
+func (s *Service) newManagedPrefixStore(ctx context.Context) mdx.ManagedIndexStore {
+	if s.redisClient == nil {
+		return newSQLDictionaryIndexStore(ctx, s.client)
+	}
+	return s.newRedisPrefixStore(ctx)
+}
+
+func (s *Service) newRedisPrefixStore(ctx context.Context) mdx.ManagedIndexStore {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return mdx.NewRedisIndexStore(s.redisClient,
+		mdx.WithRedisIndexContext(ctx),
+		mdx.WithRedisKeyPrefix(firstNonEmpty(s.redisKeyPrefix, "owl:mdx:index")),
+		mdx.WithRedisPrefixIndexMaxLen(max(s.redisPrefixMaxLen, 1)),
+	)
+}
+
+func (s *Service) hasExternalIndexStore() bool {
+	return s.redisClient != nil || s.client != nil
+}
+
+func (s *Service) prefixSearchSource() string {
+	if s.redisClient != nil {
+		return "redis-prefix"
+	}
+	return "sql-prefix"
 }
 
 func keywordEntryToIndexEntry(entry *mdx.MDictKeywordEntry) mdx.IndexEntry {
@@ -527,28 +677,35 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 	globalIndex := 0
 
 	for _, item := range dicts {
-		loaded, loadErr := s.ensureLoaded(item)
-		if loadErr != nil {
+		var hits []mdx.SearchHit
+		indexHits, indexed, indexErr := s.searchExternalIndexHits(ctx, item, params.Query, max(limit*4, limit))
+		if indexErr != nil {
 			continue
 		}
-
-		var hits []mdx.SearchHit
-		if loaded.FuzzyStore != nil {
-			searchHits, searchErr := loaded.FuzzyStore.Search(item.Slug, params.Query, max(limit*3, limit))
-			if searchErr == nil {
-				hits = searchHits
-			} else if loaded.RediSearchEnabled && !errors.Is(searchErr, mdx.ErrIndexMiss) && !isRediSearchUnavailable(searchErr) {
+		if indexed {
+			hits = indexHits
+		} else {
+			loaded, loadErr := s.ensureLoaded(item)
+			if loadErr != nil {
 				continue
 			}
-		}
-		if len(hits) == 0 && loaded.PrefixStore != nil {
-			entries, prefixErr := loaded.PrefixStore.PrefixSearch(item.Slug, params.Query, max(limit*4, limit))
-			if prefixErr == nil {
-				for _, entry := range entries {
-					hits = append(hits, mdx.SearchHit{Entry: entry, Score: prefixScore(params.Query, entry.Keyword), Source: "redis-prefix"})
+			if loaded.FuzzyStore != nil {
+				searchHits, searchErr := loaded.FuzzyStore.Search(item.Slug, params.Query, max(limit*3, limit))
+				if searchErr == nil {
+					hits = searchHits
+				} else if loaded.RediSearchEnabled && !errors.Is(searchErr, mdx.ErrIndexMiss) && !isRediSearchUnavailable(searchErr) {
+					continue
 				}
-			} else if !errors.Is(prefixErr, mdx.ErrIndexMiss) {
-				continue
+			}
+			if len(hits) == 0 && loaded.PrefixStore != nil {
+				entries, prefixErr := loaded.PrefixStore.PrefixSearch(item.Slug, params.Query, max(limit*4, limit))
+				if prefixErr == nil {
+					for _, entry := range entries {
+						hits = append(hits, mdx.SearchHit{Entry: entry, Score: prefixScore(params.Query, entry.Keyword), Source: "redis-prefix"})
+					}
+				} else if !errors.Is(prefixErr, mdx.ErrIndexMiss) {
+					continue
+				}
 			}
 		}
 		for _, hit := range hits {
@@ -690,22 +847,85 @@ func (s *Service) ensureLoaded(item *ent.Dictionary) (*LoadedDictionary, error) 
 	loaded, ok := s.loaded[item.ID]
 	s.mu.RUnlock()
 	if ok {
+		s.mu.Lock()
+		s.touchLoadedLocked(item.ID)
+		s.mu.Unlock()
 		return loaded, nil
 	}
-	fresh, _, err := s.buildLoadedDictionary(item.MdxPath, decodePaths(item.MddPathsJSON))
-	if err != nil {
-		return nil, err
-	}
+
 	s.mu.Lock()
-	s.loaded[item.ID] = fresh
+	if loaded, ok := s.loaded[item.ID]; ok {
+		s.touchLoadedLocked(item.ID)
+		s.mu.Unlock()
+		return loaded, nil
+	}
+	if call, ok := s.loading[item.ID]; ok {
+		done := call.done
+		s.mu.Unlock()
+		<-done
+		return call.loaded, call.err
+	}
+	call := &dictionaryLoadCall{done: make(chan struct{})}
+	s.loading[item.ID] = call
 	s.mu.Unlock()
-	return fresh, nil
+
+	fresh, _, err := s.buildLoadedDictionary(item.MdxPath, decodePaths(item.MddPathsJSON))
+	s.mu.Lock()
+	if err == nil {
+		if loaded, ok := s.loaded[item.ID]; ok {
+			fresh = loaded
+			s.touchLoadedLocked(item.ID)
+		} else {
+			s.cacheLoadedLocked(item.ID, fresh)
+		}
+	}
+	call.loaded = fresh
+	call.err = err
+	delete(s.loading, item.ID)
+	close(call.done)
+	s.mu.Unlock()
+	return fresh, err
 }
 
 func (s *Service) unload(id int) {
 	s.mu.Lock()
 	delete(s.loaded, id)
+	s.removeLoadedOrderLocked(id)
 	s.mu.Unlock()
+}
+
+func (s *Service) cacheLoadedLocked(id int, loaded *LoadedDictionary) {
+	if loaded == nil {
+		return
+	}
+	s.loaded[id] = loaded
+	s.touchLoadedLocked(id)
+	if s.maxLoadedDictionaries == 0 {
+		return
+	}
+	for len(s.loadedOrder) > s.maxLoadedDictionaries {
+		evictID := s.loadedOrder[0]
+		s.loadedOrder = s.loadedOrder[1:]
+		if evictID == id {
+			continue
+		}
+		delete(s.loaded, evictID)
+	}
+}
+
+func (s *Service) touchLoadedLocked(id int) {
+	s.removeLoadedOrderLocked(id)
+	s.loadedOrder = append(s.loadedOrder, id)
+}
+
+func (s *Service) removeLoadedOrderLocked(id int) {
+	for idx, loadedID := range s.loadedOrder {
+		if loadedID == id {
+			copy(s.loadedOrder[idx:], s.loadedOrder[idx+1:])
+			s.loadedOrder = s.loadedOrder[:len(s.loadedOrder)-1]
+			return
+		}
+	}
 }
 
 func (s *Service) getOwnedDictionary(ctx context.Context, id int, userID int, isAdmin bool) (*ent.Dictionary, error) {
@@ -770,7 +990,7 @@ func (s *Service) Refresh(ctx context.Context, id int, userID int, isAdmin bool)
 		return nil, err
 	}
 	s.mu.Lock()
-	s.loaded[item.ID] = loaded
+	s.cacheLoadedLocked(item.ID, loaded)
 	s.mu.Unlock()
 	return &models.MaintenanceReport{
 		Summary: "dictionary refreshed",
@@ -884,8 +1104,19 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 			fuzzyStore = searchStore
 			rediSearchEnabled = true
 		} else {
-			fuzzyStore = redisPrefixFuzzyStore{store: redisPrefixStore}
+			fuzzyStore = redisPrefixFuzzyStore{store: redisPrefixStore, source: "redis-prefix"}
 		}
+	} else if s.client != nil {
+		sqlStore := newSQLDictionaryIndexStore(context.Background(), s.client)
+		managed := newManagedDictionaryIndexStore(sqlStore, nil)
+		ensureResult, err := mdx.EnsureDictionaryIndex(mdxPath, managed, mdx.WithReuseIfUnchanged(true))
+		if err != nil {
+			return nil, dictionaryMeta{}, err
+		}
+		log.Printf("dictionary index sync name=%s reused=%t rebuilt=%t schema=%s source=%s", ensureResult.DictionaryName, ensureResult.Reused, ensureResult.Rebuilt, ensureResult.Manifest.SchemaVersion, ensureResult.Manifest.SourcePath)
+		prefixStore = managed
+		managedStore = managed
+		fuzzyStore = sqlStore
 	} else {
 		entries, err = mdxDict.ExportIndex()
 		if err != nil {
@@ -1040,8 +1271,11 @@ func fuzzyBackendName(loaded *LoadedDictionary) string {
 	if loaded.RediSearchEnabled {
 		return "redisearch"
 	}
-	if _, ok := loaded.FuzzyStore.(redisPrefixFuzzyStore); ok {
-		return "redis-prefix"
+	if store, ok := loaded.FuzzyStore.(redisPrefixFuzzyStore); ok {
+		return store.sourceName()
+	}
+	if _, ok := loaded.FuzzyStore.(*sqlDictionaryIndexStore); ok {
+		return "sql-index"
 	}
 	return "memory-fuzzy"
 }
@@ -1049,6 +1283,9 @@ func fuzzyBackendName(loaded *LoadedDictionary) string {
 func prefixBackendName(loaded *LoadedDictionary) string {
 	if loaded == nil || loaded.PrefixStore == nil {
 		return "none"
+	}
+	if _, ok := loaded.PrefixStore.(*managedDictionaryIndexStore); ok && !loaded.RediSearchEnabled {
+		return "sql-prefix"
 	}
 	return "redis-prefix"
 }
@@ -1101,6 +1338,13 @@ func max(a int, b int) int {
 		return a
 	}
 	return b
+}
+
+func normalizeLoadedDictionaryLimit(value int) int {
+	if value < 0 {
+		return 0
+	}
+	return value
 }
 
 func discoverPairedMDDs(mdxPath string, existing []string) []string {

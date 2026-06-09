@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 type Dictionary struct{ ent.Schema }
@@ -29,5 +30,15 @@ func (Dictionary) Fields() []ent.Field {
 func (Dictionary) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("owner", User.Type).Ref("dictionaries").Unique().Required(),
+	}
+}
+
+func (Dictionary) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("enabled", "public", "title"),
+		index.Fields("enabled", "title"),
+		index.Fields("created_at"),
+		index.Fields("slug"),
+		index.Edges("owner"),
 	}
 }
