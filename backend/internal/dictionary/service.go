@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -55,6 +56,16 @@ type LoadedDictionary struct {
 	Entries           []mdx.IndexEntry
 	Info              mdx.DictionaryInfo
 	RediSearchEnabled bool
+
+	// MDD resource files are loaded lazily on first resource access so that
+	// startup/warm-up and the first search stay fast. Building a full MDD index
+	// (often the largest files, holding audio/images) is only needed when a
+	// resource is actually served.
+	slug     string
+	mdxPath  string
+	mddPaths []string
+	mddOnce  sync.Once
+	mddErr   error
 }
 
 type dictionaryLoadCall struct {
@@ -133,12 +144,39 @@ func (s *Service) WarmEnabledDictionaries(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	concurrency := warmConcurrency()
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
 	for _, item := range dicts {
-		if _, err := s.ensureLoaded(item); err != nil {
-			return err
+		select {
+		case <-ctx.Done():
+			wg.Wait()
+			return ctx.Err()
+		case sem <- struct{}{}:
 		}
+		wg.Add(1)
+		go func(item *ent.Dictionary) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if _, err := s.ensureLoaded(item); err != nil {
+				// Keep warming the remaining dictionaries even if one fails.
+				log.Printf("warm dictionary id=%d name=%s: %v", item.ID, item.Slug, err)
+			}
+		}(item)
 	}
+	wg.Wait()
 	return nil
+}
+
+func warmConcurrency() int {
+	n := runtime.GOMAXPROCS(0)
+	if n < 2 {
+		return 2
+	}
+	if n > 8 {
+		return 8
+	}
+	return n
 }
 
 func (s *Service) ListPublic(ctx context.Context) ([]models.DictionarySummary, error) {
@@ -788,6 +826,35 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 	return suggestions, nil
 }
 
+// ensureMDDsLoaded lazily opens and indexes the paired MDD resource files for a
+// loaded dictionary. This is deferred out of the startup/search path because MDD
+// files are typically the largest (audio, images) and building their index is
+// only required to serve a resource. The work runs at most once per dictionary.
+func (s *Service) ensureMDDsLoaded(loaded *LoadedDictionary) error {
+	if loaded == nil {
+		return fmt.Errorf("dictionary not loaded")
+	}
+	loaded.mddOnce.Do(func() {
+		mddPaths := discoverPairedMDDs(loaded.mdxPath, loaded.mddPaths)
+		mdds := make([]*mdx.Mdict, 0, len(mddPaths))
+		for _, mddPath := range mddPaths {
+			mddDict, err := mdx.New(mddPath)
+			if err != nil {
+				loaded.mddErr = err
+				return
+			}
+			if err := mddDict.BuildIndex(); err != nil {
+				loaded.mddErr = err
+				return
+			}
+			mdds = append(mdds, mddDict)
+		}
+		loaded.MDDs = mdds
+		mdx.ConfigureDictionaryPairAssets(mdx.DictionarySpec{ID: loaded.slug, Name: loaded.slug, MDXPath: loaded.mdxPath, MDDPaths: mddPaths}, loaded.MDX, mdds...)
+	})
+	return loaded.mddErr
+}
+
 func (s *Service) OpenResource(ctx context.Context, id int, userID int, isAdmin bool, guest bool, resourcePath string) ([]byte, string, error) {
 	item, err := s.getAccessibleDictionary(ctx, id, userID, isAdmin, guest)
 	if err != nil {
@@ -795,6 +862,9 @@ func (s *Service) OpenResource(ctx context.Context, id int, userID int, isAdmin 
 	}
 	loaded, err := s.ensureLoaded(item)
 	if err != nil {
+		return nil, "", err
+	}
+	if err := s.ensureMDDsLoaded(loaded); err != nil {
 		return nil, "", err
 	}
 	resourcePath = strings.TrimSpace(strings.TrimPrefix(resourcePath, "/"))
@@ -1133,18 +1203,8 @@ func (s *Service) buildLoadedDictionary(mdxPath string, mddPaths []string) (*Loa
 		fuzzyStore = fallbackFuzzyStore
 	}
 
-	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, ManagedIndexStore: managedStore, Entries: entries, Info: info, RediSearchEnabled: rediSearchEnabled}
-	for _, mddPath := range discoverPairedMDDs(mdxPath, mddPaths) {
-		mddDict, err := mdx.New(mddPath)
-		if err != nil {
-			return nil, dictionaryMeta{}, err
-		}
-		if err := mddDict.BuildIndex(); err != nil {
-			return nil, dictionaryMeta{}, err
-		}
-		loaded.MDDs = append(loaded.MDDs, mddDict)
-	}
-	mdx.ConfigureDictionaryPairAssets(mdx.DictionarySpec{ID: slug, Name: slug, MDXPath: mdxPath, MDDPaths: discoverPairedMDDs(mdxPath, mddPaths)}, mdxDict, loaded.MDDs...)
+	loaded := &LoadedDictionary{MDX: mdxDict, FuzzyStore: fuzzyStore, PrefixStore: prefixStore, ManagedIndexStore: managedStore, Entries: entries, Info: info, RediSearchEnabled: rediSearchEnabled, slug: slug, mdxPath: mdxPath, mddPaths: mddPaths}
+	// MDDs are loaded lazily via ensureMDDsLoaded on the first resource request.
 
 	meta := dictionaryMeta{
 		Name:        firstNonEmpty(mdxDict.Name(), filepath.Base(mdxPath)),
