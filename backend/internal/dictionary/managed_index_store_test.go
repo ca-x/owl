@@ -1,11 +1,75 @@
 package dictionary
 
 import (
+	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/lib-x/mdx"
+	"github.com/redis/go-redis/v9"
 )
+
+func TestManagedDictionaryIndexStoreForwardsHealthCheck(t *testing.T) {
+	prefix := &healthManagedIndexStore{ManagedIndexStore: mdx.NewMemoryIndexStore(), healthy: true}
+	store := newManagedDictionaryIndexStore(prefix, nil)
+	ready, err := store.HasDictionaryIndex("My Dict")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ready || prefix.checkedName != "my-dict" {
+		t.Fatalf("unexpected health result: ready=%v name=%q", ready, prefix.checkedName)
+	}
+}
+
+func TestManagedDictionaryIndexStoreHealthCheckFallback(t *testing.T) {
+	store := newManagedDictionaryIndexStore(managedStoreWithoutHealth{ManagedIndexStore: mdx.NewMemoryIndexStore()}, nil)
+	ready, err := store.HasDictionaryIndex("My Dict")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ready {
+		t.Fatal("stores without optional health support should remain reusable")
+	}
+}
+
+func TestManagedDictionaryIndexStoreForwardsHealthError(t *testing.T) {
+	wantErr := errors.New("health failed")
+	prefix := &healthManagedIndexStore{ManagedIndexStore: mdx.NewMemoryIndexStore(), err: wantErr}
+	store := newManagedDictionaryIndexStore(prefix, nil)
+	if _, err := store.HasDictionaryIndex("My Dict"); !errors.Is(err, wantErr) {
+		t.Fatalf("expected health error, got %v", err)
+	}
+}
+
+func TestManagedDictionaryIndexStoreForwardsBuildLease(t *testing.T) {
+	prefix := &leaseManagedIndexStore{ManagedIndexStore: mdx.NewMemoryIndexStore()}
+	store := newManagedDictionaryIndexStore(prefix, nil)
+	release, acquired, err := store.AcquireIndexBuildLease("My Dict", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !acquired || release == nil {
+		t.Fatalf("unexpected lease result: acquired=%v release=%v", acquired, release != nil)
+	}
+	if prefix.acquiredName != "my-dict" || prefix.acquiredTTL != time.Minute {
+		t.Fatalf("unexpected lease forwarding: name=%q ttl=%v", prefix.acquiredName, prefix.acquiredTTL)
+	}
+	if err := release(); err != nil || !prefix.released {
+		t.Fatalf("release was not forwarded: released=%v err=%v", prefix.released, err)
+	}
+}
+
+func TestManagedDictionaryIndexStoreLeaseFallback(t *testing.T) {
+	store := newManagedDictionaryIndexStore(managedStoreWithoutHealth{ManagedIndexStore: mdx.NewMemoryIndexStore()}, nil)
+	release, acquired, err := store.AcquireIndexBuildLease("demo", time.Minute)
+	if err != nil || !acquired || release == nil {
+		t.Fatalf("stores without optional lease support should proceed: acquired=%v release=%v err=%v", acquired, release != nil, err)
+	}
+	if err := release(); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestManagedDictionaryIndexStoreSanitizesManifestName(t *testing.T) {
 	prefix := mdx.NewMemoryIndexStore()
@@ -81,6 +145,38 @@ type countingManagedIndexStore struct {
 	putCalls int
 }
 
+type healthManagedIndexStore struct {
+	mdx.ManagedIndexStore
+	healthy     bool
+	err         error
+	checkedName string
+}
+
+func (s *healthManagedIndexStore) HasDictionaryIndex(dictionaryName string) (bool, error) {
+	s.checkedName = dictionaryName
+	return s.healthy, s.err
+}
+
+type managedStoreWithoutHealth struct {
+	mdx.ManagedIndexStore
+}
+
+type leaseManagedIndexStore struct {
+	mdx.ManagedIndexStore
+	acquiredName string
+	acquiredTTL  time.Duration
+	released     bool
+}
+
+func (s *leaseManagedIndexStore) AcquireIndexBuildLease(dictionaryName string, ttl time.Duration) (func() error, bool, error) {
+	s.acquiredName = dictionaryName
+	s.acquiredTTL = ttl
+	return func() error {
+		s.released = true
+		return nil
+	}, true, nil
+}
+
 func (s *countingManagedIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.IndexEntry) error {
 	s.putCalls++
 	return s.ManagedIndexStore.Put(info, entries)
@@ -103,9 +199,28 @@ func writeInvalidDictionaryFile(t *testing.T, pattern string) string {
 }
 
 func TestFuzzyBackendNameReportsRedisPrefixFallback(t *testing.T) {
+	svc := NewService(nil, "", "", nil, "", 0, "", false, 0, "", "")
 	loaded := &LoadedDictionary{FuzzyStore: redisPrefixFuzzyStore{store: mdx.NewMemoryIndexStore()}}
-	if got := fuzzyBackendName(loaded); got != "redis-prefix" {
+	if got := svc.fuzzyBackendName(loaded); got != "redis-prefix" {
 		t.Fatalf("expected redis-prefix backend, got %q", got)
+	}
+}
+
+func TestFuzzyBackendNameReportsPrefixAfterRediSearchBecomesUnavailable(t *testing.T) {
+	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
+	t.Cleanup(func() { _ = client.Close() })
+	svc := NewService(nil, "", "", client, "", 0, "", true, 0, "", "")
+	loaded := &LoadedDictionary{
+		FuzzyStore:        newRedisSearchStore(client, "owl:test", "demo"),
+		PrefixStore:       mdx.NewMemoryIndexStore(),
+		RediSearchEnabled: true,
+	}
+	if got := svc.fuzzyBackendName(loaded); got != "redisearch" {
+		t.Fatalf("expected redisearch before capability failure, got %q", got)
+	}
+	svc.markRediSearchUnavailable(errors.New("ERR unknown command 'FT.SEARCH'"))
+	if got := svc.fuzzyBackendName(loaded); got != "redis-prefix" {
+		t.Fatalf("expected prefix fallback after capability failure, got %q", got)
 	}
 }
 

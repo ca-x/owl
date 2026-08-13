@@ -7,9 +7,10 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/jsonschema-go v0.4.2
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/lib-x/entsqlite v0.1.13
-	github.com/lib-x/mdx v0.1.15
+	github.com/lib-x/mdx v0.1.20
 	github.com/lib/pq v1.12.3
 	github.com/modelcontextprotocol/go-sdk v1.5.0
 	github.com/redis/go-redis/v9 v9.18.0
@@ -30,7 +31,6 @@ require (
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

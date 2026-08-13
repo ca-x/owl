@@ -230,14 +230,12 @@ func (s *Server) resolveMCPDictionaryID(ctx context.Context, userID int, diction
 	if name == "" {
 		return 0, nil
 	}
-	items, err := s.dictionaries.ListAccessible(ctx, userID)
+	id, found, err := s.dictionaries.ResolveAccessibleDictionaryID(ctx, userID, name)
 	if err != nil {
 		return 0, err
 	}
-	for _, item := range items {
-		if strings.EqualFold(item.Name, name) || strings.EqualFold(item.Title, name) || strings.EqualFold(firstNonEmpty(item.Title, item.Name), name) {
-			return item.ID, nil
-		}
+	if found {
+		return id, nil
 	}
 	return 0, fmt.Errorf("dictionary %q is not available to this token", name)
 }

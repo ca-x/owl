@@ -1,0 +1,11 @@
+.git
+.github
+.env
+
+frontend/node_modules
+frontend/dist
+
+backend/data
+backend/web/dist
+
+dist

@@ -2,6 +2,7 @@ package dictionary
 
 import (
 	"strings"
+	"time"
 
 	"github.com/lib-x/mdx"
 )
@@ -62,6 +63,33 @@ func (s *managedDictionaryIndexStore) DeleteDictionary(dictionaryName string) er
 		}
 	}
 	return s.prefixStore.DeleteDictionary(dictionaryName)
+}
+
+func (s *managedDictionaryIndexStore) HasDictionaryIndex(dictionaryName string) (bool, error) {
+	// Use the method set instead of naming mdx.IndexHealthStore directly so
+	// this adapter remains source-compatible with mdx releases predating the
+	// optional health interface.
+	healthStore, ok := s.prefixStore.(interface {
+		HasDictionaryIndex(string) (bool, error)
+	})
+	if !ok {
+		// Health checks are optional. Preserve the lifecycle behavior of a
+		// ManagedIndexStore that cannot verify its underlying data.
+		return true, nil
+	}
+	return healthStore.HasDictionaryIndex(sanitizeManagedDictionaryName(dictionaryName))
+}
+
+func (s *managedDictionaryIndexStore) AcquireIndexBuildLease(dictionaryName string, ttl time.Duration) (func() error, bool, error) {
+	leaseStore, ok := s.prefixStore.(interface {
+		AcquireIndexBuildLease(string, time.Duration) (func() error, bool, error)
+	})
+	if !ok {
+		// A missing optional lease capability means this process may proceed;
+		// in-process namespace locking still serializes local rebuilds.
+		return func() error { return nil }, true, nil
+	}
+	return leaseStore.AcquireIndexBuildLease(sanitizeManagedDictionaryName(dictionaryName), ttl)
 }
 
 func sanitizeManagedDictionaryName(name string) string {

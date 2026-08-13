@@ -13,11 +13,12 @@ import (
 )
 
 type redisSearchStore struct {
-	ctx       context.Context
-	client    *redis.Client
-	indexName string
-	docPrefix string
-	keysSet   string
+	ctx           context.Context
+	client        *redis.Client
+	indexName     string
+	docPrefix     string
+	keysSet       string
+	onUnavailable func(error)
 }
 
 func newRedisSearchStore(client *redis.Client, keyPrefix string, dictionaryName string) *redisSearchStore {
@@ -87,6 +88,12 @@ func (s *redisSearchStore) Put(info mdx.DictionaryInfo, entries []mdx.IndexEntry
 	return err
 }
 
+func (s *redisSearchStore) reportUnavailable(err error) {
+	if isRediSearchUnavailable(err) && s != nil && s.onUnavailable != nil {
+		s.onUnavailable(err)
+	}
+}
+
 func (s *redisSearchStore) DeleteDictionary(_ string) error {
 	if s == nil || s.client == nil {
 		return nil
@@ -94,6 +101,13 @@ func (s *redisSearchStore) DeleteDictionary(_ string) error {
 	oldKeys, err := s.client.SMembers(s.ctx, s.keysSet).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return err
+	}
+	if err := s.client.Do(s.ctx, "FT.DROPINDEX", s.indexName, "DD").Err(); err != nil {
+		lower := strings.ToLower(err.Error())
+		if !isRediSearchUnavailable(err) && !strings.Contains(lower, "unknown index name") && !strings.Contains(lower, "no such index") {
+			return err
+		}
+		s.reportUnavailable(err)
 	}
 	toDelete := make([]string, 0, len(oldKeys)+1)
 	toDelete = append(toDelete, s.keysSet)
@@ -126,6 +140,7 @@ func (s *redisSearchStore) Search(_ string, query string, limit int) ([]mdx.Sear
 	raw, err := s.client.Do(s.ctx, args...).Result()
 	if err != nil {
 		if isRediSearchUnavailable(err) {
+			s.reportUnavailable(err)
 			return nil, err
 		}
 		if strings.Contains(strings.ToLower(err.Error()), "unknown index name") {
@@ -189,6 +204,7 @@ func (s *redisSearchStore) ensureIndex() error {
 		if strings.Contains(lower, "index already exists") {
 			return nil
 		}
+		s.reportUnavailable(err)
 		return err
 	}
 	return nil
@@ -235,6 +251,7 @@ func isRediSearchUnavailable(err error) bool {
 	lower := strings.ToLower(err.Error())
 	return strings.Contains(lower, "unknown command 'ft.") ||
 		strings.Contains(lower, "unknown command `ft.") ||
+		(strings.Contains(lower, "noperm") && strings.Contains(lower, "ft.")) ||
 		strings.Contains(lower, "no such module") ||
 		strings.Contains(lower, "module disabled")
 }

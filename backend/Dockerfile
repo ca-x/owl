@@ -1,5 +1,6 @@
 FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
 WORKDIR /build/frontend
+ENV CI=true
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY frontend/ .

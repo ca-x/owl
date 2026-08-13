@@ -2,7 +2,6 @@ package dictionary
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 
@@ -14,7 +13,16 @@ import (
 	"github.com/lib-x/mdx"
 )
 
-const sqlIndexInsertBatchSize = 500
+const (
+	sqlIndexInsertBatchSize = 500
+	// PostgreSQL text values cannot contain NUL, so use a reserved control-key
+	// namespace that remains portable across supported SQL databases.
+	sqlIndexSentinelLookupKey = "\x1fowl:index-present"
+	// Payload predates the dedicated entry columns and remains required by the
+	// existing schema. Keep a minimal value instead of duplicating every entry
+	// as JSON; all lookup paths project the typed columns directly.
+	sqlIndexEntryPayload = "{}"
+)
 
 type sqlDictionaryIndexStore struct {
 	ctx    context.Context
@@ -54,6 +62,7 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 	}
 
 	batch := make([]*ent.DictionaryIndexEntryCreate, 0, sqlIndexInsertBatchSize)
+	storedEntryCount := int64(0)
 	flush := func() error {
 		if len(batch) == 0 {
 			return nil
@@ -65,12 +74,8 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 
 	for _, entry := range entries {
 		lookupKey := indexEntryLookupKey(entry)
-		if strings.TrimSpace(lookupKey) == "" {
+		if strings.TrimSpace(lookupKey) == "" || lookupKey == sqlIndexSentinelLookupKey {
 			continue
-		}
-		payload, err := json.Marshal(entry)
-		if err != nil {
-			return err
 		}
 		batch = append(batch, tx.DictionaryIndexEntry.Create().
 			SetDictionaryName(dictionaryName).
@@ -82,13 +87,23 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 			SetRecordEndOffset(entry.RecordEndOffset).
 			SetKeyBlockIdx(entry.KeyBlockIdx).
 			SetIsResource(entry.IsResource).
-			SetPayload(string(payload)))
+			SetPayload(sqlIndexEntryPayload))
+		storedEntryCount++
 		if len(batch) >= sqlIndexInsertBatchSize {
 			if err := flush(); err != nil {
 				return err
 			}
 		}
 	}
+	batch = append(batch, tx.DictionaryIndexEntry.Create().
+		SetDictionaryName(dictionaryName).
+		SetKeyword(sqlIndexSentinelLookupKey).
+		SetLookupKey(sqlIndexSentinelLookupKey).
+		SetLookupKeyLower(sqlIndexSentinelLookupKey).
+		SetRecordStartOffset(storedEntryCount).
+		SetRecordEndOffset(storedEntryCount).
+		SetKeyBlockIdx(-1).
+		SetPayload(sqlIndexEntryPayload))
 	if err := flush(); err != nil {
 		return err
 	}
@@ -107,7 +122,9 @@ func (s *sqlDictionaryIndexStore) GetExact(dictionaryName, keyword string) (mdx.
 		Where(
 			entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName)),
 			entindexentry.LookupKeyEQ(strings.TrimSpace(keyword)),
+			entindexentry.LookupKeyNEQ(sqlIndexSentinelLookupKey),
 		).
+		Select(indexEntryResultFields...).
 		First(s.ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -115,7 +132,7 @@ func (s *sqlDictionaryIndexStore) GetExact(dictionaryName, keyword string) (mdx.
 		}
 		return mdx.IndexEntry{}, err
 	}
-	return decodeIndexEntryPayload(item.Payload)
+	return indexEntryFromEntity(item), nil
 }
 
 func (s *sqlDictionaryIndexStore) PrefixSearch(dictionaryName, prefix string, limit int) ([]mdx.IndexEntry, error) {
@@ -124,7 +141,11 @@ func (s *sqlDictionaryIndexStore) PrefixSearch(dictionaryName, prefix string, li
 	}
 	prefixLower := strings.ToLower(strings.TrimSpace(prefix))
 	query := s.client.DictionaryIndexEntry.Query().
-		Where(entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName))).
+		Where(
+			entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName)),
+			entindexentry.LookupKeyNEQ(sqlIndexSentinelLookupKey),
+		).
+		Select(indexEntryResultFields...).
 		Order(ent.Asc(entindexentry.FieldLookupKeyLower))
 	if prefixLower != "" {
 		query = query.Where(entindexentry.LookupKeyLowerHasPrefix(prefixLower))
@@ -141,11 +162,7 @@ func (s *sqlDictionaryIndexStore) PrefixSearch(dictionaryName, prefix string, li
 	}
 	out := make([]mdx.IndexEntry, 0, len(items))
 	for _, item := range items {
-		entry, err := decodeIndexEntryPayload(item.Payload)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, entry)
+		out = append(out, indexEntryFromEntity(item))
 	}
 	return out, nil
 }
@@ -164,48 +181,40 @@ func (s *sqlDictionaryIndexStore) Search(dictionaryName, query string, limit int
 
 	hits := make([]mdx.SearchHit, 0, limit)
 	seen := make(map[string]struct{}, limit)
-	appendMatches := func(items []*ent.DictionaryIndexEntry, score float64, source string) error {
+	appendMatches := func(items []*ent.DictionaryIndexEntry, score float64, source string) {
 		for _, item := range items {
+			if item.LookupKey == sqlIndexSentinelLookupKey && item.KeyBlockIdx == -1 {
+				continue
+			}
 			if _, ok := seen[item.LookupKey]; ok {
 				continue
 			}
-			entry, err := decodeIndexEntryPayload(item.Payload)
-			if err != nil {
-				return err
-			}
-			hits = append(hits, mdx.SearchHit{Entry: entry, Score: score, Source: source})
+			hits = append(hits, mdx.SearchHit{Entry: indexEntryFromEntity(item), Score: score, Source: source})
 			seen[item.LookupKey] = struct{}{}
 			if len(hits) >= limit {
 				break
 			}
 		}
-		return nil
 	}
 
 	exact, err := s.querySearchEntries(dictionaryName, limit, entindexentry.LookupKeyLowerEQ(queryLower))
 	if err != nil {
 		return nil, err
 	}
-	if err := appendMatches(exact, 1.0, "sql-exact"); err != nil {
-		return nil, err
-	}
+	appendMatches(exact, 1.0, "sql-exact")
 	if len(hits) < limit {
 		prefix, err := s.querySearchEntries(dictionaryName, limit, entindexentry.LookupKeyLowerHasPrefix(queryLower))
 		if err != nil {
 			return nil, err
 		}
-		if err := appendMatches(prefix, 0.95, "sql-prefix"); err != nil {
-			return nil, err
-		}
+		appendMatches(prefix, 0.95, "sql-prefix")
 	}
 	if len(hits) < limit {
 		contains, err := s.querySearchEntries(dictionaryName, limit, entindexentry.LookupKeyLowerContains(queryLower))
 		if err != nil {
 			return nil, err
 		}
-		if err := appendMatches(contains, 0.8, "sql-contains"); err != nil {
-			return nil, err
-		}
+		appendMatches(contains, 0.8, "sql-contains")
 	}
 	if len(hits) == 0 {
 		return nil, mdx.ErrIndexMiss
@@ -218,9 +227,41 @@ func (s *sqlDictionaryIndexStore) querySearchEntries(dictionaryName string, limi
 	conditions = append(conditions, predicates...)
 	return s.client.DictionaryIndexEntry.Query().
 		Where(conditions...).
+		Select(indexEntryResultFields...).
 		Order(ent.Asc(entindexentry.FieldLookupKeyLower)).
 		Limit(limit).
 		All(s.ctx)
+}
+
+// HasDictionaryIndex reports whether all rows written by Put still exist. The
+// sentinel distinguishes a valid empty index from missing index data without a
+// schema migration.
+func (s *sqlDictionaryIndexStore) HasDictionaryIndex(dictionaryName string) (bool, error) {
+	if s == nil || s.client == nil {
+		return false, nil
+	}
+	dictionaryName = sanitizeManagedDictionaryName(dictionaryName)
+	sentinel, err := s.client.DictionaryIndexEntry.Query().
+		Where(
+			entindexentry.DictionaryNameEQ(dictionaryName),
+			entindexentry.LookupKeyEQ(sqlIndexSentinelLookupKey),
+			entindexentry.KeyBlockIdxEQ(-1),
+		).
+		Select(entindexentry.FieldRecordStartOffset).
+		Only(s.ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	count, err := s.client.DictionaryIndexEntry.Query().
+		Where(entindexentry.DictionaryNameEQ(dictionaryName)).
+		Count(s.ctx)
+	if err != nil {
+		return false, err
+	}
+	return int64(count) == sentinel.RecordStartOffset+1, nil
 }
 
 func (s *sqlDictionaryIndexStore) LoadManifest(dictionaryName string) (mdx.IndexManifest, error) {
@@ -324,10 +365,23 @@ func indexEntryLookupKey(entry mdx.IndexEntry) string {
 	return entry.Keyword
 }
 
-func decodeIndexEntryPayload(payload string) (mdx.IndexEntry, error) {
-	var entry mdx.IndexEntry
-	if err := json.Unmarshal([]byte(payload), &entry); err != nil {
-		return mdx.IndexEntry{}, err
+var indexEntryResultFields = []string{
+	entindexentry.FieldKeyword,
+	entindexentry.FieldNormalizedKeyword,
+	entindexentry.FieldLookupKey,
+	entindexentry.FieldRecordStartOffset,
+	entindexentry.FieldRecordEndOffset,
+	entindexentry.FieldKeyBlockIdx,
+	entindexentry.FieldIsResource,
+}
+
+func indexEntryFromEntity(item *ent.DictionaryIndexEntry) mdx.IndexEntry {
+	return mdx.IndexEntry{
+		Keyword:           item.Keyword,
+		NormalizedKeyword: item.NormalizedKeyword,
+		RecordStartOffset: item.RecordStartOffset,
+		RecordEndOffset:   item.RecordEndOffset,
+		KeyBlockIdx:       item.KeyBlockIdx,
+		IsResource:        item.IsResource,
 	}
-	return entry, nil
 }
