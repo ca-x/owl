@@ -371,7 +371,7 @@ See `.env.example` for the full list.
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
 - `OWL_WARM_DICTIONARIES` — `false` by default. Set to `true` to preload all enabled dictionaries on startup. Keep it disabled for large libraries to avoid slow restarts and high baseline memory use.
-- `OWL_MAX_LOADED_DICTIONARIES` — maximum number of fully loaded dictionaries retained in process memory. Defaults to `8`; use `0` for unlimited caching.
+- `OWL_MAX_LOADED_DICTIONARIES` — maximum number of fully loaded dictionaries retained in process memory. Defaults to `0` (unlimited) to avoid repeated cold loads during global searches. Set a positive limit for memory-constrained deployments.
 
 ### Database
 

@@ -370,7 +370,7 @@ http://localhost:3000
 - `OWL_UPLOADS_DIR`
 - `OWL_LIBRARY_DIR`
 - `OWL_WARM_DICTIONARIES`：默认 `false`。设为 `true` 会在启动时预加载所有已启用词典；大词典库建议保持关闭，避免重启慢和基础内存占用过高。
-- `OWL_MAX_LOADED_DICTIONARIES`：进程内最多保留的完整已加载词典数量。默认 `8`；设为 `0` 表示不限制缓存。
+- `OWL_MAX_LOADED_DICTIONARIES`：进程内最多保留的完整已加载词典数量。默认 `0`（不限制），避免全局搜索反复冷加载；内存受限的部署可设为正整数。
 
 ### 数据库
 

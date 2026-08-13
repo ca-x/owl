@@ -32,27 +32,31 @@ import (
 )
 
 type Service struct {
-	client                 *ent.Client
-	uploadsDir             string
-	libraryDir             string
-	redisClient            *redis.Client
-	redisKeyPrefix         string
-	redisPrefixMaxLen      int
-	redisSearchKeyPrefix   string
-	redisSearchEnabled     bool
-	redisSearchUnavailable atomic.Bool
-	maxLoadedDictionaries  int
-	audioTranscoder        *audioTranscoder
-	libraryRefreshMu       sync.Mutex
-	mu                     sync.RWMutex
-	loaded                 map[int]*LoadedDictionary
-	loadedOrder            []int
-	loading                map[int]*dictionaryLoadCall
-	externalIndexReady     map[string]externalIndexCacheEntry
-	legacyIndexCleaned     map[string]struct{}
-	externalIndexCacheTTL  time.Duration
-	now                    func() time.Time
-	querySemaphore         chan struct{}
+	client                    *ent.Client
+	uploadsDir                string
+	libraryDir                string
+	redisClient               *redis.Client
+	redisKeyPrefix            string
+	redisPrefixMaxLen         int
+	redisSearchKeyPrefix      string
+	redisSearchEnabled        bool
+	redisSearchUnavailable    atomic.Bool
+	maxLoadedDictionaries     int
+	audioTranscoder           *audioTranscoder
+	libraryRefreshMu          sync.Mutex
+	mu                        sync.RWMutex
+	loaded                    map[int]*LoadedDictionary
+	loadedOrder               []int
+	loading                   map[int]*dictionaryLoadCall
+	externalIndexReady        map[string]externalIndexCacheEntry
+	externalIndexLoading      map[string]*externalIndexLoadCall
+	legacyIndexCleaned        map[string]struct{}
+	externalIndexCacheTTL     time.Duration
+	now                       func() time.Time
+	querySemaphore            chan struct{}
+	managedPrefixStoreForTest func(context.Context) mdx.ManagedIndexStore
+	deleteRedisSearchForTest  func(context.Context, string) error
+	buildExternalIndexForTest func(context.Context, *ent.Dictionary) (*mdx.EnsureIndexResult, error)
 }
 
 type LoadedDictionary struct {
@@ -81,6 +85,11 @@ type dictionaryLoadCall struct {
 	done   chan struct{}
 	loaded *LoadedDictionary
 	err    error
+}
+
+type externalIndexLoadCall struct {
+	done chan struct{}
+	err  error
 }
 
 type SearchParams struct {
@@ -131,6 +140,16 @@ func (s *Service) newRedisSearchStore(ctx context.Context, dictionaryName string
 	return store
 }
 
+func (s *Service) newRedisSearchCleanupStore(ctx context.Context, dictionaryName string) *redisSearchStore {
+	if s == nil || s.redisClient == nil || !s.redisSearchEnabled {
+		return nil
+	}
+	store := newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), dictionaryName)
+	store.ctx = ctx
+	store.onUnavailable = s.markRediSearchUnavailable
+	return store
+}
+
 func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisClient *redis.Client, redisKeyPrefix string, redisPrefixMaxLen int, redisSearchKeyPrefix string, redisSearchEnabled bool, maxLoadedDictionaries int, audioCacheDir string, ffmpegBin string) *Service {
 	return &Service{
 		client:                client,
@@ -146,6 +165,7 @@ func NewService(client *ent.Client, uploadsDir string, libraryDir string, redisC
 		loaded:                make(map[int]*LoadedDictionary),
 		loading:               make(map[int]*dictionaryLoadCall),
 		externalIndexReady:    make(map[string]externalIndexCacheEntry),
+		externalIndexLoading:  make(map[string]*externalIndexLoadCall),
 		legacyIndexCleaned:    make(map[string]struct{}),
 		externalIndexCacheTTL: externalIndexCacheTTL,
 		now:                   time.Now,
@@ -408,9 +428,14 @@ func (s *Service) Search(ctx context.Context, params SearchParams) ([]models.Sea
 	if err != nil {
 		return nil, err
 	}
-	work := mapDictionaries(ctx, s.querySemaphore, dicts, func(item *ent.Dictionary) dictionarySearchWork {
+	work := mapDictionariesPrepared(ctx, s.querySemaphore, dicts, func(item *ent.Dictionary) error {
+		return s.ensureExternalIndex(ctx, item)
+	}, func(item *ent.Dictionary, indexErr error) dictionarySearchWork {
 		result := dictionarySearchWork{item: item}
-		hits, indexed, err := s.searchExternalIndexHits(ctx, item, params.Query, 10)
+		if indexErr != nil {
+			return result
+		}
+		hits, indexed, err := s.searchPreparedExternalIndexHits(ctx, item, params.Query, 10)
 		if err != nil {
 			return result
 		}
@@ -523,12 +548,9 @@ func searchIndexHits(loaded *LoadedDictionary, dictionaryName string, query stri
 	return hits, nil
 }
 
-func (s *Service) searchExternalIndexHits(ctx context.Context, item *ent.Dictionary, query string, limit int) ([]mdx.SearchHit, bool, error) {
+func (s *Service) searchPreparedExternalIndexHits(ctx context.Context, item *ent.Dictionary, query string, limit int) ([]mdx.SearchHit, bool, error) {
 	if item == nil || !s.hasExternalIndexStore() {
 		return nil, false, nil
-	}
-	if err := s.ensureExternalIndex(ctx, item); err != nil {
-		return nil, false, err
 	}
 	hits, err := s.searchExternalStoreHits(ctx, externalIndexKey(item.MdxPath), query, limit)
 	if err != nil {
@@ -544,9 +566,67 @@ func (s *Service) ensureExternalIndex(ctx context.Context, item *ent.Dictionary)
 	if item == nil || !s.hasExternalIndexStore() {
 		return nil
 	}
-	fingerprint, ready := s.externalIndexFingerprint(item.MdxPath)
-	if ready {
-		return nil
+	for {
+		fingerprint, ready := s.externalIndexFingerprint(item.MdxPath)
+		if ready {
+			return nil
+		}
+
+		s.mu.Lock()
+		now := s.now()
+		entry, ok := s.externalIndexReady[item.MdxPath]
+		if ok && !now.Before(entry.validatedAt) && now.Sub(entry.validatedAt) < s.externalIndexCacheTTL {
+			s.mu.Unlock()
+			return nil
+		}
+		if call, ok := s.externalIndexLoading[item.MdxPath]; ok {
+			done := call.done
+			s.mu.Unlock()
+			select {
+			case <-done:
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				if isContextCancellation(call.err) {
+					continue
+				}
+				return call.err
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		call := &externalIndexLoadCall{done: make(chan struct{})}
+		s.externalIndexLoading[item.MdxPath] = call
+		s.mu.Unlock()
+
+		result, err := s.buildExternalIndex(ctx, item)
+		if err == nil {
+			s.markExternalIndexReady(item.MdxPath, fingerprint, result.Manifest.Fingerprint)
+		}
+		s.mu.Lock()
+		call.err = err
+		delete(s.externalIndexLoading, item.MdxPath)
+		close(call.done)
+		s.mu.Unlock()
+		return err
+	}
+}
+
+func (s *Service) buildExternalIndex(ctx context.Context, item *ent.Dictionary) (*mdx.EnsureIndexResult, error) {
+	if s.buildExternalIndexForTest != nil {
+		select {
+		case s.querySemaphore <- struct{}{}:
+			defer func() { <-s.querySemaphore }()
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		return s.buildExternalIndexForTest(ctx, item)
+	}
+	select {
+	case s.querySemaphore <- struct{}{}:
+		defer func() { <-s.querySemaphore }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 	prefixStore := s.newManagedPrefixStore(ctx)
 	indexKey := externalIndexKey(item.MdxPath)
@@ -557,13 +637,12 @@ func (s *Service) ensureExternalIndex(ctx context.Context, item *ent.Dictionary)
 		mdx.WithIndexDictionaryName(indexKey),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := s.deleteLegacyExternalIndexes(ctx, item, indexKey); err != nil {
-		return err
+		return nil, err
 	}
-	s.markExternalIndexReady(item.MdxPath, fingerprint, result.Manifest.Fingerprint)
-	return nil
+	return result, nil
 }
 
 func (s *Service) deleteExternalIndex(ctx context.Context, item *ent.Dictionary) error {
@@ -572,9 +651,11 @@ func (s *Service) deleteExternalIndex(ctx context.Context, item *ent.Dictionary)
 	}
 	prefixStore := s.newManagedPrefixStore(ctx)
 	indexKey := externalIndexKey(item.MdxPath)
-	searchStore := s.newRedisSearchStore(ctx, indexKey)
-	managed := newManagedDictionaryIndexStore(prefixStore, searchStore)
-	err := managed.DeleteDictionary(indexKey)
+	searchStore := s.newRedisSearchCleanupStore(ctx, indexKey)
+	if err := s.deleteRedisSearchIndex(ctx, searchStore, indexKey); err != nil {
+		return err
+	}
+	err := prefixStore.DeleteDictionary(indexKey)
 	if err == nil {
 		s.mu.Lock()
 		delete(s.externalIndexReady, item.MdxPath)
@@ -631,6 +712,9 @@ func (s *Service) searchExternalStoreHits(ctx context.Context, dictionaryName st
 }
 
 func (s *Service) newManagedPrefixStore(ctx context.Context) mdx.ManagedIndexStore {
+	if s.managedPrefixStoreForTest != nil {
+		return s.managedPrefixStoreForTest(ctx)
+	}
 	if s.redisClient == nil {
 		return newSQLDictionaryIndexStore(ctx, s.client)
 	}
@@ -677,10 +761,7 @@ func buildSearchResult(item *ent.Dictionary, loaded *LoadedDictionary, entry mdx
 	if item.Public {
 		assetBase = fmt.Sprintf("/api/public/dictionaries/%d/resource", item.ID)
 	}
-	rewritten := mdx.RewriteEntryResourceURLs([]byte(htmlContent), assetBase)
-	rewritten = mdx.RewriteEntryInternalLinks(rewritten)
-	rewritten = mdx.RewriteEntryLookupLinks(rewritten, "/search?q=")
-	rewritten = mdx.RewriteEntryAudioLinks(rewritten, assetBase)
+	rewritten := mdx.RewriteEntryHTML([]byte(htmlContent), assetBase, "/search?q=")
 	html := string(rewritten)
 	return models.SearchResult{
 		DictionaryID:   item.ID,
@@ -775,9 +856,14 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 		return nil, err
 	}
 
-	work := mapDictionaries(ctx, s.querySemaphore, dicts, func(item *ent.Dictionary) dictionarySuggestionWork {
+	work := mapDictionariesPrepared(ctx, s.querySemaphore, dicts, func(item *ent.Dictionary) error {
+		return s.ensureExternalIndex(ctx, item)
+	}, func(item *ent.Dictionary, indexErr error) dictionarySuggestionWork {
 		result := dictionarySuggestionWork{item: item}
-		indexHits, indexed, indexErr := s.searchExternalIndexHits(ctx, item, params.Query, max(limit*4, limit))
+		if indexErr != nil {
+			return result
+		}
+		indexHits, indexed, indexErr := s.searchPreparedExternalIndexHits(ctx, item, params.Query, max(limit*4, limit))
 		if indexErr != nil {
 			return result
 		}
@@ -907,6 +993,12 @@ func (s *Service) Suggest(ctx context.Context, params SearchParams, limit int) (
 }
 
 func mapDictionaries[T any](ctx context.Context, semaphore chan struct{}, dicts []*ent.Dictionary, fn func(*ent.Dictionary) T) []T {
+	return mapDictionariesPrepared(ctx, semaphore, dicts, func(*ent.Dictionary) struct{} { return struct{}{} }, func(item *ent.Dictionary, _ struct{}) T {
+		return fn(item)
+	})
+}
+
+func mapDictionariesPrepared[P, T any](ctx context.Context, semaphore chan struct{}, dicts []*ent.Dictionary, prepare func(*ent.Dictionary) P, fn func(*ent.Dictionary, P) T) []T {
 	results := make([]T, len(dicts))
 	if len(dicts) == 0 {
 		return results
@@ -932,6 +1024,10 @@ func mapDictionaries[T any](ctx context.Context, semaphore chan struct{}, dicts 
 				if ctx.Err() != nil {
 					return
 				}
+				prepared := prepare(job.item)
+				if ctx.Err() != nil {
+					return
+				}
 				select {
 				case semaphore <- struct{}{}:
 				case <-ctx.Done():
@@ -943,7 +1039,7 @@ func mapDictionaries[T any](ctx context.Context, semaphore chan struct{}, dicts 
 				}
 				func() {
 					defer func() { <-semaphore }()
-					results[job.index] = fn(job.item)
+					results[job.index] = fn(job.item, prepared)
 				}()
 			}
 		})
@@ -1447,7 +1543,7 @@ func (s *Service) deleteLegacyExternalIndexes(ctx context.Context, item *ent.Dic
 	legacyKeys := []string{legacyExternalIndexKey(item.MdxPath), item.Slug}
 	prefixStore := s.newManagedPrefixStore(ctx)
 	seen := make(map[string]struct{}, len(legacyKeys))
-	ownedLegacyIndex := false
+	ownedLegacyKeys := make([]string, 0, len(legacyKeys))
 	for _, legacyKey := range legacyKeys {
 		legacyKey = sanitizeManagedDictionaryName(legacyKey)
 		if legacyKey == "" || legacyKey == sanitizeManagedDictionaryName(currentKey) {
@@ -1467,26 +1563,36 @@ func (s *Service) deleteLegacyExternalIndexes(ctx context.Context, item *ent.Dic
 		if !sameDictionaryPath(manifest.SourcePath, item.MdxPath) {
 			continue
 		}
-		ownedLegacyIndex = true
-		if err := prefixStore.DeleteDictionary(legacyKey); err != nil {
-			return fmt.Errorf("delete legacy prefix index %q: %w", legacyKey, err)
-		}
+		ownedLegacyKeys = append(ownedLegacyKeys, legacyKey)
 	}
 
-	if ownedLegacyIndex && s.rediSearchAvailable() && s.legacySlugBelongsToDictionary(ctx, item) {
-		legacySearch := newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), item.Slug)
-		legacySearch.ctx = ctx
-		legacySearch.onUnavailable = s.markRediSearchUnavailable
-		if legacySearch.indexName != newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), currentKey).indexName {
-			if err := legacySearch.DeleteDictionary(item.Slug); err != nil {
+	if len(ownedLegacyKeys) > 0 && s.legacySlugBelongsToDictionary(ctx, item) {
+		legacySearch := s.newRedisSearchCleanupStore(ctx, item.Slug)
+		if legacySearch != nil && legacySearch.indexName != newRedisSearchStore(s.redisClient, firstNonEmpty(s.redisSearchKeyPrefix, "owl:mdx:search"), currentKey).indexName {
+			if err := s.deleteRedisSearchIndex(ctx, legacySearch, item.Slug); err != nil {
 				return fmt.Errorf("delete legacy RediSearch index %q: %w", item.Slug, err)
 			}
+		}
+	}
+	for _, legacyKey := range ownedLegacyKeys {
+		if err := prefixStore.DeleteDictionary(legacyKey); err != nil {
+			return fmt.Errorf("delete legacy prefix index %q: %w", legacyKey, err)
 		}
 	}
 	s.mu.Lock()
 	s.legacyIndexCleaned[item.MdxPath] = struct{}{}
 	s.mu.Unlock()
 	return nil
+}
+
+func (s *Service) deleteRedisSearchIndex(ctx context.Context, store *redisSearchStore, dictionaryName string) error {
+	if s.deleteRedisSearchForTest != nil {
+		return s.deleteRedisSearchForTest(ctx, dictionaryName)
+	}
+	if store == nil {
+		return nil
+	}
+	return store.DeleteDictionary(dictionaryName)
 }
 
 func (s *Service) legacySlugBelongsToDictionary(ctx context.Context, item *ent.Dictionary) bool {

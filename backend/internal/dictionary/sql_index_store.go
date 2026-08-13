@@ -2,7 +2,10 @@ package dictionary
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"regexp"
 	"strings"
 
 	"owl/backend/ent"
@@ -21,13 +24,23 @@ const (
 	// Payload predates the dedicated entry columns and remains required by the
 	// existing schema. Keep a minimal value instead of duplicating every entry
 	// as JSON; all lookup paths project the typed columns directly.
-	sqlIndexEntryPayload = "{}"
+	sqlIndexEntryPayload            = "{}"
+	sqlIndexComparablePayloadPrefix = "\x1fowl:comparable:v1:"
+	sqlIndexComparableLookupPrefix  = "\x1fowl:comparable:sha256:"
+	sqlIndexSentinelPayload         = "\x1fowl:index-layout:comparable-v1"
 )
+
+// Keep this expression identical to mdx v0.1.20's normalizeComparableKey.
+// The package does not export that helper, but ComparableIndexStore requires
+// stores to apply the same case-and-punctuation-insensitive lookup semantics.
+var sqlComparableKeyPattern = regexp.MustCompile(`[\s:.,\-_'"()#<>!]+`)
 
 type sqlDictionaryIndexStore struct {
 	ctx    context.Context
 	client *ent.Client
 }
+
+var _ mdx.ComparableIndexStore = (*sqlDictionaryIndexStore)(nil)
 
 func newSQLDictionaryIndexStore(ctx context.Context, client *ent.Client) *sqlDictionaryIndexStore {
 	if ctx == nil {
@@ -63,6 +76,7 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 
 	batch := make([]*ent.DictionaryIndexEntryCreate, 0, sqlIndexInsertBatchSize)
 	storedEntryCount := int64(0)
+	comparableKeys := make(map[string]struct{}, len(entries))
 	flush := func() error {
 		if len(batch) == 0 {
 			return nil
@@ -94,6 +108,28 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 				return err
 			}
 		}
+
+		comparableKey := normalizeSQLComparableKey(entry.Keyword)
+		if _, exists := comparableKeys[comparableKey]; comparableKey != "" && !exists {
+			comparableKeys[comparableKey] = struct{}{}
+			batch = append(batch, tx.DictionaryIndexEntry.Create().
+				SetDictionaryName(dictionaryName).
+				SetKeyword(entry.Keyword).
+				SetNormalizedKeyword(entry.NormalizedKeyword).
+				SetLookupKey(sqlComparableLookupKey(comparableKey)).
+				SetLookupKeyLower(sqlComparableLookupKey(comparableKey)).
+				SetRecordStartOffset(entry.RecordStartOffset).
+				SetRecordEndOffset(entry.RecordEndOffset).
+				SetKeyBlockIdx(entry.KeyBlockIdx).
+				SetIsResource(entry.IsResource).
+				SetPayload(sqlIndexComparablePayloadPrefix+comparableKey))
+			storedEntryCount++
+			if len(batch) >= sqlIndexInsertBatchSize {
+				if err := flush(); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	batch = append(batch, tx.DictionaryIndexEntry.Create().
 		SetDictionaryName(dictionaryName).
@@ -103,7 +139,7 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 		SetRecordStartOffset(storedEntryCount).
 		SetRecordEndOffset(storedEntryCount).
 		SetKeyBlockIdx(-1).
-		SetPayload(sqlIndexEntryPayload))
+		SetPayload(sqlIndexSentinelPayload))
 	if err := flush(); err != nil {
 		return err
 	}
@@ -122,7 +158,32 @@ func (s *sqlDictionaryIndexStore) GetExact(dictionaryName, keyword string) (mdx.
 		Where(
 			entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName)),
 			entindexentry.LookupKeyEQ(strings.TrimSpace(keyword)),
-			entindexentry.LookupKeyNEQ(sqlIndexSentinelLookupKey),
+			entindexentry.PayloadEQ(sqlIndexEntryPayload),
+		).
+		Select(indexEntryResultFields...).
+		First(s.ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return mdx.IndexEntry{}, mdx.ErrIndexMiss
+		}
+		return mdx.IndexEntry{}, err
+	}
+	return indexEntryFromEntity(item), nil
+}
+
+func (s *sqlDictionaryIndexStore) GetComparable(dictionaryName, keyword string) (mdx.IndexEntry, error) {
+	if s == nil || s.client == nil {
+		return mdx.IndexEntry{}, mdx.ErrIndexMiss
+	}
+	comparableKey := normalizeSQLComparableKey(keyword)
+	if comparableKey == "" {
+		return mdx.IndexEntry{}, mdx.ErrIndexMiss
+	}
+	item, err := s.client.DictionaryIndexEntry.Query().
+		Where(
+			entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName)),
+			entindexentry.LookupKeyEQ(sqlComparableLookupKey(comparableKey)),
+			entindexentry.PayloadEQ(sqlIndexComparablePayloadPrefix+comparableKey),
 		).
 		Select(indexEntryResultFields...).
 		First(s.ctx)
@@ -143,7 +204,7 @@ func (s *sqlDictionaryIndexStore) PrefixSearch(dictionaryName, prefix string, li
 	query := s.client.DictionaryIndexEntry.Query().
 		Where(
 			entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName)),
-			entindexentry.LookupKeyNEQ(sqlIndexSentinelLookupKey),
+			entindexentry.PayloadEQ(sqlIndexEntryPayload),
 		).
 		Select(indexEntryResultFields...).
 		Order(ent.Asc(entindexentry.FieldLookupKeyLower))
@@ -223,7 +284,10 @@ func (s *sqlDictionaryIndexStore) Search(dictionaryName, query string, limit int
 }
 
 func (s *sqlDictionaryIndexStore) querySearchEntries(dictionaryName string, limit int, predicates ...predicate.DictionaryIndexEntry) ([]*ent.DictionaryIndexEntry, error) {
-	conditions := []predicate.DictionaryIndexEntry{entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName))}
+	conditions := []predicate.DictionaryIndexEntry{
+		entindexentry.DictionaryNameEQ(sanitizeManagedDictionaryName(dictionaryName)),
+		entindexentry.PayloadEQ(sqlIndexEntryPayload),
+	}
 	conditions = append(conditions, predicates...)
 	return s.client.DictionaryIndexEntry.Query().
 		Where(conditions...).
@@ -247,13 +311,16 @@ func (s *sqlDictionaryIndexStore) HasDictionaryIndex(dictionaryName string) (boo
 			entindexentry.LookupKeyEQ(sqlIndexSentinelLookupKey),
 			entindexentry.KeyBlockIdxEQ(-1),
 		).
-		Select(entindexentry.FieldRecordStartOffset).
+		Select(entindexentry.FieldRecordStartOffset, entindexentry.FieldPayload).
 		Only(s.ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, nil
 		}
 		return false, err
+	}
+	if sentinel.Payload != sqlIndexSentinelPayload {
+		return false, nil
 	}
 	count, err := s.client.DictionaryIndexEntry.Query().
 		Where(entindexentry.DictionaryNameEQ(dictionaryName)).
@@ -363,6 +430,19 @@ func indexEntryLookupKey(entry mdx.IndexEntry) string {
 		return entry.NormalizedKeyword
 	}
 	return entry.Keyword
+}
+
+func normalizeSQLComparableKey(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	if trimmed == "" {
+		return ""
+	}
+	return sqlComparableKeyPattern.ReplaceAllString(trimmed, "")
+}
+
+func sqlComparableLookupKey(comparableKey string) string {
+	digest := sha256.Sum256([]byte(comparableKey))
+	return sqlIndexComparableLookupPrefix + hex.EncodeToString(digest[:])
 }
 
 var indexEntryResultFields = []string{

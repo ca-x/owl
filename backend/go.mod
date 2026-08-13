@@ -10,7 +10,7 @@ require (
 	github.com/google/jsonschema-go v0.4.2
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/lib-x/entsqlite v0.1.13
-	github.com/lib-x/mdx v0.1.20
+	github.com/lib-x/mdx v0.1.23
 	github.com/lib/pq v1.12.3
 	github.com/modelcontextprotocol/go-sdk v1.5.0
 	github.com/redis/go-redis/v9 v9.18.0

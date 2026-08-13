@@ -65,6 +65,16 @@ func BenchmarkSQLDictionaryIndexStoreRead(b *testing.B) {
 			benchmarkSQLIndexEntries = []mdx.IndexEntry{got[0].Entry}
 		}
 	})
+	b.Run("GetComparable", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			got, err := store.GetComparable("benchmark", "Entry 0001")
+			if err != nil {
+				b.Fatal(err)
+			}
+			benchmarkSQLIndexEntries = []mdx.IndexEntry{got}
+		}
+	})
 }
 
 func TestSQLDictionaryIndexStore(t *testing.T) {
@@ -168,13 +178,15 @@ func TestSQLDictionaryIndexStoreStoresMinimalCompatibilityPayload(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 {
-		t.Fatalf("got %d rows, want entry plus sentinel", len(rows))
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want entry, comparable entry, and sentinel", len(rows))
 	}
+	payloads := make(map[string]int)
 	for _, row := range rows {
-		if row.Payload != sqlIndexEntryPayload {
-			t.Fatalf("row %q stored compatibility payload %q", row.LookupKey, row.Payload)
-		}
+		payloads[row.Payload]++
+	}
+	if payloads[sqlIndexEntryPayload] != 1 || payloads[sqlIndexComparablePayloadPrefix+"ability"] != 1 || payloads[sqlIndexSentinelPayload] != 1 {
+		t.Fatalf("unexpected SQL index payload layout: %#v", payloads)
 	}
 	got, err := store.GetExact("minimal", "ability")
 	if err != nil {
@@ -182,6 +194,62 @@ func TestSQLDictionaryIndexStoreStoresMinimalCompatibilityPayload(t *testing.T) 
 	}
 	if got != entry {
 		t.Fatalf("typed columns did not round trip: got %+v, want %+v", got, entry)
+	}
+}
+
+func TestSQLDictionaryIndexStoreComparableLookupMatchesMDXFirstWins(t *testing.T) {
+	store, _ := newTestSQLDictionaryIndexStore(t, "sql_dictionary_index_comparable")
+	first := mdx.IndexEntry{Keyword: "Co-Operate", RecordStartOffset: 10, RecordEndOffset: 19, KeyBlockIdx: 1}
+	second := mdx.IndexEntry{Keyword: "cooperate", RecordStartOffset: 20, RecordEndOffset: 29, KeyBlockIdx: 2}
+	punctuated := mdx.IndexEntry{Keyword: `A: B.C_D-'E"(F)#G<H>!`, RecordStartOffset: 30, RecordEndOffset: 39, KeyBlockIdx: 3}
+	entries := []mdx.IndexEntry{first, second, punctuated}
+	if err := store.Put(mdx.DictionaryInfo{Name: "comparable"}, entries); err != nil {
+		t.Fatal(err)
+	}
+
+	memory := mdx.NewMemoryIndexStore()
+	if err := memory.Put(mdx.DictionaryInfo{Name: "comparable"}, entries); err != nil {
+		t.Fatal(err)
+	}
+	for _, query := range []string{" cooperate ", "CO.OPERATE", "a b.c_d-'e\"(f)#g<h>!"} {
+		want, err := memory.GetComparable("comparable", query)
+		if err != nil {
+			t.Fatalf("memory comparable lookup %q: %v", query, err)
+		}
+		got, err := store.GetComparable("comparable", query)
+		if err != nil {
+			t.Fatalf("SQL comparable lookup %q: %v", query, err)
+		}
+		if got != want {
+			t.Fatalf("SQL comparable lookup %q got %+v, want mdx semantics %+v", query, got, want)
+		}
+	}
+
+	got, err := store.GetComparable("comparable", "cooperate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != first {
+		t.Fatalf("comparable collision did not preserve first entry: got %+v, want %+v", got, first)
+	}
+	if _, err := store.GetComparable("comparable", "---"); !errors.Is(err, mdx.ErrIndexMiss) {
+		t.Fatalf("empty comparable key returned %v, want ErrIndexMiss", err)
+	}
+}
+
+func TestLookupRedirectEntryUsesSQLComparableIndex(t *testing.T) {
+	store, _ := newTestSQLDictionaryIndexStore(t, "sql_dictionary_index_redirect")
+	want := mdx.IndexEntry{Keyword: "cooperate", RecordStartOffset: 84, RecordEndOffset: 99, KeyBlockIdx: 4}
+	if err := store.Put(mdx.DictionaryInfo{Name: "redirect"}, []mdx.IndexEntry{want}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := lookupRedirectEntry(store, "redirect", "Co-Operate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("SQL redirect lookup got %+v, want %+v", got, want)
 	}
 }
 
@@ -229,6 +297,29 @@ func TestSQLDictionaryIndexStoreHealthAcceptsEmptyIndex(t *testing.T) {
 	}
 	if _, err := store.Search("empty", sqlIndexSentinelLookupKey, 10); !errors.Is(err, mdx.ErrIndexMiss) {
 		t.Fatalf("expected sentinel to remain invisible to fuzzy search, got %v", err)
+	}
+}
+
+func TestSQLDictionaryIndexStoreHealthRejectsPreComparableLayout(t *testing.T) {
+	store, client := newTestSQLDictionaryIndexStore(t, "sql_dictionary_index_old_layout")
+	if err := store.Put(mdx.DictionaryInfo{Name: "old-layout"}, []mdx.IndexEntry{{Keyword: "one"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.DictionaryIndexEntry.Update().
+		Where(
+			entindexentry.DictionaryNameEQ("old-layout"),
+			entindexentry.LookupKeyEQ(sqlIndexSentinelLookupKey),
+		).
+		SetPayload(sqlIndexEntryPayload).
+		Save(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	ready, err := store.HasDictionaryIndex("old-layout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ready {
+		t.Fatal("pre-comparable SQL index layout must be rebuilt")
 	}
 }
 

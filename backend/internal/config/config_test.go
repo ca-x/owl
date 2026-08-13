@@ -98,19 +98,19 @@ func TestLoadMaxLoadedDictionariesDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.MaxLoadedDictionaries != 8 {
-		t.Fatalf("expected default loaded dictionary limit 8, got %d", cfg.MaxLoadedDictionaries)
+	if cfg.MaxLoadedDictionaries != 0 {
+		t.Fatalf("expected unlimited loaded dictionary cache by default, got %d", cfg.MaxLoadedDictionaries)
 	}
 }
 
-func TestLoadMaxLoadedDictionariesCanBeDisabled(t *testing.T) {
-	t.Setenv("OWL_MAX_LOADED_DICTIONARIES", "0")
+func TestLoadMaxLoadedDictionariesCanBeLimited(t *testing.T) {
+	t.Setenv("OWL_MAX_LOADED_DICTIONARIES", "8")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.MaxLoadedDictionaries != 0 {
-		t.Fatalf("expected unlimited loaded dictionary cache, got %d", cfg.MaxLoadedDictionaries)
+	if cfg.MaxLoadedDictionaries != 8 {
+		t.Fatalf("expected loaded dictionary limit 8, got %d", cfg.MaxLoadedDictionaries)
 	}
 }

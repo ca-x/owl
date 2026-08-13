@@ -60,7 +60,7 @@ func Load() (Config, error) {
 		BootstrapAdmin:        getEnvBool("OWL_BOOTSTRAP_ADMIN", false),
 		AllowRegister:         getEnvBool("OWL_ALLOW_REGISTER", true),
 		WarmDictionaries:      getEnvBool("OWL_WARM_DICTIONARIES", false),
-		MaxLoadedDictionaries: normalizeNonNegativeInt(getEnvInt("OWL_MAX_LOADED_DICTIONARIES", 8)),
+		MaxLoadedDictionaries: normalizeNonNegativeInt(getEnvInt("OWL_MAX_LOADED_DICTIONARIES", 0)),
 		AdminUsername:         strings.TrimSpace(getEnv("OWL_ADMIN_USERNAME", "admin")),
 		AdminPassword:         getEnv("OWL_ADMIN_PASSWORD", "admin123456"),
 		RedisAddr:             strings.TrimSpace(os.Getenv("OWL_REDIS_ADDR")),

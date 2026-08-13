@@ -16,7 +16,7 @@ services:
       OWL_UPLOADS_DIR: /app/data/uploads
       OWL_LIBRARY_DIR: ${OWL_LIBRARY_DIR:-/app/data/uploads}
       OWL_WARM_DICTIONARIES: ${OWL_WARM_DICTIONARIES:-false}
-      OWL_MAX_LOADED_DICTIONARIES: ${OWL_MAX_LOADED_DICTIONARIES:-8}
+      OWL_MAX_LOADED_DICTIONARIES: ${OWL_MAX_LOADED_DICTIONARIES:-0}
       OWL_DB_PATH: /app/data/data.db
       OWL_DB_TYPE: ${OWL_DB_TYPE:-sqlite}
       OWL_DB_DSN: ${OWL_DB_DSN:-}

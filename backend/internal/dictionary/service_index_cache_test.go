@@ -98,6 +98,105 @@ func TestEnsureExternalIndexCachesValidatedFingerprintUntilTTL(t *testing.T) {
 	}
 }
 
+func TestEnsureExternalIndexCoalescesWaitersOutsideFanoutBudget(t *testing.T) {
+	client, err := ent.Open("sqlite3", "file:coalesced_index?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	svc := NewService(client, "", "", nil, "", 0, "", false, 0, "", "")
+	path := filepath.Join(t.TempDir(), "shared.mdx")
+	item := &ent.Dictionary{ID: 1, Slug: "shared", MdxPath: path}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	releaseBuild := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(releaseBuild)
+	var builds atomic.Int32
+	svc.buildExternalIndexForTest = func(ctx context.Context, item *ent.Dictionary) (*mdx.EnsureIndexResult, error) {
+		if builds.Add(1) == 1 {
+			close(started)
+		}
+		select {
+		case <-release:
+			return &mdx.EnsureIndexResult{Manifest: mdx.IndexManifest{Fingerprint: "ready"}}, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	results := make(chan error, dictionaryQueryConcurrency)
+	for range dictionaryQueryConcurrency {
+		go func() { results <- svc.ensureExternalIndex(t.Context(), item) }()
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("index leader did not start")
+	}
+	if got := len(svc.querySemaphore); got != 1 {
+		t.Fatalf("waiters occupied fanout tokens: got %d, want leader only", got)
+	}
+
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := svc.ensureExternalIndex(canceled, item); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled waiter returned %v", err)
+	}
+	releaseBuild()
+	for range dictionaryQueryConcurrency {
+		if err := <-results; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := builds.Load(); got != 1 {
+		t.Fatalf("got %d builds, want 1", got)
+	}
+	if got := len(svc.querySemaphore); got != 0 {
+		t.Fatalf("build leaked %d fanout tokens", got)
+	}
+}
+
+func TestEnsureExternalIndexActiveWaiterRetriesAfterLeaderCancellation(t *testing.T) {
+	client, err := ent.Open("sqlite3", "file:index_leader_cancel?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	svc := NewService(client, "", "", nil, "", 0, "", false, 0, "", "")
+	item := &ent.Dictionary{ID: 1, MdxPath: filepath.Join(t.TempDir(), "shared.mdx")}
+	firstStarted := make(chan struct{})
+	var builds atomic.Int32
+	svc.buildExternalIndexForTest = func(ctx context.Context, item *ent.Dictionary) (*mdx.EnsureIndexResult, error) {
+		if builds.Add(1) == 1 {
+			close(firstStarted)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		return &mdx.EnsureIndexResult{Manifest: mdx.IndexManifest{Fingerprint: "ready"}}, nil
+	}
+	leaderCtx, cancelLeader := context.WithCancel(t.Context())
+	leaderResult := make(chan error, 1)
+	go func() { leaderResult <- svc.ensureExternalIndex(leaderCtx, item) }()
+	<-firstStarted
+	waiterResult := make(chan error, 1)
+	go func() { waiterResult <- svc.ensureExternalIndex(t.Context(), item) }()
+	cancelLeader()
+	if err := <-leaderResult; !errors.Is(err, context.Canceled) {
+		t.Fatalf("leader returned %v", err)
+	}
+	select {
+	case err := <-waiterResult:
+		if err != nil {
+			t.Fatalf("active waiter inherited leader cancellation: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("active waiter did not retry")
+	}
+	if got := builds.Load(); got != 2 {
+		t.Fatalf("got %d builds, want canceled leader plus retry", got)
+	}
+}
+
 func TestExternalIndexKeyIsStableAndPathScoped(t *testing.T) {
 	first := filepath.Join(t.TempDir(), "shared.mdx")
 	second := filepath.Join(t.TempDir(), "shared.mdx")
@@ -162,6 +261,92 @@ func TestDeleteLegacyExternalIndexesKeepsCurrentSQLNamespace(t *testing.T) {
 	}
 	if entry, err := store.GetExact(collisionKey, collisionKey); err != nil || entry.Keyword != collisionKey {
 		t.Fatalf("colliding namespace owned by another source was deleted: entry=%+v err=%v", entry, err)
+	}
+}
+
+func TestDeleteLegacyExternalIndexesRetriesAfterRediSearchFailure(t *testing.T) {
+	client, err := ent.Open("sqlite3", "file:legacy_retry?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.Schema.Create(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	owner, err := client.User.Create().SetUsername("owner").SetDisplayName("Owner").SetPasswordHash("test").Save(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "retry.mdx")
+	item, err := client.Dictionary.Create().SetName("retry").SetTitle("Retry").SetSlug("retry").SetMdxPath(path).SetOwnerID(owner.ID).Save(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := newSQLDictionaryIndexStore(t.Context(), client)
+	legacyKey := legacyExternalIndexKey(path)
+	if err := store.Put(mdx.DictionaryInfo{Name: legacyKey}, []mdx.IndexEntry{{Keyword: legacyKey}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveManifest(mdx.IndexManifest{DictionaryName: legacyKey, SourcePath: path}); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(client, "", "", redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"}), "", 0, "", true, 0, "", "")
+	svc.managedPrefixStoreForTest = func(context.Context) mdx.ManagedIndexStore { return store }
+	var attempts atomic.Int32
+	svc.deleteRedisSearchForTest = func(context.Context, string) error {
+		if attempts.Add(1) == 1 {
+			return errors.New("temporary failure")
+		}
+		return nil
+	}
+	if err := svc.deleteLegacyExternalIndexes(t.Context(), item, externalIndexKey(path)); err == nil {
+		t.Fatal("first cleanup unexpectedly succeeded")
+	}
+	if _, err := store.LoadManifest(legacyKey); err != nil {
+		t.Fatalf("failed cleanup removed ownership manifest: %v", err)
+	}
+	if err := svc.deleteLegacyExternalIndexes(t.Context(), item, externalIndexKey(path)); err != nil {
+		t.Fatal(err)
+	}
+	if got := attempts.Load(); got != 2 {
+		t.Fatalf("got %d cleanup attempts, want 2", got)
+	}
+	if _, err := store.LoadManifest(legacyKey); !errors.Is(err, mdx.ErrIndexMiss) {
+		t.Fatalf("legacy manifest survived successful retry: %v", err)
+	}
+}
+
+func TestDeleteExternalIndexCleansRediSearchAfterCircuitBreakerTrips(t *testing.T) {
+	client, err := ent.Open("sqlite3", "file:delete_redisearch?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.Schema.Create(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(client, "", "", redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"}), "", 0, "", true, 0, "", "")
+	store := newSQLDictionaryIndexStore(t.Context(), client)
+	svc.managedPrefixStoreForTest = func(context.Context) mdx.ManagedIndexStore { return store }
+	svc.redisSearchUnavailable.Store(true)
+	var deleted string
+	svc.deleteRedisSearchForTest = func(_ context.Context, dictionaryName string) error {
+		deleted = dictionaryName
+		return nil
+	}
+	item := &ent.Dictionary{MdxPath: filepath.Join(t.TempDir(), "demo.mdx")}
+	if err := svc.deleteExternalIndex(t.Context(), item); err != nil {
+		t.Fatal(err)
+	}
+	if want := externalIndexKey(item.MdxPath); deleted != want {
+		t.Fatalf("deleted RediSearch namespace %q, want %q", deleted, want)
+	}
+}
+
+func TestRediSearchUnknownDropCommandIsUnavailable(t *testing.T) {
+	err := errors.New("ERR unknown command 'FT.DROPINDEX'")
+	if !isRediSearchUnavailable(err) {
+		t.Fatalf("FT.DROPINDEX capability error was not recognized: %v", err)
 	}
 }
 
