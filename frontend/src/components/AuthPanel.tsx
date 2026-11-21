@@ -29,16 +29,14 @@ export function AuthPanel({ loading, error, allowRegister, onLogin, onRegister }
 
   return (
     <form className="auth-card card auth-modal-card" onSubmit={handleSubmit}>
-      <div className="auth-tabs">
-        <button className={mode === 'login' ? 'active' : ''} type="button" onClick={() => setMode('login')}>
+      {allowRegister && <div className="auth-tabs" role="group" aria-label={t.login + " / " + t.register}>
+        <button className={mode === 'login' ? 'active' : ''} type="button" aria-pressed={mode === 'login'} onClick={() => setMode('login')}>
           {t.login}
         </button>
-        {allowRegister ? (
-          <button className={mode === 'register' ? 'active' : ''} type="button" onClick={() => setMode('register')}>
-            {t.register}
-          </button>
-        ) : null}
-      </div>
+        <button className={mode === 'register' ? 'active' : ''} type="button" aria-pressed={mode === 'register'} onClick={() => setMode('register')}>
+          {t.register}
+        </button>
+      </div>}
 
       <div>
         <h2>{title}</h2>
@@ -47,22 +45,24 @@ export function AuthPanel({ loading, error, allowRegister, onLogin, onRegister }
 
       <label className="field">
         <span>{t.username}</span>
-        <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t.usernamePlaceholder} required />
+        <input data-initial-focus name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} placeholder={t.usernamePlaceholder} required />
       </label>
 
       <label className="field">
         <span>{t.password}</span>
         <input
+          name="password"
+          autoComplete={mode === 'register' && allowRegister ? 'new-password' : 'current-password'}
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder={t.passwordPlaceholder}
-          minLength={6}
+          minLength={mode === 'register' && allowRegister ? 6 : undefined}
           required
         />
       </label>
 
-      {error ? <div className="error-banner">{error}</div> : null}
+      {error ? <div role="alert" className="error-banner">{error}</div> : null}
 
       <button className="primary-button" type="submit" disabled={loading}>
         {loading ? t.pleaseWait : mode === 'login' || !allowRegister ? t.signIn : t.createAccount}

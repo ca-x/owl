@@ -28,7 +28,16 @@ export function SettingsPanel({
   showFontMode = true,
 }: SettingsPanelProps) {
   const { t } = useI18n()
-  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  async function save(action: () => Promise<void> | undefined) {
+    setSaving(true)
+    setNotice('')
+    try { await action() }
+    catch (err) { setNotice(err instanceof Error ? err.message : t.updateFailed) }
+    finally { setSaving(false) }
+  }
   const [displayName, setDisplayName] = useState(preferences.display_name || '')
   const [selectedAvatar, setSelectedAvatar] = useState<File | null>(null)
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
@@ -63,18 +72,14 @@ export function SettingsPanel({
       await onDisplayNameChange(normalized)
     }
     if (selectedAvatar) {
-      setAvatarUploading(true)
-      try {
-        await onAvatarUpload(selectedAvatar)
-        setSelectedAvatar(null)
-      } finally {
-        setAvatarUploading(false)
-      }
+      await onAvatarUpload(selectedAvatar)
+      setSelectedAvatar(null)
     }
   }
 
   return (
-    <div className="settings-panel">
+    <fieldset className="settings-panel" disabled={saving} aria-label={t.preferences}>
+      {notice && <div role="alert" className="error-banner">{notice}</div>}
       {showProfileEditor ? (
         <div className="settings-section profile-settings-section">
           <div className="profile-settings-header">
@@ -82,6 +87,7 @@ export function SettingsPanel({
             <button
               className={profileEditorOpen ? 'secondary-button icon-action-button profile-toggle-button active' : 'secondary-button icon-action-button profile-toggle-button'}
               type="button"
+              aria-expanded={profileEditorOpen}
               onClick={() => setProfileEditorOpen((current) => !current)}
               title={profileEditorOpen ? t.hideProfileEditor : t.showProfileEditor}
               aria-label={profileEditorOpen ? t.hideProfileEditor : t.showProfileEditor}
@@ -105,12 +111,12 @@ export function SettingsPanel({
                 </div>
                 <label className="font-upload-inline compact-upload avatar-upload-inline">
                   <span>{selectedAvatar ? `${t.selectedAvatar}: ${selectedAvatar.name}` : preferences.avatar_url ? t.updateAvatar : t.uploadAvatar}</span>
-                  <input type="file" accept=".png,.jpg,.jpeg,.webp" onChange={handleAvatarSelection} disabled={avatarUploading} />
+                  <input type="file" accept=".png,.jpg,.jpeg,.webp" onChange={handleAvatarSelection} disabled={saving} />
                 </label>
               </div>
               <div className="profile-save-row">
-                <button className="primary-button" type="button" onClick={() => void handleSaveProfile()} disabled={avatarUploading}>
-                  {avatarUploading ? t.pleaseWait : t.saveProfile}
+                <button className="primary-button" type="button" onClick={() => void save(handleSaveProfile)} disabled={saving}>
+                  {saving ? t.pleaseWait : t.saveProfile}
                 </button>
               </div>
             </div>
@@ -121,10 +127,10 @@ export function SettingsPanel({
       <div className="settings-section">
         <span className="settings-label">{t.language}</span>
         <div className="settings-chip-row">
-          <button className={preferences.language === 'zh-CN' ? 'filter-chip active' : 'filter-chip'} type="button" onClick={() => void onLanguageChange('zh-CN')}>
+          <button className={preferences.language === 'zh-CN' ? 'filter-chip active' : 'filter-chip'} type="button" aria-pressed={preferences.language === 'zh-CN'} onClick={() => void save(() => onLanguageChange('zh-CN'))}>
             简体中文
           </button>
-          <button className={preferences.language === 'en' ? 'filter-chip active' : 'filter-chip'} type="button" onClick={() => void onLanguageChange('en')}>
+          <button className={preferences.language === 'en' ? 'filter-chip active' : 'filter-chip'} type="button" aria-pressed={preferences.language === 'en'} onClick={() => void save(() => onLanguageChange('en'))}>
             English
           </button>
         </div>
@@ -138,7 +144,7 @@ export function SettingsPanel({
               key={theme}
               className={preferences.theme === theme ? 'filter-chip active' : 'filter-chip'}
               type="button"
-              onClick={() => void onThemeChange(theme)}
+              aria-pressed={preferences.theme === theme} onClick={() => void save(() => onThemeChange(theme))}
             >
               {theme === 'mono' ? t.mono_theme : t[theme]}
             </button>
@@ -155,7 +161,7 @@ export function SettingsPanel({
                 key={fontMode}
                 className={preferences.font_mode === fontMode ? 'filter-chip active' : 'filter-chip'}
                 type="button"
-                onClick={() => void onFontModeChange?.(fontMode)}
+                aria-pressed={preferences.font_mode === fontMode} onClick={() => void save(() => onFontModeChange?.(fontMode))}
               >
                 {t[fontMode]}
               </button>
@@ -164,7 +170,7 @@ export function SettingsPanel({
               <button
                 className={preferences.font_mode === 'custom' ? 'filter-chip active' : 'filter-chip'}
                 type="button"
-                onClick={() => void handleCustomFontMode()}
+                aria-pressed={preferences.font_mode === 'custom'} onClick={() => void save(() => handleCustomFontMode())}
               >
                 {selectedFont ? `${t.custom} · ${selectedFont.family}` : t.custom}
               </button>
@@ -180,7 +186,7 @@ export function SettingsPanel({
                   role="option"
                   aria-selected={preferences.custom_font_name === font.name}
                   style={{ fontFamily: `'${font.family}', var(--reader-font-family)` }}
-                  onClick={() => void onCustomFontSelect?.(font.name)}
+                  onClick={() => void save(() => onCustomFontSelect?.(font.name))}
                   onMouseDown={(event) => {
                     event.preventDefault()
                   }}
@@ -196,6 +202,6 @@ export function SettingsPanel({
           </div>
         </div>
       ) : null}
-    </div>
+    </fieldset>
   )
 }

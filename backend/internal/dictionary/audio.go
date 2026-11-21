@@ -1,6 +1,7 @@
 package dictionary
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -78,7 +79,7 @@ func resolveFFmpegBinary() string {
 }
 
 func looksLikeSpeex(data []byte) bool {
-	return len(data) > 48 && strings.Contains(string(data[:64]), "Speex")
+	return len(data) > 48 && bytes.Contains(data[:min(len(data), 64)], []byte("Speex"))
 }
 
 // AudioProbeTranscoder exposes the internal transcoder for local verification helpers.

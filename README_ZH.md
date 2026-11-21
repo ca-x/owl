@@ -2,7 +2,17 @@
 
 [English](README.md)
 
-Owl 是一个自托管的 **MDX / MDD Web 词典**。它面向个人查词、公开词典共享、用户私有词典管理，以及 AI 客户端通过 MCP 查询词典的场景。
+Owl 支持在原生桌面客户端和自托管网页中阅读 **MDX / MDD** 词典。服务端提供公开词典共享、私有词库管理和 MCP 查询。
+
+## 桌面客户端
+
+在发布页下载以 `owl-dictionary-` 开头的安装包，支持 macOS（Apple Silicon、Intel）、Windows（x64）和 Linux（x64、ARM64）。Linux 客户端使用 GTK 4。自托管服务端请下载以 `owl-` 加平台名开头的压缩包。[下载 Owl](https://github.com/ca-x/owl/releases/latest)
+
+- **本地词典**直接打开电脑上的 MDX，把同名 MDD 或分卷文件放在同一目录，即可离线查词、看图、听发音和跳转关联词条。
+- **Owl 服务端**填写实例的根地址，例如 `https://owl.example.org`。游客可以查公开词典，使用账号登录后还可以查自己的私有词条及媒体。客户端记住上次使用的服务地址和本地文件路径，登录凭据仅在内存中使用。
+- **阅读与快捷键**。桌面端以原生文字、图片和音频控件呈现释义。需要词典原有的 HTML/CSS 排版时，可在网页版阅读。按 Enter 查词，Ctrl/Cmd+F 聚焦搜索，本地模式下按 Ctrl/Cmd+O 选择文件。
+
+桌面端由 NSGo 构建，使用独立 Go 模块。安装 Go 1.27.3 或更新版本后，可在仓库根目录执行 `cd desktop && go run .`。
 
 ---
 

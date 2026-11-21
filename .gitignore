@@ -4,6 +4,8 @@ CODEX_PROMPT.md
 
 frontend/node_modules/
 frontend/dist/
+desktop/dist/
+desktop/.nsgo/
 
 backend/data/
 backend/web/dist/assets/

@@ -1,0 +1,15 @@
+name: Owl Dictionary
+id: dev.cax.owl.dictionary
+version: 0.2.0
+icon:
+  png: ../frontend/public/android-chrome-512x512.png
+file_types:
+  - name: MDX Dictionary
+    extensions: [mdx]
+    role: viewer
+linux:
+  categories: [Office, Dictionary]
+updates:
+  channel: none
+build:
+  targets: [linux_x64, linux_arm64, windows_x64, macos_arm64, macos_x64]

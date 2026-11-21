@@ -60,20 +60,20 @@ export const api = {
     return request<SharedFont[]>('/public/fonts', { method: 'GET' })
   },
 
-  publicSearch(query: string, dictionaryId?: number) {
+  publicSearch(query: string, dictionaryId?: number, signal?: AbortSignal) {
     const params = new URLSearchParams({ q: query })
     if (dictionaryId) {
       params.set('dict', String(dictionaryId))
     }
-    return request<SearchResult[]>(`/public/search?${params.toString()}`, { method: 'GET' })
+    return request<SearchResult[]>(`/public/search?${params.toString()}`, { method: 'GET', signal })
   },
 
-  publicSuggest(query: string, dictionaryId?: number) {
+  publicSuggest(query: string, dictionaryId?: number, signal?: AbortSignal) {
     const params = new URLSearchParams({ q: query })
     if (dictionaryId) {
       params.set('dict', String(dictionaryId))
     }
-    return request<SearchSuggestion[]>(`/public/suggest?${params.toString()}`, { method: 'GET' })
+    return request<SearchSuggestion[]>(`/public/suggest?${params.toString()}`, { method: 'GET', signal })
   },
 
   register(username: string, password: string) {
@@ -212,19 +212,19 @@ export const api = {
     return request<void>(`/dictionaries/${id}`, { method: 'DELETE' }, token)
   },
 
-  search(token: string, query: string, dictionaryId?: number) {
+  search(token: string, query: string, dictionaryId?: number, signal?: AbortSignal) {
     const params = new URLSearchParams({ q: query })
     if (dictionaryId) {
       params.set('dict', String(dictionaryId))
     }
-    return request<SearchResult[]>(`/search?${params.toString()}`, { method: 'GET' }, token)
+    return request<SearchResult[]>(`/search?${params.toString()}`, { method: 'GET', signal }, token)
   },
 
-  suggest(token: string, query: string, dictionaryId?: number) {
+  suggest(token: string, query: string, dictionaryId?: number, signal?: AbortSignal) {
     const params = new URLSearchParams({ q: query })
     if (dictionaryId) {
       params.set('dict', String(dictionaryId))
     }
-    return request<SearchSuggestion[]>(`/suggest?${params.toString()}`, { method: 'GET' }, token)
+    return request<SearchSuggestion[]>(`/suggest?${params.toString()}`, { method: 'GET', signal }, token)
   },
 }

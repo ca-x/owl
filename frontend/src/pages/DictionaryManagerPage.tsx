@@ -1,6 +1,7 @@
-import { CheckCircle, Eye, EyeSlash, GearSix, Key, MagicWand, PencilSimple, Question, TextAlignLeft, Trash, UploadSimple, X } from '@phosphor-icons/react'
+import { ArrowsClockwise, CheckCircle, Eye, EyeSlash, GearSix, Key, MagicWand, Question, TextAlignLeft, Trash, UploadSimple, X } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 
+import { Dialog } from '../components/Dialog'
 import { SettingsPanel } from '../components/SettingsPanel'
 import { useI18n } from '../i18n'
 import type { DictionarySummary, MaintenanceReport, MCPTokenStatus, SystemSettings, UserPreferences } from '../types'
@@ -63,6 +64,8 @@ export function DictionaryManagerPage({
   onRecentSearchLimitChange,
 }: DictionaryManagerPageProps) {
   const { t } = useI18n()
+  const [section, setSection] = useState<'library' | 'preferences' | 'mcp' | 'site'>('library')
+  const [libraryBusy, setLibraryBusy] = useState(false)
   const [mdxFile, setMdxFile] = useState<File | null>(null)
   const [mddFiles, setMddFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
@@ -160,6 +163,7 @@ export function DictionaryManagerPage({
       setUploadError(t.mdxFileHint)
       return
     }
+    const form = event.currentTarget
     setUploading(true)
     setUploadError('')
     try {
@@ -167,7 +171,7 @@ export function DictionaryManagerPage({
       setActionNotice({ type: 'success', message: t.dictionaryUploaded })
       setMdxFile(null)
       setMddFiles([])
-      await onRefresh()
+      form.reset()
     } catch (uploadErr) {
       setUploadError(uploadErr instanceof Error ? uploadErr.message : t.uploadFailed)
     } finally {
@@ -179,372 +183,376 @@ export function DictionaryManagerPage({
     <section className="page-section">
       <div className="page-header manager-header">
         <div>
-          <div className="eyebrow">{t.dictionaryManager}</div>
-          <h2>{t.managerTitle}</h2>
+          <h1>{t.managerTitle}</h1>
           <p className="muted">{t.uploadedEnabled(dictionaries.length, enabledCount)}</p>
-          <p className="muted">{t.maintenanceTip}</p>
-        </div>
-        <div className="actions-row wrap">
-          <button className="secondary-button" type="button" onClick={() => void runManagerAction(onRefresh, t.dictionaryRefreshed)} disabled={loading}>
-            {t.refresh}
-          </button>
-          <button className="secondary-button" type="button" onClick={() => void runManagerAction(onRefreshLibrary, t.libraryRefreshed)} disabled={loading}>
-            {t.refreshLibrary}
-          </button>
         </div>
       </div>
 
+      <nav className="manager-sections" aria-label={t.managerTitle}>
+        {(['library', 'preferences', 'mcp', 'site'] as const).filter((key) => key !== 'site' || isAdmin).map((key) => (
+          <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => { setSection(key); setActionNotice(null) }}>
+            {{ library: t.librarySection, preferences: t.preferences, mcp: t.mcpAccess, site: t.siteSection }[key]}
+          </button>
+        ))}
+      </nav>
       {actionNotice ? (
         <div className={actionNotice.type === 'success' ? 'manager-feedback-toast success' : 'manager-feedback-toast error'} role="status" aria-live="polite">
           {actionNotice.message}
         </div>
       ) : null}
 
-
-      <section className="card manager-utility-card mcp-access-card">
-        <div className="utility-card-head">
-          <div>
-            <div className="eyebrow">{t.mcpAccess}</div>
-            <h3>{t.mcpAccessTitle}</h3>
-            <p className="muted">{t.mcpAccessDescription}</p>
+      <div className="manager-group" hidden={section !== 'mcp'}>
+        <section className="card manager-utility-card mcp-access-card">
+          <div className="utility-card-head">
+            <div>
+              <div className="eyebrow">{t.mcpAccess}</div>
+              <h3>{t.mcpAccessTitle}</h3>
+              <p className="muted">{t.mcpAccessDescription}</p>
+            </div>
+            <span className="utility-card-icon"><Key size={22} weight="duotone" /></span>
           </div>
-          <span className="utility-card-icon"><Key size={22} weight="duotone" /></span>
-        </div>
-        <form key={`${mcpTokenStatus?.hint ?? ''}:${mcpTokenStatus?.token ?? ''}`} className="mcp-token-form" onSubmit={handleMCPTokenSave}>
-          <label className="field footer-settings-field">
-            <span>{t.mcpToken}</span>
-            <input name="mcp_token" defaultValue={mcpTokenStatus?.token ?? ''} placeholder={t.mcpTokenPlaceholder} autoComplete="off" />
-          </label>
-          <div className="mcp-token-meta">
-            <span className={mcpTokenStatus?.configured ? 'status-pill active' : 'status-pill muted-pill'}>
-              {mcpTokenStatus?.configured ? `${t.mcpTokenConfigured}${mcpTokenStatus.hint}` : t.mcpTokenNotConfigured}
-            </span>
-          </div>
-          <div className="actions-row wrap mcp-token-actions">
-            <button className="primary-button" type="submit">{t.saveMCPToken}</button>
-            <button className="secondary-button" type="button" onClick={() => void handleMCPTokenGenerate()}>
-              <MagicWand size={16} weight="bold" aria-hidden="true" />
-              <span>{t.generateMCPToken}</span>
-            </button>
-            <button className="danger-button" type="button" onClick={() => void handleMCPTokenDelete()} disabled={!mcpTokenStatus?.configured}>
-              <Trash size={16} weight="bold" aria-hidden="true" />
-              <span>{t.deleteMCPToken}</span>
-            </button>
-            <button className="secondary-button" type="button" onClick={() => setMCPHelpOpen(true)}>
-              <Question size={16} weight="bold" aria-hidden="true" />
-              <span>{t.mcpHelp}</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {mcpHelpOpen ? (
-        <div className="settings-overlay mcp-help-overlay" role="presentation" onClick={() => setMCPHelpOpen(false)}>
-          <div className="mcp-help-modal card" role="dialog" aria-modal="true" aria-labelledby="mcp-help-title" onClick={(event) => event.stopPropagation()}>
-            <div className="settings-drawer-head recorder-drawer-head">
-              <div>
-                <div className="eyebrow">{t.mcpAccess}</div>
-                <h3 id="mcp-help-title">{t.mcpHelpTitle}</h3>
-                <p className="muted drawer-subcopy">{t.mcpHelpDescription}</p>
-              </div>
-              <button className="transport-button" type="button" onClick={() => setMCPHelpOpen(false)} aria-label={t.close}>
-                <X size={18} weight="bold" aria-hidden="true" />
+          <form key={`${mcpTokenStatus?.hint ?? ''}:${mcpTokenStatus?.token ?? ''}`} className="mcp-token-form" onSubmit={handleMCPTokenSave}>
+            <label className="field footer-settings-field">
+              <span>{t.mcpToken}</span>
+              <input name="mcp_token" defaultValue={mcpTokenStatus?.token ?? ''} placeholder={t.mcpTokenPlaceholder} autoComplete="off" />
+            </label>
+            <div className="mcp-token-meta">
+              <span className={mcpTokenStatus?.configured ? 'status-pill active' : 'status-pill muted-pill'}>
+                {mcpTokenStatus?.configured ? `${t.mcpTokenConfigured}${mcpTokenStatus.hint}` : t.mcpTokenNotConfigured}
+              </span>
+            </div>
+            <div className="actions-row wrap mcp-token-actions">
+              <button className="primary-button" type="submit">{t.saveMCPToken}</button>
+              <button className="secondary-button" type="button" onClick={() => void handleMCPTokenGenerate()}>
+                <MagicWand size={16} weight="bold" aria-hidden="true" />
+                <span>{t.generateMCPToken}</span>
+              </button>
+              <button className="danger-button" type="button" onClick={() => void handleMCPTokenDelete()} disabled={!mcpTokenStatus?.configured}>
+                <Trash size={16} weight="bold" aria-hidden="true" />
+                <span>{t.deleteMCPToken}</span>
+              </button>
+              <button className="secondary-button" type="button" onClick={() => setMCPHelpOpen(true)}>
+                <Question size={16} weight="bold" aria-hidden="true" />
+                <span>{t.mcpHelp}</span>
               </button>
             </div>
-            <div className="mcp-help-content">
-              <div>
-                <span className="settings-label">{t.mcpEndpoint}</span>
-                <code>{mcpEndpoint}</code>
-              </div>
-              <div>
-                <span className="settings-label">{t.mcpAuthorization}</span>
-                <code>Authorization: Bearer {mcpTokenExample}</code>
-                <code>{mcpEndpoint}?token={encodeURIComponent(mcpTokenExample)}</code>
-                <p className="muted">{t.mcpAuthorizationHeader}</p>
-              </div>
-              <div>
-                <span className="settings-label">{t.mcpAvailableTools}</span>
-                <ul>
-                  <li>{t.mcpListDictionariesHelp}</li>
-                  <li>{t.mcpSearchDictionaryHelp}</li>
-                </ul>
-              </div>
-              <p className="warning-banner">{t.mcpHelpTokenNotice}</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <section className="card manager-utility-card">
-        <div className="utility-card-head">
-          <div>
-            <div className="eyebrow">{t.sharedControls}</div>
-            <h3>{t.sharedControls}</h3>
-            <p className="muted">{t.sharedControlsDescription}</p>
-          </div>
-          <span className="utility-card-icon"><GearSix size={22} weight="duotone" /></span>
-        </div>
-        <SettingsPanel
-          preferences={preferences}
-          onLanguageChange={onLanguageChange}
-          onThemeChange={onThemeChange}
-          onDisplayNameChange={onDisplayNameChange}
-          onCustomFontSelect={async () => Promise.resolve()}
-          onAvatarUpload={onAvatarUpload}
-          showProfileEditor={false}
-          showFontMode={false}
-        />
-        <form className="settings-section recent-limit-settings" onSubmit={handleRecentSearchLimitSave}>
-          <label className="field compact-profile-field recent-limit-field">
-            <span>{t.recentSearchLimit}</span>
-            <input
-              name="recent_search_limit"
-              type="number"
-              min={0}
-              max={20}
-              step={1}
-              defaultValue={preferences.recent_search_limit}
-              aria-describedby="recent-search-limit-help"
-            />
-          </label>
-          <p id="recent-search-limit-help" className="muted settings-helper-text">{t.recentSearchLimitDescription}</p>
-          <div className="actions-row footer-settings-actions">
-            <button className="primary-button" type="submit">{t.saveRecentSearchLimit}</button>
-          </div>
-        </form>
-      </section>
-
-
-      {isAdmin && systemSettings ? (
-        <>
-        <section className="card manager-utility-card system-access-card">
-          <div className="utility-card-head">
-            <div>
-              <div className="eyebrow">{t.systemAccess}</div>
-              <h3>{t.registrationGate}</h3>
-              <p className="muted">{t.registrationGateDescription}</p>
-            </div>
-            <span className={systemSettings.allow_register ? 'status-pill active' : 'status-pill muted-pill'}>
-              {systemSettings.allow_register ? t.registrationOpen : t.registrationClosed}
-            </span>
-          </div>
-          <button
-            className={systemSettings.allow_register ? 'toggle-chip active registration-toggle-chip' : 'toggle-chip registration-toggle-chip'}
-            type="button"
-            onClick={() => void handleRegistrationToggle()}
-            disabled={systemSettingsSaving}
-            aria-pressed={systemSettings.allow_register}
-          >
-            <span className="toggle-mark"><CheckCircle size={16} weight="fill" /></span>
-            <span>{systemSettings.allow_register ? t.registrationOpen : t.registrationClosed}</span>
-          </button>
-          {systemSettingsError ? <div className="error-banner">{systemSettingsError}</div> : null}
+          </form>
         </section>
 
-        <form key={`${systemSettings.footer_extra}:${systemSettings.copyright}`} className="card manager-utility-card system-footer-card" onSubmit={handleFooterSettingsSave}>
-          <div className="utility-card-head">
-            <div>
-              <div className="eyebrow">{t.siteFooter}</div>
-              <h3>{t.footerContent}</h3>
-              <p className="muted">{t.footerContentDescription}</p>
-            </div>
-            <span className="utility-card-icon"><TextAlignLeft size={22} weight="duotone" /></span>
-          </div>
-          <div className="settings-section footer-settings-grid">
-            <label className="field footer-settings-field">
-              <span>{t.footerExtraInfo}</span>
-              <textarea name="footer_extra" defaultValue={systemSettings.footer_extra} placeholder={t.footerExtraPlaceholder} rows={3} />
-            </label>
-            <label className="field footer-settings-field">
-              <span>{t.footerCopyright}</span>
-              <input name="copyright" defaultValue={systemSettings.copyright} placeholder={t.footerCopyrightPlaceholder} />
-            </label>
-          </div>
-          <div className="actions-row footer-settings-actions">
-            <button className="primary-button" type="submit" disabled={systemSettingsSaving}>{t.saveFooterSettings}</button>
-          </div>
-        </form>
-        </>
-      ) : null}
-
-      <section className="card manager-utility-card font-management-card">
-        <div className="utility-card-head">
-          <div>
-            <div className="eyebrow">{t.fontManagement}</div>
-            <h3>{t.fontManagement}</h3>
-            <p className="muted">{t.fontManagementDescription}</p>
-          </div>
-          <span className="utility-card-icon"><UploadSimple size={22} weight="duotone" /></span>
-        </div>
-        <div className="settings-section font-management-section">
-          <span className="settings-label">{t.fontManagement}</span>
-          <div className="manager-font-tools">
-            <label className="font-upload-inline compact-upload manager-font-upload always-visible-upload">
-              <span>{t.customFontUpload}</span>
-              <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (!file) return
-                void runManagerAction(() => onFontUpload(file), t.fontUploaded)
-                event.target.value = ''
-              }} />
-            </label>
-            {preferences.available_fonts && preferences.available_fonts.length > 0 ? (
-              <div className="managed-font-list">
-                {preferences.available_fonts.map((font) => (
-                  <div key={font.name} className={preferences.custom_font_name === font.name ? 'managed-font-item active' : 'managed-font-item'}>
-                    <div className="managed-font-copy">
-                      <strong>{font.family}</strong>
-                      <span className="muted">{font.name}</span>
-                    </div>
-                    <button className="secondary-button icon-action-button" type="button" title={t.deleteFont} aria-label={t.deleteFont} onClick={() => void runManagerAction(() => onDeleteFont(font.name), t.fontDeleted)}>
-                      <Trash size={16} weight="bold" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <form className="card upload-card" onSubmit={handleUpload}>
-        <div className="upload-grid">
-          <label className="dropzone">
-            <span className="dropzone-title">{t.mdxFile}</span>
-            <span className="muted">{t.mdxFileHint}</span>
-            <input type="file" accept=".mdx" onChange={(event) => setMdxFile(event.target.files?.[0] ?? null)} required />
-            <strong>{mdxFile ? mdxFile.name : t.chooseMdx}</strong>
-          </label>
-
-          <label className="dropzone">
-            <span className="dropzone-title">{t.mddResources}</span>
-            <span className="muted">{t.mddHint}</span>
-            <input type="file" accept=".mdd" multiple onChange={(event) => setMddFiles(Array.from(event.target.files ?? []))} />
-            <strong>{mddFiles.length > 0 ? t.selectedFileCount(mddFiles.length) : t.chooseMdd}</strong>
-          </label>
-        </div>
-
-        {uploadError ? <div className="error-banner">{uploadError}</div> : null}
-        {error ? <div className="error-banner">{error}</div> : null}
-
-        <div className="actions-row">
-          <button className="primary-button" type="submit" disabled={uploading}>
-            {uploading ? t.uploading : t.uploadDictionary}
-          </button>
-        </div>
-      </form>
-
-      {maintenanceReport ? (
-        <section className="card maintenance-report-card">
-          <div className="result-group-header">
-            <div>
-              <div className="eyebrow">{t.maintenanceReportTitle}</div>
-              <h3>{maintenanceReport.summary}</h3>
-            </div>
-          </div>
-          <div className="maintenance-stats">
-            <span>{t.discoveredCount}: {maintenanceReport.discovered}</span>
-            <span>{t.updatedCount}: {maintenanceReport.updated}</span>
-            <span>{t.skippedCount}: {maintenanceReport.skipped}</span>
-            <span>{t.failedCount}: {maintenanceReport.failed}</span>
-          </div>
-          <div className="maintenance-item-list">
-            {maintenanceReport.items.map((item, index) => (
-              <article
-                key={`${item.name}-${item.status}-${index}`}
-                className={item.dictionary_id ? 'maintenance-item actionable-maintenance-item' : 'maintenance-item'}
-                onClick={() => {
-                  if (!item.dictionary_id) return
-                  const target = document.getElementById(`dictionary-card-${item.dictionary_id}`)
-                  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }}
-              >
-                <strong>{item.name}</strong>
-                <p className="muted">{item.message}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <div className="dictionary-grid">
-        {dictionaries.map((item) => {
-          const mddPaths = item.mdd_paths ?? []
-          const missingFiles = item.missing_files ?? []
-          return (
-            <article key={item.id} id={`dictionary-card-${item.id}`} className="card dictionary-card">
-              <div className="dictionary-card-head">
+        {mcpHelpOpen ? (
+          <Dialog className="mcp-help-modal card" label={t.mcpHelpTitle} onDismiss={() => setMCPHelpOpen(false)}>
+              <div className="settings-drawer-head recorder-drawer-head">
                 <div>
-                  <h3>{item.title || item.name}</h3>
-                  <p className="muted dictionary-description">{summarizeDescription(item.description, t.noDescription)}</p>
+                  <div className="eyebrow">{t.mcpAccess}</div>
+                  <h3 id="mcp-help-title">{t.mcpHelpTitle}</h3>
+                  <p className="muted drawer-subcopy">{t.mcpHelpDescription}</p>
                 </div>
+                <button className="transport-button" type="button" onClick={() => setMCPHelpOpen(false)} aria-label={t.close}>
+                  <X size={18} weight="bold" aria-hidden="true" />
+                </button>
               </div>
-
-              <div className="dictionary-status-row device-status-row">
-                <label className={item.enabled ? 'toggle-chip active' : 'toggle-chip'}>
-                  <input type="checkbox" checked={item.enabled} onChange={() => void runManagerAction(() => onToggle(item), t.dictionaryStatusUpdated)} />
-                  <span className="toggle-mark"><CheckCircle size={16} weight="fill" /></span>
-                  <span>{item.enabled ? t.enabled : t.disabled}</span>
-                </label>
-                <label className={item.public ? 'toggle-chip info' : 'toggle-chip'}>
-                  <input type="checkbox" checked={item.public} onChange={() => void runManagerAction(() => onTogglePublic(item), t.dictionaryVisibilityUpdated)} />
-                  <span className="toggle-mark">{item.public ? <Eye size={16} weight="fill" /> : <EyeSlash size={16} weight="fill" />}</span>
-                  <span>{item.public ? t.public : t.private}</span>
-                </label>
-                <span className={statusClassName(item.file_status)}>{statusLabel(item.file_status, t)}</span>
-              </div>
-
-              {missingFiles.length > 0 ? (
-                <div className="warning-banner">
-                  <strong>{t.missingFiles}</strong>
-                  <ul className="missing-file-list">
-                    {missingFiles.map((path) => (
-                      <li key={path}>{path}</li>
-                    ))}
+              <div className="mcp-help-content">
+                <div>
+                  <span className="settings-label">{t.mcpEndpoint}</span>
+                  <code>{mcpEndpoint}</code>
+                </div>
+                <div>
+                  <span className="settings-label">{t.mcpAuthorization}</span>
+                  <code>Authorization: Bearer {mcpTokenExample}</code>
+                  <code>{mcpEndpoint}?token={encodeURIComponent(mcpTokenExample)}</code>
+                  <p className="muted">{t.mcpAuthorizationHeader}</p>
+                </div>
+                <div>
+                  <span className="settings-label">{t.mcpAvailableTools}</span>
+                  <ul>
+                    <li>{t.mcpListDictionariesHelp}</li>
+                    <li>{t.mcpSearchDictionaryHelp}</li>
                   </ul>
                 </div>
-              ) : null}
-
-              <dl className="meta-grid">
-                <div>
-                  <dt>{t.entries}</dt>
-                  <dd>{item.entry_count}</dd>
-                </div>
-                <div>
-                  <dt>{t.mddFiles}</dt>
-                  <dd>{mddPaths.length}</dd>
-                </div>
-                <div>
-                  <dt>{t.uploadedAt}</dt>
-                  <dd>{new Date(item.created_at).toLocaleString()}</dd>
-                </div>
-                <div>
-                  <dt>{t.owner}</dt>
-                  <dd>{item.owner_name || t.you}</dd>
-                </div>
-              </dl>
-
-              <div className="actions-row wrap icon-action-row">
-                <button className="secondary-button icon-action-button" type="button" title={t.refreshItem} aria-label={t.refreshItem} onClick={() => void runManagerAction(() => onRefreshItem(item), t.dictionaryRefreshed)}>
-                  <PencilSimple size={18} weight="bold" />
-                </button>
-                <button className="secondary-button icon-action-button" type="button" title={t.uploadDictionary} aria-label={t.uploadDictionary} onClick={() => document.querySelector('form.upload-card input[type=file]')?.dispatchEvent(new MouseEvent('click'))}>
-                  <UploadSimple size={18} weight="bold" />
-                </button>
-                <button className="danger-button icon-action-button" type="button" title={t.delete} aria-label={t.delete} onClick={() => void runManagerAction(() => onDelete(item), t.dictionaryDeleted)}>
-                  <Trash size={18} weight="bold" />
-                </button>
+                <p className="warning-banner">{t.mcpHelpTokenNotice}</p>
               </div>
-            </article>
-          )
-        })}
-
-        {dictionaries.length === 0 ? (
-          <div className="card empty-state">
-            <h3>{t.noDictionariesYet}</h3>
-            <p className="muted">{t.uploadFirstDictionary}</p>
-          </div>
+          </Dialog>
         ) : null}
+      </div>
+
+      <div className="manager-group" hidden={section !== 'preferences'}>
+        <section className="card manager-utility-card">
+          <div className="utility-card-head">
+            <div>
+              <h3>{t.sharedControls}</h3>
+              <p className="muted">{t.sharedControlsDescription}</p>
+            </div>
+            <span className="utility-card-icon"><GearSix size={22} weight="duotone" /></span>
+          </div>
+          <SettingsPanel
+            preferences={preferences}
+            onLanguageChange={onLanguageChange}
+            onThemeChange={onThemeChange}
+            onDisplayNameChange={onDisplayNameChange}
+            onCustomFontSelect={async () => Promise.resolve()}
+            onAvatarUpload={onAvatarUpload}
+            showProfileEditor={false}
+            showFontMode={false}
+          />
+          <form className="settings-section recent-limit-settings" onSubmit={handleRecentSearchLimitSave}>
+            <label className="field compact-profile-field recent-limit-field">
+              <span>{t.recentSearchLimit}</span>
+              <input
+                name="recent_search_limit"
+                type="number"
+                min={0}
+                max={20}
+                step={1}
+                defaultValue={preferences.recent_search_limit}
+                aria-describedby="recent-search-limit-help"
+              />
+            </label>
+            <p id="recent-search-limit-help" className="muted settings-helper-text">{t.recentSearchLimitDescription}</p>
+            <div className="actions-row footer-settings-actions">
+              <button className="primary-button" type="submit">{t.saveRecentSearchLimit}</button>
+            </div>
+          </form>
+        </section>
+
+
+        <section className="card manager-utility-card font-management-card">
+          <div className="utility-card-head">
+            <div>
+              <h3>{t.fontManagement}</h3>
+              <p className="muted">{t.fontManagementDescription}</p>
+            </div>
+            <span className="utility-card-icon"><UploadSimple size={22} weight="duotone" /></span>
+          </div>
+          <div className="settings-section font-management-section">
+            <div className="manager-font-tools">
+              <label className="font-upload-inline compact-upload manager-font-upload always-visible-upload">
+                <span>{t.customFontUpload}</span>
+                <input type="file" accept=".ttf,.otf,.woff,.woff2" onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  void runManagerAction(() => onFontUpload(file), t.fontUploaded)
+                  event.target.value = ''
+                }} />
+              </label>
+              {preferences.available_fonts && preferences.available_fonts.length > 0 ? (
+                <div className="managed-font-list">
+                  {preferences.available_fonts.map((font) => (
+                    <div key={font.name} className={preferences.custom_font_name === font.name ? 'managed-font-item active' : 'managed-font-item'}>
+                      <div className="managed-font-copy">
+                        <strong>{font.family}</strong>
+                        <span className="muted">{font.name}</span>
+                      </div>
+                      <button className="secondary-button icon-action-button" type="button" title={t.deleteFont} aria-label={t.deleteFont} onClick={() => void runManagerAction(() => onDeleteFont(font.name), t.fontDeleted)}>
+                        <Trash size={16} weight="bold" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div className="manager-group" hidden={section !== 'site'}>
+        {isAdmin && systemSettings ? (
+          <>
+          <section className="card manager-utility-card system-access-card">
+            <div className="utility-card-head">
+              <div>
+                <div className="eyebrow">{t.systemAccess}</div>
+                <h3>{t.registrationGate}</h3>
+                <p className="muted">{t.registrationGateDescription}</p>
+              </div>
+              <span className={systemSettings.allow_register ? 'status-pill active' : 'status-pill muted-pill'}>
+                {systemSettings.allow_register ? t.registrationOpen : t.registrationClosed}
+              </span>
+            </div>
+            <button
+              className={systemSettings.allow_register ? 'toggle-chip active registration-toggle-chip' : 'toggle-chip registration-toggle-chip'}
+              type="button"
+              onClick={() => void handleRegistrationToggle()}
+              disabled={systemSettingsSaving}
+              aria-pressed={systemSettings.allow_register}
+            >
+              <span className="toggle-mark"><CheckCircle size={16} weight="fill" /></span>
+              <span>{systemSettings.allow_register ? t.registrationOpen : t.registrationClosed}</span>
+            </button>
+            {systemSettingsError ? <div className="error-banner">{systemSettingsError}</div> : null}
+          </section>
+
+          <form key={`${systemSettings.footer_extra}:${systemSettings.copyright}`} className="card manager-utility-card system-footer-card" onSubmit={handleFooterSettingsSave}>
+            <div className="utility-card-head">
+              <div>
+                <div className="eyebrow">{t.siteFooter}</div>
+                <h3>{t.footerContent}</h3>
+                <p className="muted">{t.footerContentDescription}</p>
+              </div>
+              <span className="utility-card-icon"><TextAlignLeft size={22} weight="duotone" /></span>
+            </div>
+            <div className="settings-section footer-settings-grid">
+              <label className="field footer-settings-field">
+                <span>{t.footerExtraInfo}</span>
+                <textarea name="footer_extra" defaultValue={systemSettings.footer_extra} placeholder={t.footerExtraPlaceholder} rows={3} />
+              </label>
+              <label className="field footer-settings-field">
+                <span>{t.footerCopyright}</span>
+                <input name="copyright" defaultValue={systemSettings.copyright} placeholder={t.footerCopyrightPlaceholder} />
+              </label>
+            </div>
+            <div className="actions-row footer-settings-actions">
+              <button className="primary-button" type="submit" disabled={systemSettingsSaving}>{t.saveFooterSettings}</button>
+            </div>
+          </form>
+          </>
+        ) : null}
+
+      </div>
+
+      <div className="manager-group" hidden={section !== 'library'}>
+        <form className="card upload-card" onSubmit={handleUpload}>
+          <h2>{t.uploadDictionary}</h2>
+          <div className="upload-grid">
+            <label className="dropzone">
+              <span className="dropzone-title">{t.mdxFile}</span>
+              <span className="muted">{t.mdxFileHint}</span>
+              <input className="sr-only" type="file" accept=".mdx" onChange={(event) => setMdxFile(event.target.files?.[0] ?? null)} required />
+              <strong>{mdxFile ? mdxFile.name : t.chooseMdx}</strong>
+            </label>
+
+            <label className="dropzone">
+              <span className="dropzone-title">{t.mddResources}</span>
+              <span className="muted">{t.mddHint}</span>
+              <input className="sr-only" type="file" accept=".mdd" multiple onChange={(event) => setMddFiles(Array.from(event.target.files ?? []))} />
+              <strong>{mddFiles.length > 0 ? t.selectedFileCount(mddFiles.length) : t.chooseMdd}</strong>
+            </label>
+          </div>
+
+          {uploadError ? <div className="error-banner">{uploadError}</div> : null}
+          {error ? <div className="error-banner">{error}</div> : null}
+
+          <div className="actions-row">
+            <button className="primary-button" type="submit" disabled={uploading || !mdxFile}>
+              {uploading ? t.uploading : t.uploadDictionary}
+            </button>
+          </div>
+        </form>
+
+        {maintenanceReport ? (
+          <section className="card maintenance-report-card">
+            <div className="result-group-header">
+              <div>
+                <div className="eyebrow">{t.maintenanceReportTitle}</div>
+                <h3>{maintenanceReport.summary}</h3>
+              </div>
+            </div>
+            <div className="maintenance-stats">
+              <span>{t.discoveredCount}: {maintenanceReport.discovered}</span>
+              <span>{t.updatedCount}: {maintenanceReport.updated}</span>
+              <span>{t.skippedCount}: {maintenanceReport.skipped}</span>
+              <span>{t.failedCount}: {maintenanceReport.failed}</span>
+            </div>
+            <div className="maintenance-item-list">
+              {maintenanceReport.items.map((item, index) => (
+                <div key={`${item.name}-${item.status}-${index}`} className="maintenance-item">
+                  {item.dictionary_id ? <a href={`#dictionary-card-${item.dictionary_id}`}>{item.name}</a> : <strong>{item.name}</strong>}
+                  <p className="muted">{item.message}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <div className="library-list-head"><div><h2>{t.librarySection}</h2><p className="muted">{t.maintenanceTip}</p></div>
+          <div className="actions-row wrap">
+            <button className="secondary-button" type="button" onClick={() => void runManagerAction(onRefresh, t.dictionaryRefreshed)} disabled={loading}>
+              {t.refresh}
+            </button>
+            <button className="secondary-button" type="button" onClick={async () => {
+              setLibraryBusy(true)
+              try { await runManagerAction(onRefreshLibrary, t.libraryRefreshed) } finally { setLibraryBusy(false) }
+            }} disabled={loading || libraryBusy}>
+              {libraryBusy ? t.pleaseWait : t.refreshLibrary}
+            </button>
+          </div>
+        </div>
+        <div className="dictionary-grid">
+          {dictionaries.map((item) => {
+            const mddPaths = item.mdd_paths ?? []
+            const missingFiles = item.missing_files ?? []
+            return (
+              <article key={item.id} id={`dictionary-card-${item.id}`} className="card dictionary-card">
+                <div className="dictionary-card-head">
+                  <div>
+                    <h3>{item.title || item.name}</h3>
+                    <p className="muted dictionary-description">{summarizeDescription(item.description, t.noDescription)}</p>
+                  </div>
+                </div>
+
+                <div className="dictionary-status-row device-status-row">
+                  <label className={item.enabled ? 'toggle-chip active' : 'toggle-chip'}>
+                    <input type="checkbox" checked={item.enabled} onChange={() => void runManagerAction(() => onToggle(item), t.dictionaryStatusUpdated)} />
+                    <span className="toggle-mark"><CheckCircle size={16} weight="fill" /></span>
+                    <span>{item.enabled ? t.enabled : t.disabled}</span>
+                  </label>
+                  <label className={item.public ? 'toggle-chip info' : 'toggle-chip'}>
+                    <input type="checkbox" checked={item.public} onChange={() => void runManagerAction(() => onTogglePublic(item), t.dictionaryVisibilityUpdated)} />
+                    <span className="toggle-mark">{item.public ? <Eye size={16} weight="fill" /> : <EyeSlash size={16} weight="fill" />}</span>
+                    <span>{item.public ? t.public : t.private}</span>
+                  </label>
+                  <span className={statusClassName(item.file_status)}>{statusLabel(item.file_status, t)}</span>
+                </div>
+
+                {missingFiles.length > 0 ? (
+                  <div className="warning-banner">
+                    <strong>{t.missingFiles}</strong>
+                    <ul className="missing-file-list">
+                      {missingFiles.map((path) => (
+                        <li key={path}>{path}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <dl className="meta-grid">
+                  <div>
+                    <dt>{t.entries}</dt>
+                    <dd>{item.entry_count}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.mddFiles}</dt>
+                    <dd>{mddPaths.length}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.uploadedAt}</dt>
+                    <dd>{new Date(item.created_at).toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.owner}</dt>
+                    <dd>{item.owner_name || t.you}</dd>
+                  </div>
+                </dl>
+
+                <div className="actions-row wrap icon-action-row">
+                  <button className="secondary-button icon-action-button" type="button" title={t.refreshItem} aria-label={t.refreshItem} onClick={() => void runManagerAction(() => onRefreshItem(item), t.dictionaryRefreshed)}>
+                    <ArrowsClockwise size={18} weight="bold" />
+                  </button>
+                  <button className="danger-button icon-action-button" type="button" title={t.delete} aria-label={t.delete} onClick={() => void runManagerAction(() => onDelete(item), t.dictionaryDeleted)}>
+                    <Trash size={18} weight="bold" />
+                  </button>
+                </div>
+              </article>
+            )
+          })}
+
+          {dictionaries.length === 0 ? (
+            <div className="card empty-state">
+              <h3>{t.noDictionariesYet}</h3>
+              <p className="muted">{t.uploadFirstDictionary}</p>
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   )

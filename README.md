@@ -2,7 +2,17 @@
 
 [中文说明](README_ZH.md)
 
-Owl is a self-hosted web dictionary for **MDX / MDD** files. It gives you a browser-based dictionary workspace for personal lookup, shared public dictionaries, private user dictionaries, and MCP access for AI clients.
+Owl reads **MDX / MDD** dictionaries in a native desktop app and in a self-hosted web workspace with public dictionaries, private libraries and MCP access.
+
+## Desktop app
+
+Download **Owl Dictionary** for macOS (Apple Silicon or Intel), Windows (x64) or Linux (x64 or ARM64). Choose an `owl-dictionary-…` installer for the app, or an `owl-…` server archive for self-hosting. Linux packages use GTK 4. [GitHub Releases](https://github.com/ca-x/owl/releases/latest)
+
+- **Local dictionary** opens an MDX on your computer. Put any matching MDD volumes beside it. You can search and read offline, including images, pronunciation and links between entries.
+- **Owl server** takes the base URL of your instance, such as `https://owl.example.org`. Connect as a guest to read public dictionaries, or sign in for your own private entries and media. The app remembers the server address and local file path. Credentials stay in memory.
+- **Reading** uses native text, image and audio controls. For a dictionary's original HTML and CSS layout, open the web workspace. Press Enter to look up a word, Ctrl/Cmd+F to focus search, and Ctrl/Cmd+O in local mode to open a file.
+
+The desktop app is a separate Go module built with NSGo. To run it from source with Go 1.27.3 or later, use `cd desktop && go run .`.
 
 ---
 

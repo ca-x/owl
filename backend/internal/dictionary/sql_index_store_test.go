@@ -16,6 +16,24 @@ import (
 
 var benchmarkSQLIndexEntries []mdx.IndexEntry
 
+func BenchmarkSQLLatePrefix(b *testing.B) {
+	store, _ := newTestSQLDictionaryIndexStore(b, "late_prefix")
+	entries := make([]mdx.IndexEntry, 12_000)
+	for i := range entries {
+		entries[i].Keyword = fmt.Sprintf("word-%05d", i)
+	}
+	if err := store.Put(mdx.DictionaryInfo{Name: "words"}, entries); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		hits, err := store.Search("words", "word-119", 10)
+		if err != nil || len(hits) != 10 {
+			b.Fatalf("late prefix returned %d hits, err %v", len(hits), err)
+		}
+	}
+}
+
 func BenchmarkSQLDictionaryIndexStoreRead(b *testing.B) {
 	client, err := ent.Open("sqlite3", "file:"+b.TempDir()+"/index.db?_pragma=foreign_keys(1)")
 	if err != nil {
@@ -335,4 +353,20 @@ func newTestSQLDictionaryIndexStore(t testing.TB, databaseName string) (*sqlDict
 		t.Fatal(err)
 	}
 	return newSQLDictionaryIndexStore(ctx, client), client
+}
+
+func TestSQLLiteralPrefixes(t *testing.T) {
+	store, _ := newTestSQLDictionaryIndexStore(t, "literal_prefix")
+	for _, prefix := range []string{"Ä", "词", "a[", "a*", "a?", "a%", "a_", "a\\", "a]"} {
+		t.Run(prefix, func(t *testing.T) {
+			entries := []mdx.IndexEntry{{Keyword: prefix + "one"}, {Keyword: prefix + "two"}, {Keyword: "another"}}
+			if err := store.Put(mdx.DictionaryInfo{Name: "literal"}, entries); err != nil {
+				t.Fatal(err)
+			}
+			got, err := store.PrefixSearch("literal", prefix, 10)
+			if err != nil || len(got) != 2 || got[0].Keyword != entries[0].Keyword || got[1].Keyword != entries[1].Keyword {
+				t.Fatalf("%q: %+v, %v", prefix, got, err)
+			}
+		})
+	}
 }

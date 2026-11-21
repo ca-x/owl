@@ -1,9 +1,9 @@
 html {
-  background: #07111f;
+  background: var(--bg, #f7f5ef);
 }
 
 body {
-  min-width: 320px;
+  min-width: 0;
 }
 
 #root {

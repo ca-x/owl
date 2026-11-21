@@ -1,5 +1,5 @@
-import { Check, CopySimple, GlobeHemisphereEast, LockKey } from '@phosphor-icons/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { BookOpen, Check, CopySimple, MagnifyingGlass, X, GlobeHemisphereEast, LockKey } from '@phosphor-icons/react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 
 import { DictionaryEntryHtml } from '../components/DictionaryEntryHtml'
 import { useI18n } from '../i18n'
@@ -9,14 +9,17 @@ import type { DictionarySummary, SearchResult, SearchSuggestion } from '../types
 interface SearchPageProps {
   dictionaries: DictionarySummary[]
   loading: boolean
-  searching: boolean
-  results: SearchResult[]
   error: string
   isGuest: boolean
   token: string | null
   recentSearches: string[]
-  onSearch: (query: string, dictionaryId?: number) => Promise<void>
+  onSearched: (query: string) => void
 }
+
+type LookupState =
+  | { status: 'idle' | 'loading' }
+  | { status: 'done'; word: string; results: SearchResult[] }
+  | { status: 'error'; message: string }
 
 function updateSearchURL(query: string, dictionaryId?: number, mode: 'replace' | 'push' = 'replace') {
   const params = new URLSearchParams()
@@ -47,10 +50,14 @@ function readSearchURLState() {
   return { query, dictionaryId }
 }
 
-export function SearchPage({ dictionaries, loading, searching, results, error, isGuest, token, recentSearches, onSearch }: SearchPageProps) {
+export function SearchPage({ dictionaries, loading, error, isGuest, token, recentSearches, onSearched }: SearchPageProps) {
   const { t } = useI18n()
   const initialURLState = useMemo(() => readSearchURLState(), [])
-  const hydratedFromURL = useRef(false)
+  const request = useRef<AbortController | null>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const [lookup, setLookup] = useState<LookupState>({ status: initialURLState.query ? 'loading' : 'idle' })
+  const [activeSource, setActiveSource] = useState(-1)
+  const [copyError, setCopyError] = useState('')
   const pageTopRef = useRef<HTMLElement | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
   const [query, setQuery] = useState(initialURLState.query)
@@ -75,10 +82,9 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
     return isGuest ? t.scopeAllPublic : t.scopeAllAccessible
   }, [dictionaryId, enabledDictionaries, isGuest, t])
 
-  const { topResult, groupedResults } = useMemo(() => {
-    const [bestMatch, ...rest] = results
-    return { topResult: bestMatch ?? null, groupedResults: rest }
-  }, [results])
+  const [topResult, ...groupedResults] = lookup.status === 'done' ? lookup.results : []
+  const searching = lookup.status === 'loading'
+  const message = lookup.status === 'error' ? lookup.message : error
 
   function isMobileViewport() {
     return window.matchMedia('(max-width: 720px)').matches
@@ -94,7 +100,16 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   }
 
   function handleDictionarySelection(value: string) {
-    setDictionaryId(value ? Number(value) : undefined)
+    const nextScope = value ? Number(value) : undefined
+    if (lookup.status === 'done' && query.trim() === lookup.word) {
+      updateSearchURL(lookup.word, nextScope, 'push')
+      void search(lookup.word, nextScope, false)
+      return
+    }
+    setDictionaryId(nextScope)
+    setSuggestionsDismissed(true)
+    setSuggestions([])
+    setActiveSuggestion(-1)
   }
 
   function definitionText(result: SearchResult) {
@@ -104,6 +119,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
   }
 
   async function copyResultDefinition(result: SearchResult, key: string) {
+    setCopyError('')
     try {
       await navigator.clipboard.writeText(definitionText(result))
       setCopiedResultKey(key)
@@ -111,106 +127,136 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
         setCopiedResultKey((current) => (current === key ? '' : current))
       }, 1600)
     } catch {
+      setCopyError(t.copyFailed)
       setCopiedResultKey('')
     }
   }
 
-  async function runQuickSearch(nextQuery: string, nextDictionaryId?: number) {
-    const normalizedQuery = nextQuery.trim()
-    if (!normalizedQuery) return
-    const resolvedDictionaryId = nextDictionaryId ?? dictionaryId
-    setQuery(normalizedQuery)
+  async function search(word: string, scope: number | undefined, scroll: boolean) {
+    request.current?.abort()
+    setCopyError('')
+    setCopiedResultKey('')
     setSuggestionsDismissed(true)
     setActiveSuggestion(-1)
-    setDictionaryId(resolvedDictionaryId)
-    updateSearchURL(normalizedQuery, resolvedDictionaryId, 'push')
-    await onSearch(normalizedQuery, resolvedDictionaryId)
-    window.requestAnimationFrame(() => {
-      scrollAfterSearch()
-    })
-  }
-
-  useEffect(() => {
-    if (hydratedFromURL.current) return
-    hydratedFromURL.current = true
-
-    const applyURLState = (state: ReturnType<typeof readSearchURLState>) => {
-      setQuery(state.query)
-      setDictionaryId(state.dictionaryId)
-      setSuggestionsDismissed(state.query.length > 0)
-      setActiveSuggestion(-1)
-      void onSearch(state.query, state.dictionaryId)
-    }
-
-    applyURLState(initialURLState)
-
-    const handlePopState = () => {
-      applyURLState(readSearchURLState())
-    }
-
-    window.addEventListener('popstate', handlePopState)
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [initialURLState, onSearch])
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const keyword = activeSuggestion >= 0 ? visibleSuggestions[activeSuggestion]?.word ?? query : query
-    await runQuickSearch(keyword, dictionaryId)
-  }
-
-  useEffect(() => {
-    const normalizedQuery = query.trim()
-    if (normalizedQuery.length < 2) {
+    setActiveSource(-1)
+    setQuery(word)
+    setDictionaryId(scope)
+    if (!word) {
+      setLookup({ status: 'idle' })
       return
     }
-    let active = true
+    setLookup({ status: 'loading' })
+    await fetchWord(word, scope, scroll)
+  }
+
+  async function fetchWord(word: string, scope: number | undefined, scroll: boolean) {
+    const controller = new AbortController()
+    request.current = controller
+    try {
+      const results = token
+        ? await api.search(token, word, scope, controller.signal)
+        : await api.publicSearch(word, scope, controller.signal)
+      if (controller.signal.aborted) return
+      setLookup({ status: 'done', word, results })
+      onSearched(word)
+      if (scroll) window.requestAnimationFrame(() => { if (!controller.signal.aborted) scrollAfterSearch() })
+    } catch (err) {
+      if (!controller.signal.aborted) setLookup({ status: 'error', message: err instanceof Error ? err.message : t.genericError })
+    }
+  }
+
+  async function runQuickSearch(nextQuery: string, scope = dictionaryId) {
+    const word = nextQuery.trim()
+    if (!word) return
+    updateSearchURL(word, scope, 'push')
+    await search(word, scope, true)
+  }
+
+  const fetchInitialWord = useEffectEvent(() => {
+    const { query, dictionaryId } = readSearchURLState()
+    if (query) void fetchWord(query, dictionaryId, false)
+  })
+
+  const restoreURL = useEffectEvent(() => {
+    const state = readSearchURLState()
+    void search(state.query, state.dictionaryId, false)
+  })
+
+  useEffect(() => {
+    fetchInitialWord()
+    const onPopState = () => restoreURL()
+    const onShortcut = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.isComposing || event.altKey || event.metaKey || event.ctrlKey) return
+      if (document.querySelector('dialog[open]') || (event.target instanceof HTMLElement &&
+        (event.target.isContentEditable || event.target.closest('input, textarea, select')))) return
+      event.preventDefault()
+      input.current?.focus()
+      input.current?.select()
+    }
+    window.addEventListener('popstate', onPopState)
+    window.addEventListener('keydown', onShortcut)
+    return () => {
+      request.current?.abort()
+      window.removeEventListener('popstate', onPopState)
+      window.removeEventListener('keydown', onShortcut)
+    }
+  }, [token])
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const item = visibleSuggestions[activeSuggestion]
+    void runQuickSearch(item?.word ?? query, item?.sources[activeSource]?.dictionary_id)
+  }
+
+  useEffect(() => {
+    const word = query.trim()
+    if (word.length < 2 || suggestionsDismissed) return
+    const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       try {
-        const nextSuggestions = isGuest
-          ? await api.publicSuggest(normalizedQuery, dictionaryId)
-          : token
-            ? await api.suggest(token, normalizedQuery, dictionaryId)
-            : []
-        if (!active) return
-        setSuggestions(nextSuggestions)
-        setActiveSuggestion(nextSuggestions.length > 0 ? 0 : -1)
+        const items = token
+          ? await api.suggest(token, word, dictionaryId, controller.signal)
+          : await api.publicSuggest(word, dictionaryId, controller.signal)
+        if (!controller.signal.aborted) setSuggestions(items)
       } catch {
-        if (!active) return
-        setSuggestions([])
-        setActiveSuggestion(-1)
+        if (!controller.signal.aborted) setSuggestions([])
       }
     }, 180)
-
     return () => {
-      active = false
+      controller.abort()
       window.clearTimeout(timer)
     }
-  }, [dictionaryId, isGuest, query, token])
+  }, [dictionaryId, query, suggestionsDismissed, token])
 
-  async function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+  function changeQuery(value: string) {
+    setQuery(value)
+    setSuggestions([])
+    setSuggestionsDismissed(false)
+    setActiveSuggestion(-1)
+    setActiveSource(-1)
+  }
+
+  const activeCell = visibleSuggestions[activeSuggestion] ? `suggestion-${activeSuggestion}-${activeSource}` : undefined
+  useEffect(() => {
+    if (activeCell) document.getElementById(activeCell)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeCell])
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
     if (event.key === 'Escape') {
       setSuggestionsDismissed(true)
       setActiveSuggestion(-1)
       return
     }
-    if (visibleSuggestions.length === 0) return
-    if (event.key === 'ArrowDown') {
+    if (!visibleSuggestions.length) return
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
-      setActiveSuggestion((current) => (current + 1) % visibleSuggestions.length)
-      return
-    }
-    if (event.key === 'ArrowUp') {
+      const count = visibleSuggestions.length
+      setActiveSuggestion(event.key === 'ArrowDown' ? (activeSuggestion + 1) % count : (activeSuggestion <= 0 ? count - 1 : activeSuggestion - 1))
+      setActiveSource(-1)
+    } else if (activeSuggestion >= 0 && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
       event.preventDefault()
-      setActiveSuggestion((current) => (current <= 0 ? visibleSuggestions.length - 1 : current - 1))
-      return
-    }
-    if ((event.key === 'Enter' || event.key === 'Tab') && activeSuggestion >= 0) {
-      event.preventDefault()
-      const suggestion = visibleSuggestions[activeSuggestion]
-      if (!suggestion) return
-      await runQuickSearch(suggestion.word)
+      setActiveSource(Math.max(-1, Math.min(visibleSuggestions[activeSuggestion].sources.length - 1, activeSource + (event.key === 'ArrowRight' ? 1 : -1))))
     }
   }
 
@@ -218,60 +264,75 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
     <section className="page-section" ref={pageTopRef}>
       <section className="lookup-hero card">
         <div className="lookup-hero-copy">
-          <div className="eyebrow">{t.dictionaryLookup}</div>
-          <h2>{t.lookupTitle}</h2>
+          <h1>{t.lookupTitle}</h1>
         </div>
 
-        <form className="lookup-form" onSubmit={handleSubmit}>
-          <label className="lookup-input">
-            <span className="sr-only">{t.searchQueryLabel}</span>
+        <form className="lookup-form" role="search" onSubmit={handleSubmit}>
+          <div className="lookup-input">
+            <MagnifyingGlass className="lookup-glass" size={21} aria-hidden="true" />
             <input
-              autoFocus
+              autoFocus={!initialURLState.query && window.matchMedia('(hover: hover) and (pointer: fine)').matches}
+              ref={input}
+              id="lookup-query"
+              aria-label={t.searchQueryLabel}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-haspopup="grid"
+              aria-expanded={visibleSuggestions.length > 0}
+              aria-controls={visibleSuggestions.length ? 'lookup-suggestions' : undefined}
+              aria-activedescendant={activeCell}
+              autoComplete="off"
+              enterKeyHint="search"
+              spellCheck={false}
               value={query}
-              onChange={(event) => {
-                setQuery(event.target.value)
-                setSuggestionsDismissed(false)
-              }}
-              onKeyDown={(event) => void handleKeyDown(event)}
+              onChange={(event) => changeQuery(event.target.value)}
+              onKeyDown={handleKeyDown}
               onFocus={() => setSuggestionsDismissed(false)}
-              onBlur={() => {
-                window.setTimeout(() => {
-                  setSuggestionsDismissed(true)
-                  setActiveSuggestion(-1)
-                }, 120)
-              }}
+              onBlur={() => { setSuggestionsDismissed(true); setActiveSuggestion(-1) }}
               placeholder={t.searchPlaceholder}
               required
             />
+            {query ? <button className="clear-query" type="button" aria-label={t.clearQuery} onClick={() => {
+              updateSearchURL('', dictionaryId, 'push')
+              void search('', dictionaryId, false)
+              input.current?.focus()
+            }}><X size={16} /></button> : <kbd className="lookup-shortcut" aria-hidden="true">/</kbd>}
             {visibleSuggestions.length > 0 ? (
               <div className="autocomplete-popover">
                 <div className="autocomplete-head">
                   <span className="recent-label">{t.suggestions}</span>
                   <span className="muted">{t.pressEnterHint}</span>
                 </div>
-                <div className="autocomplete-list">
+                <div className="autocomplete-list" id="lookup-suggestions" role="grid" aria-label={t.suggestions}>
                   {visibleSuggestions.map((item, index) => (
                     <div
                       key={`${item.word}-${index}`}
                       className={activeSuggestion === index ? 'autocomplete-group active' : 'autocomplete-group'}
-                      onMouseEnter={() => setActiveSuggestion(index)}
+                      role="row"
                     >
                       <button
                         className="autocomplete-item autocomplete-word-button"
+                        role="gridcell"
+                        tabIndex={-1}
+                        id={`suggestion-${index}--1`}
+                        aria-selected={activeSuggestion === index && activeSource === -1}
                         type="button"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => void runQuickSearch(item.word)}
                       >
                         <div className="suggestion-main">
                           <strong>{item.word}</strong>
-                          <span className="suggestion-subline">{item.sources.map((source) => source.dictionary_name).join(' · ')}</span>
                         </div>
                       </button>
-                      <div className="autocomplete-source-list">
-                        {item.sources.map((source) => (
+                      <div className="autocomplete-source-list" role="presentation">
+                        {item.sources.map((source, sourceIndex) => (
                           <button
                             key={`${item.word}-${source.dictionary_id}`}
                             className="autocomplete-source-chip"
+                            role="gridcell"
+                            tabIndex={-1}
+                            id={`suggestion-${index}-${sourceIndex}`}
+                            aria-selected={activeSuggestion === index && activeSource === sourceIndex}
                             type="button"
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => void runQuickSearch(item.word, source.dictionary_id)}
@@ -289,9 +350,9 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                 </div>
               </div>
             ) : null}
-          </label>
+          </div>
 
-          <button className="primary-button hero-search-button" type="submit" disabled={loading || searching}>
+          <button className="primary-button hero-search-button" type="submit" disabled={loading}>
             {searching ? t.searching : t.lookupAction}
           </button>
         </form>
@@ -308,7 +369,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
               ))}
             </select>
           </label>
-          <button className="text-chip desktop-filter-toggle" type="button" onClick={() => setFiltersExpanded((current) => !current)}>
+          <button className="text-chip desktop-filter-toggle" aria-expanded={filtersExpanded} type="button" onClick={() => setFiltersExpanded((current) => !current)}>
             {filtersExpanded ? t.hideFilters : t.showFilters}
           </button>
         </div>
@@ -318,7 +379,8 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
             <button
               className={dictionaryId === undefined ? 'filter-chip active' : 'filter-chip'}
               type="button"
-              onClick={() => setDictionaryId(undefined)}
+              aria-pressed={dictionaryId === undefined}
+              onClick={() => handleDictionarySelection('')}
             >
               {t.allDictionaries}
             </button>
@@ -327,7 +389,8 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
                 key={item.id}
                 className={dictionaryId === item.id ? 'filter-chip active' : 'filter-chip'}
                 type="button"
-                onClick={() => setDictionaryId(item.id)}
+                aria-pressed={dictionaryId === item.id}
+                onClick={() => handleDictionarySelection(String(item.id))}
               >
                 {item.title || item.name}
               </button>
@@ -349,25 +412,27 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
         ) : null}
       </section>
 
-      {error ? <div className="error-banner">{error}</div> : null}
-
+      {message && <div className="error-banner" role="alert">{message}</div>}
+      {copyError && <div className="error-banner" role="alert">{copyError}</div>}
       <div ref={resultsRef} className="mobile-results-anchor" aria-hidden="true" />
-
-      {results.length === 0 && query ? (
-        <div className="empty-state card">
-          <h3>{t.noResultTitle}</h3>
-          <p className="muted">{t.noResultDescription}</p>
+      {searching ? (
+        <div className="lookup-status" role="status">{t.searching}</div>
+      ) : lookup.status === 'done' && !topResult ? (
+        <div className="empty-state card lookup-empty" role="status">
+          <MagnifyingGlass size={28} aria-hidden="true" />
+          <div><h3>{t.noResultTitle} · {lookup.word}</h3><p className="muted">{t.noResultDescription}</p></div>
         </div>
-      ) : results.length === 0 ? (
-        <div className="empty-state card">
-          <h3>{t.readyTitle}</h3>
-          <p className="muted">{t.readyDescription}</p>
+      ) : lookup.status === 'idle' && !error ? (
+        <div className="empty-state card lookup-empty">
+          <BookOpen size={28} aria-hidden="true" />
+          <div><h3>{enabledDictionaries.length ? t.readyTitle : t.noDictionariesYet}</h3>
+          <p className="muted">{enabledDictionaries.length ? t.readyDescription : isGuest ? t.noPublicDictionaries : t.uploadFirstDictionary}</p></div>
         </div>
-      ) : (
+      ) : lookup.status === 'done' ? (
         <div className="results-grid">
           <div className="result-output-summary" aria-live="polite">
-            <span className="scope-label">{t.resultCount(results.length)}</span>
-            <strong>{query}</strong>
+            <span className="scope-label">{t.resultCount(lookup.results.length)}</span>
+            <strong>{lookup.word}</strong>
           </div>
           {topResult ? (
             <section className="card hero-result reading-surface">
@@ -394,8 +459,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
           {groupedResults.length > 0 ? (
             <section className="result-visibility-group">
               <div className="result-visibility-header">
-                <div className="eyebrow">{t.moreMatches}</div>
-                <h3>{groupedResults.length}</h3>
+                <h3>{t.moreMatches} <span className="muted">({groupedResults.length})</span></h3>
               </div>
               <div className="result-list simple-result-list">
                 {groupedResults.map((item, index) => (
@@ -424,7 +488,7 @@ export function SearchPage({ dictionaries, loading, searching, results, error, i
             </section>
           ) : null}
         </div>
-      )}
+      ) : null}
     </section>
   )
 }

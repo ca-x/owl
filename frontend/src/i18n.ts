@@ -3,6 +3,11 @@ import { createContext, useContext } from 'react'
 export type AppLanguage = 'zh-CN' | 'en'
 
 type MessageCatalog = {
+  librarySection: string
+  siteSection: string
+  clearQuery: string
+  copyFailed: string
+  noPublicDictionaries: string
   appTagline: string
   search: string
   manage: string
@@ -214,6 +219,11 @@ type MessageCatalog = {
 
 export const messages: Record<AppLanguage, MessageCatalog> = {
   'zh-CN': {
+    librarySection: '词典库',
+    siteSection: '站点',
+    clearQuery: '清除输入',
+    copyFailed: '复制失败，可选中释义后复制。',
+    noPublicDictionaries: '站点还没有启用公开词典。登录后可以使用自己的词典。',
     appTagline: '词典应用，支持 MDX / MDD',
     search: '查词',
     manage: '管理',
@@ -232,8 +242,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     scrollToTopLabel: '返回页面顶部',
     selectedFileCount: (count) => `已选择 ${count} 个文件`,
     dictionaryLookup: '词典查询',
-    lookupTitle: '快速查单词、词组或字符。',
-    searchPlaceholder: '输入 hello、ability、能力 等词汇…',
+    lookupTitle: '词典查询',
+    searchPlaceholder: '输入单词、词组或汉字',
     lookupDescription: '面向日常词典使用：更快搜索、快速切换词典、更舒适的长内容阅读。',
     lookupAction: '查询',
     searching: '查询中…',
@@ -246,8 +256,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     scopeAllAccessible: '全部可访问词典',
     scopeSpecificDictionary: (name) => `仅限词典：${name}`,
     recent: '最近搜索',
-    readyTitle: '可以开始查词了',
-    readyDescription: '至少启用一本词典后开始搜索。建议先选常用主词典，再配合最近搜索使用。',
+    readyTitle: '从一个词开始',
+    readyDescription: '输入词头后按回车，或从搜索建议中选择。',
     noResultTitle: '没有找到匹配结果',
     noResultDescription: '可以尝试更短的词、不同拼写、切换到全部词典，或者刷新词典库后再试。',
     bestMatch: '最佳匹配',
@@ -259,11 +269,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     searchOnlyThisDictionary: '仅在该词典中查询',
     compareAcrossDictionaries: '跨词典对比',
     compareSameHeadword: '同词跨词典对比',
-    pressEnterHint: '回车使用当前输入，方向键选择建议',
+    pressEnterHint: '↑ ↓ 选词 · ← → 选词典 · 回车查询',
     resultVisibilityPublic: '公开词典',
     resultVisibilityPrivate: '私人词典',
     dictionaryManager: '词典管理',
-    managerTitle: '上传并管理你的个人词典',
+    managerTitle: '词典管理',
     uploadedEnabled: (total, enabled) => `${total} 本已上传 · ${enabled} 本已启用`,
     refresh: '刷新',
     mdxFile: 'MDX 文件',
@@ -297,7 +307,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     fileStatusMissingMdd: '缺少 MDD 资源文件',
     fileStatusMissingAll: '词典文件已失效',
     missingFiles: '缺失文件',
-    maintenanceTip: '如果你先上传了 MDX、后来才补上 MDD，或者挂载目录里新增了词典文件，请使用刷新词典或刷新词典库重新发现资源。',
+    maintenanceTip: '添加配套 MDD 或修改挂载目录后，刷新词典库即可重新扫描。',
     maintenanceReportTitle: '维护结果',
     discoveredCount: '新发现',
     updatedCount: '已更新',
@@ -356,7 +366,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     uploadAvatar: '上传头像',
     updateAvatar: '更新头像',
     sharedControls: '通用控制',
-    sharedControlsDescription: '个人资料、语言与主题在这里统一维护。',
+    sharedControlsDescription: '调整界面语言、主题和最近搜索数量。',
     recentSearchLimit: '最近搜索数量',
     recentSearchLimitDescription: '设置最近搜索最多保留多少条；填 0 可关闭最近搜索记录。',
     saveRecentSearchLimit: '保存最近搜索设置',
@@ -424,6 +434,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
 
   },
   en: {
+    librarySection: 'Library',
+    siteSection: 'Site',
+    clearQuery: 'Clear search field',
+    copyFailed: 'Select the definition and copy it manually.',
+    noPublicDictionaries: 'This site has no public dictionaries yet. Sign in to use your own library.',
     appTagline: 'Dictionary app for MDX / MDD',
     search: 'Search',
     manage: 'Manage',
@@ -442,8 +457,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     scrollToTopLabel: 'Scroll to page top',
     selectedFileCount: (count) => `${count} file${count === 1 ? '' : 's'} selected`,
     dictionaryLookup: 'Dictionary Lookup',
-    lookupTitle: 'Look up a word, phrase, or character instantly.',
-    searchPlaceholder: 'Search words like hello, ability, 能力…',
+    lookupTitle: 'Dictionary lookup',
+    searchPlaceholder: 'Enter a word, phrase, or character',
     lookupDescription: 'Built for daily dictionary use: quick search, fast dictionary switching, and comfortable long-form entry reading.',
     lookupAction: 'Look up',
     searching: 'Searching…',
@@ -456,8 +471,8 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     scopeAllAccessible: 'All accessible dictionaries',
     scopeSpecificDictionary: (name) => `Only in ${name}`,
     recent: 'Recent',
-    readyTitle: 'Ready to look up',
-    readyDescription: 'Search after enabling at least one dictionary. Start with your primary dictionary and keep recent searches close by.',
+    readyTitle: 'Look up your first word',
+    readyDescription: 'Type a headword and press Enter, or choose a suggestion.',
     noResultTitle: 'No matching results found',
     noResultDescription: 'Try a shorter word, a different spelling, switch back to all dictionaries, or refresh the library and try again.',
     bestMatch: 'Best match',
@@ -469,11 +484,11 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     searchOnlyThisDictionary: 'Search only this dictionary',
     compareAcrossDictionaries: 'Compare across dictionaries',
     compareSameHeadword: 'Compare the same headword',
-    pressEnterHint: 'Press Enter to search, or use arrow keys to select a suggestion',
+    pressEnterHint: '↑ ↓ Select · ← → Source · Enter Search',
     resultVisibilityPublic: 'Public dictionary',
     resultVisibilityPrivate: 'Private dictionary',
     dictionaryManager: 'Dictionary Manager',
-    managerTitle: 'Upload and control your personal dictionaries',
+    managerTitle: 'Dictionary manager',
     uploadedEnabled: (total, enabled) => `${total} uploaded · ${enabled} enabled`,
     refresh: 'Refresh',
     mdxFile: 'MDX file',
@@ -507,7 +522,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     fileStatusMissingMdd: 'Missing MDD resources',
     fileStatusMissingAll: 'Dictionary files missing',
     missingFiles: 'Missing files',
-    maintenanceTip: 'If you uploaded an MDX first and added the MDD later, or mounted new files into the library directory, use refresh to rediscover resources.',
+    maintenanceTip: 'Refresh the library after adding MDD files or changing a mounted folder.',
     maintenanceReportTitle: 'Maintenance result',
     discoveredCount: 'Discovered',
     updatedCount: 'Updated',
@@ -566,7 +581,7 @@ export const messages: Record<AppLanguage, MessageCatalog> = {
     uploadAvatar: 'Upload avatar',
     updateAvatar: 'Update avatar',
     sharedControls: 'Shared controls',
-    sharedControlsDescription: 'Profile, language, and theme are maintained here for the whole app.',
+    sharedControlsDescription: 'Choose a language, theme, and recent search limit.',
     recentSearchLimit: 'Recent search count',
     recentSearchLimitDescription: 'Set how many recent searches to keep. Use 0 to disable recent search history.',
     saveRecentSearchLimit: 'Save recent search setting',

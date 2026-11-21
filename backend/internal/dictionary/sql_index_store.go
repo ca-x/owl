@@ -13,6 +13,8 @@ import (
 	entindexmanifest "owl/backend/ent/dictionaryindexmanifest"
 	"owl/backend/ent/predicate"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"github.com/lib-x/mdx"
 )
 
@@ -112,12 +114,13 @@ func (s *sqlDictionaryIndexStore) Put(info mdx.DictionaryInfo, entries []mdx.Ind
 		comparableKey := normalizeSQLComparableKey(entry.Keyword)
 		if _, exists := comparableKeys[comparableKey]; comparableKey != "" && !exists {
 			comparableKeys[comparableKey] = struct{}{}
+			lookupKey := sqlComparableLookupKey(comparableKey)
 			batch = append(batch, tx.DictionaryIndexEntry.Create().
 				SetDictionaryName(dictionaryName).
 				SetKeyword(entry.Keyword).
 				SetNormalizedKeyword(entry.NormalizedKeyword).
-				SetLookupKey(sqlComparableLookupKey(comparableKey)).
-				SetLookupKeyLower(sqlComparableLookupKey(comparableKey)).
+				SetLookupKey(lookupKey).
+				SetLookupKeyLower(lookupKey).
 				SetRecordStartOffset(entry.RecordStartOffset).
 				SetRecordEndOffset(entry.RecordEndOffset).
 				SetKeyBlockIdx(entry.KeyBlockIdx).
@@ -209,7 +212,7 @@ func (s *sqlDictionaryIndexStore) PrefixSearch(dictionaryName, prefix string, li
 		Select(indexEntryResultFields...).
 		Order(ent.Asc(entindexentry.FieldLookupKeyLower))
 	if prefixLower != "" {
-		query = query.Where(entindexentry.LookupKeyLowerHasPrefix(prefixLower))
+		query = query.Where(indexKeyHasPrefix(prefixLower))
 	}
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -264,7 +267,7 @@ func (s *sqlDictionaryIndexStore) Search(dictionaryName, query string, limit int
 	}
 	appendMatches(exact, 1.0, "sql-exact")
 	if len(hits) < limit {
-		prefix, err := s.querySearchEntries(dictionaryName, limit, entindexentry.LookupKeyLowerHasPrefix(queryLower))
+		prefix, err := s.querySearchEntries(dictionaryName, limit, indexKeyHasPrefix(queryLower))
 		if err != nil {
 			return nil, err
 		}
@@ -281,6 +284,21 @@ func (s *sqlDictionaryIndexStore) Search(dictionaryName, query string, limit int
 		return nil, mdx.ErrIndexMiss
 	}
 	return hits, nil
+}
+
+// SQLite's default LIKE cannot seek on the binary lookup_key_lower index.
+// Both sides are already lowercase, so a literal GLOB prefix uses that index.
+// Keep the dialect's escaped LIKE for patterns containing GLOB metacharacters.
+func indexKeyHasPrefix(prefix string) predicate.DictionaryIndexEntry {
+	return func(selector *sql.Selector) {
+		if selector.Dialect() != dialect.SQLite || strings.ContainsAny(prefix, "*?[\x00") {
+			entindexentry.LookupKeyLowerHasPrefix(prefix)(selector)
+			return
+		}
+		selector.Where(sql.P(func(b *sql.Builder) {
+			b.Ident(selector.C(entindexentry.FieldLookupKeyLower)).WriteString(" GLOB ").Arg(prefix + "*")
+		}))
+	}
 }
 
 func (s *sqlDictionaryIndexStore) querySearchEntries(dictionaryName string, limit int, predicates ...predicate.DictionaryIndexEntry) ([]*ent.DictionaryIndexEntry, error) {

@@ -4,10 +4,34 @@ import (
 	"fmt"
 	"testing"
 
+	"owl/backend/ent"
+
 	"github.com/lib-x/mdx"
 )
 
 var benchmarkSearchHTML string
+
+func BenchmarkLoadedDictionaryCacheHit(b *testing.B) {
+	svc := NewService(nil, "", "", nil, "", 0, "", false, 0, "", "")
+	dictionaries := make([]*ent.Dictionary, 128)
+	for i := range dictionaries {
+		dictionaries[i] = &ent.Dictionary{ID: i + 1}
+		svc.cacheLoadedLocked(i+1, &LoadedDictionary{})
+	}
+	ctx := b.Context()
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			if _, err := svc.ensureLoaded(ctx, dictionaries[i%len(dictionaries)]); err != nil {
+				b.Error(err)
+				return
+			}
+			i++
+		}
+	})
+}
 
 func BenchmarkLoadedDictionaryCacheSequentialGlobalSearch(b *testing.B) {
 	for _, dictionaryCount := range []int{8, 16, 32} {

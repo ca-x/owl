@@ -1143,14 +1143,13 @@ func (s *Service) ensureLoaded(ctx context.Context, item *ent.Dictionary) (*Load
 			return nil, err
 		}
 
-		s.mu.RLock()
-		loaded, ok := s.loaded[item.ID]
-		s.mu.RUnlock()
-		if ok {
-			s.mu.Lock()
-			s.touchLoadedLocked(item.ID)
-			s.mu.Unlock()
-			return loaded, nil
+		if s.maxLoadedDictionaries == 0 {
+			s.mu.RLock()
+			loaded := s.loaded[item.ID]
+			s.mu.RUnlock()
+			if loaded != nil {
+				return loaded, nil
+			}
 		}
 
 		s.mu.Lock()
@@ -1233,6 +1232,9 @@ func (s *Service) cacheLoadedLocked(id int, loaded *LoadedDictionary) {
 }
 
 func (s *Service) touchLoadedLocked(id int) {
+	if s.maxLoadedDictionaries == 0 {
+		return
+	}
 	s.removeLoadedOrderLocked(id)
 	s.loadedOrder = append(s.loadedOrder, id)
 }

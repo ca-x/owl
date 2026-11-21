@@ -67,3 +67,9 @@ func TestEnsureMDDsLoadedRunsOnce(t *testing.T) {
 		t.Fatal("expected helper to skip work after the Once already fired")
 	}
 }
+
+func TestShortMDDResourceIsNotSpeex(t *testing.T) {
+	if looksLikeSpeex(make([]byte, 56)) {
+		t.Fatal("short resource identified as Speex audio")
+	}
+}

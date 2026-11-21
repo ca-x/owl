@@ -134,9 +134,77 @@ jobs:
             dist/owl-${{ matrix.platform }}.*
           retention-days: 7
 
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v2
+  build-desktop:
+    name: Build desktop ${{ matrix.target }}
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux_x64 }
+          - { os: ubuntu-latest, target: linux_arm64 }
+          - { os: windows-latest, target: windows_x64 }
+          - { os: macos-latest, target: macos_arm64 }
+          - { os: macos-latest, target: macos_x64 }
+    defaults:
+      run:
+        working-directory: desktop
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          draft: true
-          files: |
-            dist/owl-${{ matrix.platform }}.*
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+
+      - name: Install NSGo CLI
+        run: go install "github.com/nsgo-dev/nsgo/cmd/nsgo@$(go list -m -f '{{.Version}}' github.com/nsgo-dev/nsgo)"
+
+      - name: Ensure the Windows installer compiler is available
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis -y --no-progress
+          }
+
+      - name: Build native installers
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          nsgo build -target "$TARGET" -version "$version"
+          base="dist/releases/owl-dictionary-$version-${TARGET/_/-}"
+          case "$TARGET" in
+            linux_*)   files=("$base.deb" "$base.pkg.tar.gz" "$base.AppImage") ;;
+            macos_*)   files=("$base.dmg") ;;
+            windows_*) files=("$base-setup.exe") ;;
+          esac
+          mkdir -p artifacts
+          cp "${files[@]}" artifacts/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: owl-desktop-${{ matrix.target }}
+          path: desktop/artifacts/*
+          if-no-files-found: error
+          retention-days: 7
+
+  upload-release:
+    name: Attach packages and checksums to the draft
+    needs: [build-backend, build-desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: owl-*
+          path: packages
+          merge-multiple: true
+      - name: Upload packages
+        working-directory: packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS"
+          gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber ./* "$RUNNER_TEMP/SHA256SUMS"
