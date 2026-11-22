@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,7 +67,22 @@ func TestLocalReader(t *testing.T) {
 		app.Press("id:layout")
 		app.WaitFor("id:original-page", 10*time.Second)
 		app.WaitForGone("id:layout-status", 20*time.Second)
-		app.Screenshot("original-entry")
+		// WindowServer may still be swapping in the browser layer when the
+		// load completes. Save a painted frame from the platform compositor.
+		deadline := time.Now().Add(3 * time.Second)
+		for {
+			frame := app.Capture()
+			_, _, _, alpha := frame.At(frame.Bounds().Dx()/2, 32).RGBA()
+			if alpha > 0 {
+				app.Screenshot("original-entry")
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Log("compositor returned transparent frames for the original layout")
+				break
+			}
+			time.Sleep(80 * time.Millisecond)
+		}
 		app.Press("id:layout")
 		app.WaitFor("id:definition", 5*time.Second)
 	}
@@ -351,4 +367,34 @@ func TestOriginalDictionaryLayout(t *testing.T) {
 	if !style || !imported || !image || !audio {
 		t.Fatalf("original assets: CSS %v, import %v, image %v, audio %v", style, imported, image, audio)
 	}
+	if nsgotest.Target() == "" || os.Getenv("OWL_TEST_WEBVIEW") != "1" {
+		return
+	}
+	// Inspect the fixture in the platform engine. This app-provided script
+	// runs after load, with the same script restriction as the reader.
+	const inspect = `(async () => {
+		const picture = document.querySelector("img");
+		await picture.decode();
+		const ink = getComputedStyle(document.querySelector(".pronunciation")).color;
+		const face = getComputedStyle(document.querySelector("article")).fontFamily;
+		window.nsgo.postMessage([ink, face, picture.naturalWidth].join("|"));
+	})()`
+	app := nsgotest.Start(t, func(cx *core.Scope) core.Node {
+		result := core.NewSignal(cx, "")
+		if err := cx.ServeScheme("owl-entry", func(raw string) []byte {
+			u, err := url.Parse(raw)
+			if err != nil || u.Host != "book" {
+				return nil
+			}
+			return files[u.Path]
+		}); err != nil {
+			t.Error(err)
+		}
+		return core.View{Style: paneStyle, Children: []core.Node{
+			core.Text{ContentFunc: result.Get, TestID: "style-result"},
+			core.WebView{Source: core.WebSrc(layoutOrigin + "/index.html"), Style: paneStyle, NoJavaScript: true, Incognito: true,
+				InjectedJavaScript: inspect, OnMessage: result.Set},
+		}}
+	}, nsgotest.Size(600, 440))
+	app.WaitFor("text:rgb(129, 63, 52)|Georgia, serif|320", 12*time.Second)
 }
