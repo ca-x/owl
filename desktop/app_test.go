@@ -370,8 +370,9 @@ func TestOriginalDictionaryLayout(t *testing.T) {
 	if nsgotest.Target() == "" || os.Getenv("OWL_TEST_WEBVIEW") != "1" {
 		return
 	}
-	// Inspect the fixture in the platform engine. This app-provided script
-	// runs after load, with the same script restriction as the reader.
+	// Inspect the fixture in the platform engine. WebView2 requires scripting
+	// enabled for the test probe. The actual reader exercises its restricted
+	// web view in TestLocalReader.
 	const inspect = `(async () => {
 		const picture = document.querySelector("img");
 		await picture.decode();
@@ -392,7 +393,7 @@ func TestOriginalDictionaryLayout(t *testing.T) {
 		}
 		return core.View{Style: paneStyle, Children: []core.Node{
 			core.Text{ContentFunc: result.Get, TestID: "style-result"},
-			core.WebView{Source: core.WebSrc(layoutOrigin + "/index.html"), Style: paneStyle, NoJavaScript: true, Incognito: true,
+			core.WebView{Source: core.WebSrc(layoutOrigin + "/index.html"), Style: paneStyle, Incognito: true,
 				InjectedJavaScript: inspect, OnMessage: result.Set},
 		}}
 	}, nsgotest.Size(600, 440))
