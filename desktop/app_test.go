@@ -374,8 +374,13 @@ func TestOriginalDictionaryLayout(t *testing.T) {
 	// enabled for the test probe. The actual reader exercises its restricted
 	// web view in TestLocalReader.
 	const inspect = `(async () => {
+		if (document.readyState !== "complete") {
+			await new Promise(resolve => window.addEventListener("load", resolve, {once: true}));
+		}
 		const picture = document.querySelector("img");
 		await picture.decode();
+		await document.fonts.ready;
+		await new Promise(requestAnimationFrame);
 		const ink = getComputedStyle(document.querySelector(".pronunciation")).color;
 		const face = getComputedStyle(document.querySelector("article")).fontFamily;
 		window.nsgo.postMessage([ink, face, picture.naturalWidth].join("|"));
