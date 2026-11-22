@@ -55,6 +55,7 @@ jobs:
         run: echo "build_time=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
+        id: push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -69,3 +70,18 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify registry tags and Linux architectures
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+          EXPECTED_DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          while IFS= read -r ref; do
+            info="$(docker buildx imagetools inspect "$ref")"
+            digest="$(awk '$1 == "Digest:" { print $2; exit }' <<< "$info")"
+            test "$digest" = "$EXPECTED_DIGEST"
+            docker buildx imagetools inspect --raw "$ref" | jq -e '
+              [.manifests[].platform | select(.os == "linux") | .architecture] | unique == ["amd64", "arm64"]
+            ' > /dev/null
+            echo "$ref $digest linux/amd64 linux/arm64"
+          done <<< "$IMAGE_TAGS"
