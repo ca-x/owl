@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,13 +27,30 @@ type entry struct {
 	Dictionary string `json:"dictionary_name"`
 	ID         int    `json:"dictionary_id"`
 	HTML       string `json:"html"`
+	Visibility string `json:"visibility"`
 }
 
 // Both sources feed the same native reader. Resource references stay scoped to
 // the dictionary that returned the entry, including when a server requires login.
 type source interface {
-	lookup(context.Context, string) ([]entry, error)
+	lookup(context.Context, string, int) ([]entry, error)
+	suggest(context.Context, string, int) ([]suggestion, error)
 	asset(context.Context, entry, string) ([]byte, error)
+}
+
+type suggestion struct {
+	Word    string `json:"word"`
+	Sources []struct {
+		ID         int    `json:"dictionary_id"`
+		Dictionary string `json:"dictionary_name"`
+	} `json:"sources"`
+}
+
+type libraryBook struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Title   string `json:"title"`
+	Enabled bool   `json:"enabled"`
 }
 
 type headword struct{ folded, word string }
@@ -93,10 +111,10 @@ func openBook(ctx context.Context, path string) (*localBook, error) {
 	})}, nil
 }
 
-func (b *localBook) lookup(ctx context.Context, query string) ([]entry, error) {
+func (b *localBook) matchWords(query string, limit int) []string {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, nil
+		return nil
 	}
 	var matches []string
 	exact, ok := b.dict.FindExactEntry(query)
@@ -109,13 +127,26 @@ func (b *localBook) lookup(ctx context.Context, query string) ([]entry, error) {
 	prefix := strings.ToLower(query)
 	start := sort.Search(len(b.words), func(i int) bool { return b.words[i].folded >= prefix })
 	for _, k := range b.words[start:] {
-		if len(matches) == 10 || !strings.HasPrefix(k.folded, prefix) {
+		if len(matches) == limit || !strings.HasPrefix(k.folded, prefix) {
 			break
 		}
 		if !slices.Contains(matches, k.word) {
 			matches = append(matches, k.word)
 		}
 	}
+	return matches
+}
+
+func (b *localBook) suggest(ctx context.Context, word string, _ int) ([]suggestion, error) {
+	var suggestions []suggestion
+	for _, match := range b.matchWords(word, 6) {
+		suggestions = append(suggestions, suggestion{Word: match})
+	}
+	return suggestions, ctx.Err()
+}
+
+func (b *localBook) lookup(ctx context.Context, query string, _ int) ([]entry, error) {
+	matches := b.matchWords(query, 10)
 	results := make([]entry, 0, len(matches))
 	for _, word := range matches {
 		if err := ctx.Err(); err != nil {
@@ -147,10 +178,15 @@ type remoteServer struct {
 	token  string
 }
 
+var (
+	errServerAddress = errors.New("expected an http or https server URL")
+	errUnauthorized  = errors.New("Owl HTTP 401 · Unauthorized")
+)
+
 func connect(ctx context.Context, address, username, password string) (*remoteServer, error) {
 	base, err := url.Parse(strings.TrimRight(strings.TrimSpace(address), "/"))
 	if err != nil || (base.Scheme != "http" && base.Scheme != "https") || base.Hostname() == "" || base.User != nil || base.RawQuery != "" || base.Fragment != "" {
-		return nil, errors.New("expected an http or https server URL")
+		return nil, errServerAddress
 	}
 	s := &remoteServer{base: base, client: &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	if (username == "") != (password == "") {
@@ -199,6 +235,9 @@ func (s *remoteServer) get(ctx context.Context, method, path string, query url.V
 		return nil, err
 	}
 	defer res.Body.Close()
+	if res.StatusCode == http.StatusUnauthorized {
+		return nil, errUnauthorized
+	}
 	if res.StatusCode/100 != 2 {
 		return nil, fmt.Errorf("Owl HTTP %d · %s", res.StatusCode, http.StatusText(res.StatusCode))
 	}
@@ -218,13 +257,54 @@ func (s *remoteServer) json(ctx context.Context, method, path string, query url.
 	return json.Unmarshal(data, dst)
 }
 
-func (s *remoteServer) lookup(ctx context.Context, word string) ([]entry, error) {
-	path := "api/public/search"
-	if s.token != "" {
-		path = "api/search"
+func (s *remoteServer) endpoint(name string) string {
+	if s.token == "" {
+		return "api/public/" + name
 	}
+	return "api/" + name
+}
+
+func searchParams(word string, scope int) url.Values {
+	params := url.Values{"q": {word}}
+	if scope != 0 {
+		params.Set("dict", strconv.Itoa(scope))
+	}
+	return params
+}
+
+func (s *remoteServer) books(ctx context.Context) ([]libraryBook, error) {
+	var books []libraryBook
+	err := s.json(ctx, http.MethodGet, s.endpoint("dictionaries"), nil, nil, &books)
+	if err != nil || s.token == "" {
+		return books, err
+	}
+	// The management endpoint lists a user's own books. Public books from other
+	// owners are also searchable, and older Owl servers expose those separately.
+	var public []libraryBook
+	if err := s.json(ctx, http.MethodGet, "api/public/dictionaries", nil, nil, &public); err != nil {
+		return nil, err
+	}
+	seen := make(map[int]bool, len(books))
+	for _, book := range books {
+		seen[book.ID] = true
+	}
+	for _, book := range public {
+		if !seen[book.ID] {
+			books = append(books, book)
+		}
+	}
+	return books, nil
+}
+
+func (s *remoteServer) suggest(ctx context.Context, word string, scope int) ([]suggestion, error) {
+	var words []suggestion
+	err := s.json(ctx, http.MethodGet, s.endpoint("suggest"), searchParams(word, scope), nil, &words)
+	return words, err
+}
+
+func (s *remoteServer) lookup(ctx context.Context, word string, scope int) ([]entry, error) {
 	var entries []entry
-	err := s.json(ctx, "GET", path, url.Values{"q": {word}}, nil, &entries)
+	err := s.json(ctx, http.MethodGet, s.endpoint("search"), searchParams(word, scope), nil, &entries)
 	return entries, err
 }
 

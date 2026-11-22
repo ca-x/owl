@@ -30,16 +30,25 @@ jobs:
       - run: go vet ./...
       - name: Exercise the native reading and connection windows
         shell: bash
+        env:
+          OWL_TEST_WEBVIEW: '1'
         run: |
           go install "github.com/nsgo-dev/nsgo/cmd/nsgo@$(go list -m -f '{{.Version}}' github.com/nsgo-dev/nsgo)"
           case "$RUNNER_OS" in
             Linux)
               sudo apt-get update
-              sudo apt-get install -y libgtk-4-1 xvfb xauth
-              GDK_BACKEND=x11 GSK_RENDERER=cairo xvfb-run -a nsgo test -target linux ;;
-            macOS)   nsgo test -target macos ;;
-            Windows) nsgo test -target windows ;;
+              sudo apt-get install -y libgtk-4-1 libwebkitgtk-6.0-4 gstreamer1.0-plugins-good xvfb xauth
+              GDK_BACKEND=x11 GSK_RENDERER=cairo xvfb-run -a nsgo test -target linux -screenshots .nsgo/screens ;;
+            macOS)   nsgo test -target macos -screenshots .nsgo/screens ;;
+            Windows) nsgo test -target windows -screenshots .nsgo/screens ;;
           esac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reader-${{ runner.os }}
+          path: desktop/.nsgo/screens/*.png
+          include-hidden-files: true
+          retention-days: 7
 
   test:
     name: Backend, embedded frontend, and docker checks

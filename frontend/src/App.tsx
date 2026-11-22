@@ -1,5 +1,5 @@
 import { ArrowUp, MagnifyingGlass, SignOut, SlidersHorizontal, StackSimple, UserCircle, X } from '@phosphor-icons/react'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 
 import { Dialog } from './components/Dialog'
 import { AuthPanel } from './components/AuthPanel'
@@ -7,7 +7,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { I18nContext, messages } from './i18n'
 import { DictionaryManagerPage } from './pages/DictionaryManagerPage'
 import { SearchPage } from './pages/SearchPage'
-import { api, ApiError } from './services/api'
+import { api, ApiError, cookieSession, type ApiSession } from './services/api'
 import type { DictionarySummary, HealthInfo, MaintenanceReport, SharedFont, SystemSettings, MCPTokenStatus, UserPreferences, UserSummary } from './types'
 import './App.css'
 
@@ -21,6 +21,8 @@ type ControlButtonProps = {
 }
 
 const TOKEN_KEY = 'owl-token'
+const COOKIE_SESSION_KEY = 'owl-cookie-session'
+const serverWorkspace = window.location.pathname.endsWith('/workspace')
 const RECENT_SEARCHES_KEY = 'owl-recent-searches'
 const PREFERENCES_KEY = 'owl-preferences'
 const LOGO_SRC = '/android-chrome-192x192.png'
@@ -139,12 +141,18 @@ function IconControlButton({ icon, label, onClick, danger = false, initialFocus 
 }
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
+  const [token, setToken] = useState<ApiSession | null>(() =>
+    serverWorkspace || sessionStorage.getItem(COOKIE_SESSION_KEY) ? cookieSession : localStorage.getItem(TOKEN_KEY),
+  )
   const [user, setUser] = useState<UserSummary | null>(null)
-  const [page, setPage] = useState<Page>('search')
+  const [page, setPage] = useState<Page>(serverWorkspace ? 'manage' : 'search')
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState('')
   const [dictionaries, setDictionaries] = useState<DictionarySummary[]>([])
+  const [publicDictionaries, setPublicDictionaries] = useState<DictionarySummary[]>([])
+  const searchableDictionaries = useMemo(() => [...new Map(
+    [...publicDictionaries, ...dictionaries].map((book) => [book.id, book]),
+  ).values()], [publicDictionaries, dictionaries])
   const [dictionaryLoading, setDictionaryLoading] = useState(false)
   const [dictionaryError, setDictionaryError] = useState('')
   const [maintenanceReport, setMaintenanceReport] = useState<MaintenanceReport | null>(null)
@@ -252,6 +260,7 @@ export default function App() {
 
   const handleAuthFailure = useEffectEvent((error: unknown) => {
     localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(COOKIE_SESSION_KEY)
     setToken(null)
     setUser(null)
     setDictionaries([])
@@ -287,15 +296,18 @@ export default function App() {
     let active = true
     async function bootstrap() {
       try {
-        const [me, dicts, prefs, mcpStatus] = await Promise.all([
+        const [me, dicts, prefs, mcpStatus, publicBooks] = await Promise.all([
           api.me(authToken),
           api.listDictionaries(authToken),
           api.getPreferences(authToken),
           api.getMCPToken(authToken),
+          api.listPublicDictionaries(),
         ])
         if (!active) return
         const normalizedPrefs = normalizePreferences(prefs)
+        if (authToken === cookieSession) sessionStorage.setItem(COOKIE_SESSION_KEY, '1')
         setUser(me)
+        setPublicDictionaries(publicBooks)
         setDictionaries(dicts)
         setPreferences(normalizedPrefs)
         setRecentSearches((current) => {
@@ -323,10 +335,11 @@ export default function App() {
     if (!token || !user?.is_admin) {
       return
     }
+    const authToken = token
     let active = true
     async function loadSystemSettings() {
       try {
-        const next = await api.getSystemSettings(token as string)
+        const next = await api.getSystemSettings(authToken)
         if (!active) return
         setSystemSettings(next)
       } catch {
@@ -376,8 +389,13 @@ export default function App() {
     setDictionaryLoading(true)
     setDictionaryError('')
     try {
-      const dicts = token ? await api.listDictionaries(token) : await api.listPublicDictionaries()
-      setDictionaries(dicts)
+      if (token) {
+        const [owned, shared] = await Promise.all([api.listDictionaries(token), api.listPublicDictionaries()])
+        setDictionaries(owned)
+        setPublicDictionaries(shared)
+      } else {
+        setDictionaries(await api.listPublicDictionaries())
+      }
     } catch (error) {
       setDictionaryError(getErrorMessage(error, t.genericError))
     } finally {
@@ -444,6 +462,7 @@ export default function App() {
     setPage('search')
     void api.logout().catch(() => {})
     localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(COOKIE_SESSION_KEY)
     setToken(null)
     setUser(null)
     setDictionaries([])
@@ -653,7 +672,7 @@ export default function App() {
         <main className="dashboard-main recorder-main-shell">
           {page === 'search' ? (
             <SearchPage
-              dictionaries={dictionaries}
+              dictionaries={searchableDictionaries}
               loading={dictionaryLoading}
               error={dictionaryError}
               isGuest={false}

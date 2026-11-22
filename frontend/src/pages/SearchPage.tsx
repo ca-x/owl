@@ -3,7 +3,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 
 import { DictionaryEntryHtml } from '../components/DictionaryEntryHtml'
 import { useI18n } from '../i18n'
-import { api } from '../services/api'
+import { api, type ApiSession } from '../services/api'
 import type { DictionarySummary, SearchResult, SearchSuggestion } from '../types'
 
 interface SearchPageProps {
@@ -11,7 +11,7 @@ interface SearchPageProps {
   loading: boolean
   error: string
   isGuest: boolean
-  token: string | null
+  token: ApiSession | null
   recentSearches: string[]
   onSearched: (query: string) => void
 }

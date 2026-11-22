@@ -2,6 +2,9 @@ import type { AuthResponse, DictionarySummary, HealthInfo, MaintenanceReport, Se
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
+export const cookieSession = Symbol('Owl session cookie')
+export type ApiSession = string | typeof cookieSession
+
 export class ApiError extends Error {
   status: number
 
@@ -12,12 +15,12 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, token?: ApiSession): Promise<T> {
   const headers = new Headers(init.headers)
   if (!headers.has('Content-Type') && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
-  if (token) {
+  if (typeof token === 'string' && token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
@@ -96,19 +99,19 @@ export const api = {
     })
   },
 
-  me(token: string) {
+  me(token: ApiSession) {
     return request<UserSummary>('/me', { method: 'GET' }, token)
   },
 
-  getPreferences(token: string) {
+  getPreferences(token: ApiSession) {
     return request<UserPreferences>('/preferences', { method: 'GET' }, token)
   },
 
-  getSystemSettings(token: string) {
+  getSystemSettings(token: ApiSession) {
     return request<SystemSettings>('/settings/system', { method: 'GET' }, token)
   },
 
-  updateSystemSettings(token: string, settings: SystemSettings) {
+  updateSystemSettings(token: ApiSession, settings: SystemSettings) {
     return request<SystemSettings>('/settings/system', {
       method: 'PUT',
       body: JSON.stringify(settings),
@@ -116,33 +119,33 @@ export const api = {
   },
 
 
-  getMCPToken(token: string) {
+  getMCPToken(token: ApiSession) {
     return request<MCPTokenStatus>('/mcp/token', { method: 'GET' }, token)
   },
 
-  setMCPToken(token: string, mcpToken: string) {
+  setMCPToken(token: ApiSession, mcpToken: string) {
     return request<MCPTokenStatus>('/mcp/token', {
       method: 'PUT',
       body: JSON.stringify({ token: mcpToken }),
     }, token)
   },
 
-  generateMCPToken(token: string) {
+  generateMCPToken(token: ApiSession) {
     return request<MCPTokenStatus>('/mcp/token/generate', { method: 'POST' }, token)
   },
 
-  deleteMCPToken(token: string) {
+  deleteMCPToken(token: ApiSession) {
     return request<MCPTokenStatus>('/mcp/token', { method: 'DELETE' }, token)
   },
 
-  updatePreferences(token: string, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name' | 'recent_search_limit'>) {
+  updatePreferences(token: ApiSession, preferences: Pick<UserPreferences, 'language' | 'theme' | 'font_mode' | 'display_name' | 'custom_font_name' | 'recent_search_limit'>) {
     return request<UserPreferences>('/preferences', {
       method: 'PUT',
       body: JSON.stringify(preferences),
     }, token)
   },
 
-  uploadFont(token: string, fontFile: File) {
+  uploadFont(token: ApiSession, fontFile: File) {
     const formData = new FormData()
     formData.append('font', fontFile)
     return request<UserPreferences>('/preferences/font', {
@@ -151,13 +154,13 @@ export const api = {
     }, token)
   },
 
-  deleteFont(token: string, name: string) {
+  deleteFont(token: ApiSession, name: string) {
     return request<UserPreferences>(`/preferences/font/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     }, token)
   },
 
-  uploadAvatar(token: string, avatarFile: File) {
+  uploadAvatar(token: ApiSession, avatarFile: File) {
     const formData = new FormData()
     formData.append('avatar', avatarFile)
     return request<UserPreferences>('/preferences/avatar', {
@@ -166,11 +169,11 @@ export const api = {
     }, token)
   },
 
-  listDictionaries(token: string) {
+  listDictionaries(token: ApiSession) {
     return request<DictionarySummary[]>('/dictionaries', { method: 'GET' }, token)
   },
 
-  uploadDictionary(token: string, mdxFile: File, mddFiles: File[]) {
+  uploadDictionary(token: ApiSession, mdxFile: File, mddFiles: File[]) {
     const formData = new FormData()
     formData.append('mdx', mdxFile)
     for (const file of mddFiles) {
@@ -182,37 +185,37 @@ export const api = {
     }, token)
   },
 
-  toggleDictionary(token: string, id: number, enabled: boolean) {
+  toggleDictionary(token: ApiSession, id: number, enabled: boolean) {
     return request<DictionarySummary>(`/dictionaries/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
     }, token)
   },
 
-  setDictionaryPublic(token: string, id: number, isPublic: boolean) {
+  setDictionaryPublic(token: ApiSession, id: number, isPublic: boolean) {
     return request<DictionarySummary>(`/dictionaries/${id}/public`, {
       method: 'PATCH',
       body: JSON.stringify({ public: isPublic }),
     }, token)
   },
 
-  refreshDictionary(token: string, id: number) {
+  refreshDictionary(token: ApiSession, id: number) {
     return request<MaintenanceReport>(`/dictionaries/${id}/refresh`, {
       method: 'POST',
     }, token)
   },
 
-  refreshLibrary(token: string) {
+  refreshLibrary(token: ApiSession) {
     return request<MaintenanceReport>('/dictionaries/refresh', {
       method: 'POST',
     }, token)
   },
 
-  deleteDictionary(token: string, id: number) {
+  deleteDictionary(token: ApiSession, id: number) {
     return request<void>(`/dictionaries/${id}`, { method: 'DELETE' }, token)
   },
 
-  search(token: string, query: string, dictionaryId?: number, signal?: AbortSignal) {
+  search(token: ApiSession, query: string, dictionaryId?: number, signal?: AbortSignal) {
     const params = new URLSearchParams({ q: query })
     if (dictionaryId) {
       params.set('dict', String(dictionaryId))
@@ -220,7 +223,7 @@ export const api = {
     return request<SearchResult[]>(`/search?${params.toString()}`, { method: 'GET', signal }, token)
   },
 
-  suggest(token: string, query: string, dictionaryId?: number, signal?: AbortSignal) {
+  suggest(token: ApiSession, query: string, dictionaryId?: number, signal?: AbortSignal) {
     const params = new URLSearchParams({ q: query })
     if (dictionaryId) {
       params.set('dict', String(dictionaryId))

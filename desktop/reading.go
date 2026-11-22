@@ -3,119 +3,107 @@ package main
 import (
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 
+	"github.com/nsgo-dev/nsgo/base/textview"
 	"golang.org/x/net/html"
 )
 
 type attachment struct{ kind, ref, label string }
+
 type definition struct {
-	text        string
-	attachments []attachment
-	related     []string
+	document textview.Document
+	related  []string
+	audio    []string
 }
 
-// Read dictionary markup as text and media using native controls. Inline
-// scripts, stylesheet text and remote navigation are outside the reading flow.
+// Give the native rich-text reader a pronunciation control at the original
+// position of each sound link. All other blocks and spans keep their order.
 func readDefinition(markup string) definition {
-	doc, _ := html.Parse(strings.NewReader(markup))
-	var result definition
-	var text strings.Builder
-	space, line := false, false
-	addText := func(s string) {
-		for _, r := range s {
-			switch r {
-			case ' ', '\n', '\t', '\r':
-				space = true
-			default:
-				if text.Len() > 0 {
-					if line {
-						text.WriteByte('\n')
-					} else if space {
-						text.WriteByte(' ')
+	root, _ := html.Parse(strings.NewReader(markup))
+	var d definition
+	if root == nil {
+		return d
+	}
+	var visit func(*html.Node)
+	visit = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			var sound string
+			switch n.Data {
+			case "script", "style", "head":
+				return
+			case "audio":
+				sound = attribute(n, "src")
+				for c := n.FirstChild; sound == "" && c != nil; c = c.NextSibling {
+					if c.Data == "source" {
+						sound = attribute(c, "src")
 					}
 				}
-				line, space = false, false
-				text.WriteRune(r)
-			}
-		}
-	}
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			addText(n.Data)
-			return
-		}
-		tag := n.Data
-		switch tag {
-		case "head", "script", "style", "template", "noscript":
-			return
-		}
-		block := false
-		switch tag {
-		case "p", "div", "li", "br", "tr", "dt", "dd", "h1", "h2", "h3", "def", "blockquote":
-			block = true
-			line = true
-		case "td", "th":
-			space = true
-		}
-		var src, href, alt string
-		for _, a := range n.Attr {
-			switch a.Key {
-			case "src":
-				src = a.Val
-			case "href":
-				href = a.Val
-			case "alt":
-				alt = a.Val
-			}
-		}
-		switch {
-		case tag == "img" && src != "":
-			result.attachments = append(result.attachments, attachment{"image", src, alt})
-		case (tag == "audio" || tag == "source" && n.Parent != nil && n.Parent.Data == "audio") && src != "":
-			result.attachments = append(result.attachments, attachment{"audio", src, ""})
-		case tag == "a" && href != "":
-			lower := strings.ToLower(href)
-			if strings.HasPrefix(lower, "sound://") || strings.HasPrefix(lower, "snd://") {
-				result.attachments = append(result.attachments, attachment{"audio", href, ""})
-			} else if u, err := url.Parse(href); err == nil {
-				if isAudioResource(u.Path) {
-					result.attachments = append(result.attachments, attachment{"audio", href, ""})
-				} else if u.Scheme == "entry" || u.Scheme == "mdxentry" || u.Scheme == "dict" {
-					word, _ := url.PathUnescape(u.Host + u.EscapedPath())
-					if word != "" {
-						result.related = append(result.related, word)
-					}
-				} else if u.Path == "/search" && u.Query().Get("q") != "" {
-					result.related = append(result.related, u.Query().Get("q"))
+			case "a":
+				href := attribute(n, "href")
+				u, err := url.Parse(href)
+				if err == nil && (u.Scheme == "sound" || u.Scheme == "snd" || isAudioResource(u.Path)) {
+					sound = href
+				} else if word := linkedWord(href); word != "" && !slices.Contains(d.related, word) {
+					d.related = append(d.related, word)
 				}
 			}
+			if sound != "" {
+				d.audio = append(d.audio, sound)
+				n.Data, n.DataAtom = "owl-pronunciation", 0
+				n.Attr = []html.Attribute{{Key: "src", Val: sound}}
+				n.FirstChild, n.LastChild = nil, nil
+				return
+			}
 		}
-		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
-		}
-		if block {
-			line = true
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			visit(c)
 		}
 	}
-	if doc != nil {
-		walk(doc)
+	visit(root)
+	var body strings.Builder
+	_ = html.Render(&body, root)
+	d.document = textview.ParseHTML(body.String(), textview.Extension{Name: "pronunciation", Tag: "owl-pronunciation"})
+	return d
+}
+
+func attribute(n *html.Node, key string) string {
+	for _, a := range n.Attr {
+		if a.Key == key {
+			return a.Val
+		}
 	}
-	result.text = text.String()
-	return result
+	return ""
+}
+
+func linkedWord(href string) string {
+	u, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+	switch u.Scheme {
+	case "entry", "mdxentry", "dict":
+		word, _ := url.PathUnescape(u.Host + u.EscapedPath())
+		return strings.TrimSpace(word)
+	case "":
+		if u.Path == "/search" {
+			return strings.TrimSpace(u.Query().Get("q"))
+		}
+	}
+	return ""
 }
 
 func isAudioResource(resource string) bool {
-	_, ref, ok := strings.Cut(strings.ToLower(resource), "/resource/")
-	if !ok {
-		return false
+	ref := strings.ToLower(resource)
+	if _, suffix, ok := strings.Cut(ref, "/resource/"); ok {
+		ref = suffix
 	}
 	if strings.HasPrefix(ref, "snd:") || strings.HasPrefix(ref, "sound:") {
 		return true
 	}
 	switch path.Ext(ref) {
-	case ".mp3", ".wav", ".ogg", ".spx", ".m4a", ".aac", ".flac":
+	case ".mp3", ".wav", ".ogg", ".spx", ".snd", ".m4a", ".aac", ".flac":
 		return true
 	}
 	return false

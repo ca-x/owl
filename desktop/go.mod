@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/lib-x/mdx v0.1.23
 	github.com/nsgo-dev/nsgo v0.2.0
+	github.com/tdewolff/parse/v2 v2.8.20
 	golang.org/x/net v0.62.0
 )
 

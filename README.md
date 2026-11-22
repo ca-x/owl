@@ -10,9 +10,15 @@ Download **Owl Dictionary** for macOS (Apple Silicon or Intel), Windows (x64) or
 
 - **Local dictionary** opens an MDX on your computer. Put any matching MDD volumes beside it. You can search and read offline, including images, pronunciation and links between entries.
 - **Owl server** takes the base URL of your instance, such as `https://owl.example.org`. Connect as a guest to read public dictionaries, or sign in for your own private entries and media. The app remembers the server address and local file path. Credentials stay in memory.
-- **Reading** uses native text, image and audio controls. For a dictionary's original HTML and CSS layout, open the web workspace. Press Enter to look up a word, Ctrl/Cmd+F to focus search, and Ctrl/Cmd+O in local mode to open a file.
+- **Word index** shows suggestions as you type. Choose a word or a dictionary source, follow links, revisit recent words, or use the back and forward controls. A compact selector takes the place of the side index in a narrow window.
+- **Reader layout** sets the definition in native type with inline images, pronunciation and selectable text. Choose the reading font, size and light or dark appearance. **Original layout** uses the system web view for the dictionary's HTML, CSS and bundled media. Dictionary scripts are disabled.
+- **Server workspace** opens the web edition inside the app and returns you to the current lookup. With a v0.2.0 server, an authenticated reader goes straight to library management. The workspace also includes account preferences, MCP access and site administration for admins.
 
-The desktop app is a separate Go module built with NSGo. To run it from source with Go 1.27.3 or later, use `cd desktop && go run .`.
+Press Enter to look up a word, Ctrl/Cmd+F to focus search, Alt+Left/Right to revisit a lookup and Ctrl/Cmd+O to choose a local file. On Linux, install WebKitGTK 6 for Original layout and the in-app server workspace, plus the GStreamer plugins for your audio formats. The desktop source is an independent NSGo module. Run `cd desktop && go run .` with Go 1.27.3 or later.
+
+![The native reader showing an illustrated Folio entry and its word index](docs/screenshots/desktop-reader.png)
+
+[Compact reader in dark mode](docs/screenshots/desktop-compact.png)
 
 ---
 

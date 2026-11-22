@@ -16,8 +16,18 @@ func (s *Server) registerFrontendRoutes() {
 		panic(err)
 	}
 
-	s.echo.GET("/", s.handleSPA(distFS))
-	s.echo.GET("/*", s.handleSPA(distFS))
+	spa := s.handleSPA(distFS)
+	s.echo.GET("/", spa)
+	// The desktop web view supplies its session on the first navigation.
+	// The existing authentication middleware sets the usual HttpOnly cookie.
+	s.echo.GET("/workspace", func(c *echo.Context) error {
+		c.Response().Header().Set("Cache-Control", "private, no-store")
+		if c.Request().Header.Get("Authorization") != "" {
+			return s.authMiddleware(spa)(c)
+		}
+		return spa(c)
+	})
+	s.echo.GET("/*", spa)
 }
 
 func (s *Server) handleSPA(distFS fs.FS) echo.HandlerFunc {

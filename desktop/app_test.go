@@ -47,25 +47,43 @@ func TestLocalReader(t *testing.T) {
 	if nsgotest.Target() != "" {
 		initial["mdx-file"] = string(openPath)
 	}
-	app := nsgotest.Start(t, Root, nsgotest.Size(780, 620), nsgotest.Storage(initial))
+	app := nsgotest.Start(t, Root, nsgotest.Size(1010, 800), nsgotest.Storage(initial))
 	if nsgotest.Target() == "" {
 		app.PickFiles = func(core.FilesRequest) []core.File { return []core.File{{Path: path}} }
 		app.Press("id:open-mdx")
 	}
 	app.WaitFor("id:query", 5*time.Second)
-	app.Type("id:query", "Folio")
-	app.Submit("id:query")
+	app.Type("id:query", "Fo")
+	app.WaitFor("id:suggestion-0", 5*time.Second)
+	app.Press("id:suggestion-0")
 	if got := app.WaitFor("id:headword", 5*time.Second).Text; got != "folio" {
 		t.Fatalf("headword: %s", got)
 	}
-	if got := app.Find("id:definition").Text; !strings.Contains(got, "A leaf of a book") {
-		t.Fatalf("definition: %s", got)
-	}
+	app.WaitFor("text:A leaf of a book, with writing on either side.", 5*time.Second)
 	app.WaitFor("id:entry-image", 5*time.Second)
 	app.Screenshot("local-entry")
+	if os.Getenv("OWL_TEST_WEBVIEW") == "1" && nsgotest.Target() != "" {
+		app.Press("id:layout")
+		app.WaitFor("id:original-page", 10*time.Second)
+		app.WaitForGone("id:layout-status", 20*time.Second)
+		app.Screenshot("original-entry")
+		app.Press("id:layout")
+		app.WaitFor("id:definition", 5*time.Second)
+	}
 	app.Press("id:copy")
-	app.Press("role:button → leaf")
+	app.Press("id:match-1")
+	app.WaitFor("text:Numbered by leaves.", 5*time.Second)
+	app.Press("id:match-0")
+	app.Press("id:related-0")
 	app.WaitFor("text:A single sheet in a manuscript.", 5*time.Second)
+	app.Press("id:back")
+	app.WaitFor("text:A leaf of a book, with writing on either side.", 5*time.Second)
+	app.Press("id:forward")
+	app.WaitFor("text:A single sheet in a manuscript.", 5*time.Second)
+	app.Press("id:history")
+	app.WaitFor("id:recent-1", 5*time.Second)
+	app.Press("id:recent-1")
+	app.WaitFor("text:A leaf of a book, with writing on either side.", 5*time.Second)
 	app.Press("id:server")
 	app.Find("id:connect")
 }
@@ -100,7 +118,7 @@ func TestRemoteReader(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		items, err := s.lookup(t.Context(), "folio")
+		items, err := s.lookup(t.Context(), "folio", 0)
 		if err != nil || len(items) != 1 {
 			t.Fatalf("lookup: %v %v", items, err)
 		}
@@ -123,20 +141,56 @@ func TestLocalPronunciation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, err := book.lookup(t.Context(), "folio")
+	entries, err := book.lookup(t.Context(), "folio", 0)
 	if err != nil || len(entries) == 0 {
 		t.Fatalf("lookup: %v", err)
 	}
-	for _, a := range readDefinition(entries[0].HTML).attachments {
-		if a.kind == "audio" {
-			content, err := book.asset(t.Context(), entries[0], a.ref)
-			if err != nil || !strings.HasPrefix(string(content), "RIFF") {
-				t.Fatalf("pronunciation: %v", err)
-			}
-			return
+	for _, ref := range readDefinition(entries[0].HTML).audio {
+		content, err := book.asset(t.Context(), entries[0], ref)
+		if err != nil || !strings.HasPrefix(string(content), "RIFF") {
+			t.Fatalf("pronunciation: %v", err)
 		}
+		return
 	}
 	t.Fatal("missing pronunciation")
+}
+
+func TestPrivateOriginalResources(t *testing.T) {
+	assets := map[string]string{
+		"styles/book.css":  `@import "type.css"; .leaf{background:url("/api/dictionaries/7/resource/image.png")}`,
+		"styles/type.css":  `@font-face{font-family:notes;src:url("../fonts/book.woff2")}`,
+		"fonts/book.woff2": "sample font",
+		"image.png":        "sample image",
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/auth/login", func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(`{"token":"private-test-session"}`))
+	})
+	mux.HandleFunc("GET /api/dictionaries/7/resource/{name...}", func(w http.ResponseWriter, r *http.Request) {
+		content, ok := assets[r.PathValue("name")]
+		if !ok || r.Header.Get("Authorization") != "Bearer private-test-session" {
+			t.Errorf("unexpected resource request for %s", r.URL.Path)
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.Write([]byte(content))
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	s, err := connect(t.Context(), ts.URL, "reader", "test-pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := entry{ID: 7, HTML: `<link rel="stylesheet" href="/api/dictionaries/7/resource/styles%2Fbook.css"><img src="/api/dictionaries/8/resource/other.png"><p class="leaf">Folio</p>`}
+	files, err := buildOriginal(t.Context(), s, item)
+	if err != nil || len(files) != len(assets)+2 {
+		t.Fatalf("expected entry, navigation and %d dictionary resources, got %d files (%v)", len(assets), len(files), err)
+	}
+	for _, data := range files {
+		if strings.Contains(string(data), ts.URL) || strings.Contains(string(data), "/api/dictionaries") || strings.Contains(string(data), "private-test-session") {
+			t.Fatal("original layout retained a server URL or credential")
+		}
+	}
 }
 
 func TestServerConnectionForm(t *testing.T) {
@@ -153,16 +207,33 @@ func TestServerConnectionForm(t *testing.T) {
 		w.Write([]byte(`{"token":"session"}`))
 	})
 	mux.HandleFunc("GET /api/search", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer session" || r.URL.Query().Get("q") != "private" {
+		if r.Header.Get("Authorization") != "Bearer session" || r.URL.Query().Get("q") != "private" || r.URL.Query().Get("dict") != "7" {
 			http.Error(w, "not signed in", http.StatusUnauthorized)
 			return
 		}
 		w.Write([]byte(`[{"word":"private","dictionary_name":"My notes","html":"Personal entry"}]`))
 	})
+	mux.HandleFunc("GET /api/suggest", func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(`[{"word":"private","sources":[{"dictionary_id":7,"dictionary_name":"My notes"}]}]`))
+	})
+	mux.HandleFunc("GET /api/dictionaries", func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(`[{"id":7,"name":"My notes","enabled":true}]`))
+	})
+	mux.HandleFunc("GET /api/public/dictionaries", func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(`[{"id":9,"name":"Shared notes","enabled":true}]`))
+	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
 	app := nsgotest.Start(t, Root, nsgotest.Size(780, 620))
+	app.Screenshot("open-local")
 	app.Press("id:server")
+	app.Clear("id:address")
+	app.Type("id:address", "invalid")
+	app.Submit("id:address")
+	app.WaitUntil(5*time.Second, func() bool {
+		return strings.Contains(app.Find("id:connection-status").Text, "https://owl.example.org")
+	})
+	app.Screenshot("connection-error")
 	app.Clear("id:address")
 	app.Type("id:address", server.URL)
 	app.Submit("id:address")
@@ -173,9 +244,111 @@ func TestServerConnectionForm(t *testing.T) {
 	app.Type("id:password", "test-pass")
 	app.Submit("id:password")
 	app.WaitFor("id:query", 5*time.Second)
-	app.Type("id:query", "private")
-	app.Submit("id:query")
+	app.Type("id:query", "pri")
+	app.WaitFor("id:suggestion-0-source-0", 5*time.Second)
+	app.Press("id:suggestion-0-source-0")
 	app.WaitFor("text:Personal entry", 5*time.Second)
 	app.Press("id:disconnect")
 	app.Find("id:connect")
+}
+
+func TestServerWorkspace(t *testing.T) {
+	if nsgotest.Target() == "" || os.Getenv("OWL_TEST_WEBVIEW") != "1" {
+		t.Skip("requires a desktop web view")
+	}
+	loaded := make(chan bool, 1)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/auth/login", func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(`{"token":"workspace-test-session"}`))
+	})
+	mux.HandleFunc("GET /workspace", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer workspace-test-session" {
+			http.Error(w, "workspace session missing", http.StatusUnauthorized)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{Name: "owl_token", Value: "workspace-test-session", Path: "/", HttpOnly: true})
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!doctype html><title>Owl library</title><img src="/library-cover.png" alt="Library cover">`))
+	})
+	mux.HandleFunc("GET /library-cover.png", func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("owl_token")
+		select {
+		case loaded <- err == nil && cookie.Value == "workspace-test-session":
+		default:
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(owlIcon)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	reader := nsgotest.Start(t, Root, nsgotest.Size(880, 720))
+	reader.Press("id:server")
+	reader.Clear("id:address")
+	reader.Type("id:address", server.URL)
+	reader.Press("id:use-account")
+	reader.Type("id:username", "reader")
+	reader.Type("id:password", "test-pass")
+	reader.Submit("id:password")
+	reader.WaitFor("id:workspace", 5*time.Second)
+	reader.Press("id:workspace")
+	select {
+	case ok := <-loaded:
+		if !ok {
+			t.Fatal("workspace request lost its session cookie")
+		}
+	case <-time.After(16 * time.Second):
+		t.Fatal("server workspace did not load")
+	}
+	reader.Press("id:close-workspace")
+	reader.Find("id:query")
+}
+
+func TestCompactDarkReader(t *testing.T) {
+	path, err := json.Marshal(testBook(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := nsgotest.Start(t, Root, nsgotest.Size(490, 650), nsgotest.Storage(map[string]string{
+		"mdx-file":   `{"version":0,"value":` + string(path) + "}",
+		"appearance": `{"version":0,"value":"dark"}`,
+	}))
+	app.WaitFor("id:query", 5*time.Second)
+	app.Type("id:query", "folio")
+	app.Submit("id:query")
+	app.WaitFor("id:matches", 5*time.Second)
+	app.WaitFor("id:entry-image", 5*time.Second)
+	app.Screenshot("compact-dark")
+}
+
+func TestOriginalDictionaryLayout(t *testing.T) {
+	book, err := openBook(t.Context(), testBook(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := book.lookup(t.Context(), "folio", 0)
+	if err != nil || len(items) == 0 {
+		t.Fatalf("lookup: %v", err)
+	}
+	files, err := buildOriginal(t.Context(), book, items[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc := string(files["/index.html"]); !strings.Contains(doc, layoutOrigin+"/lookup?q=leaf") || !strings.Contains(doc, "Content-Security-Policy") || !strings.Contains(doc, "<audio") {
+		t.Fatal("missing original layout navigation or embedded controls")
+	}
+	var style, imported, image, audio bool
+	for name, data := range files {
+		switch filepath.Ext(name) {
+		case ".css":
+			style = style || strings.Contains(string(data), `@import "owl-entry://book/media/`)
+			imported = imported || strings.Contains(string(data), "font-family:Georgia")
+		case ".png":
+			image = len(data) > 8 && string(data[:8]) == "\x89PNG\r\n\x1a\n"
+		case ".wav":
+			audio = strings.HasPrefix(string(data), "RIFF")
+		}
+	}
+	if !style || !imported || !image || !audio {
+		t.Fatalf("original assets: CSS %v, import %v, image %v, audio %v", style, imported, image, audio)
+	}
 }
